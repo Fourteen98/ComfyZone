@@ -47,7 +47,7 @@ RUN bundle install && \
 # Install Node + the JS toolchain so vite_rails can build the frontend during
 # assets:precompile. (This app uses vite_rails / vite-plugin-ruby, so the Rails
 # default Dockerfile — which assumes no JS bundler — isn't enough on its own.)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install --no-install-recommends -y nodejs && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 

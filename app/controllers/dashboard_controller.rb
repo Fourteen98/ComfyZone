@@ -8,43 +8,52 @@ class DashboardController < InertiaController
   # browser: "show the React component at app/frontend/pages/Dashboard.tsx
   # and hand it these props".
   def show
+    dashboard = Dashboard.new(Current.user)
+
     render inertia: "Dashboard", props: {
       today: Date.current.strftime("%A, %-d %B %Y"),
-      stats: stats,
-      # nil (not an empty list) when this person may not see stock, so React
-      # can tell "nothing is low" apart from "not allowed to know".
-      low_stock: can?("stock.view") ? low_stock_items : nil,
-      recent_orders: can?("orders.view") ? recent_orders : nil,
+      # Only what this person chose, and only what they may see. React draws
+      # whatever arrives, in the order it arrives.
+      tiles: dashboard.tiles,
+      # `send` calls a method by name: "low_stock" -> low_stock_panel.
+      # Safe here because the names come from Dashboard::PANELS, never from
+      # the request.
+      panels: dashboard.panels.map { |panel|
+        { key: panel.key, title: panel.label, wide: panel.wide, data: send("#{panel.key}_panel") }
+      },
       # Shown as a banner so anyone opening the app mid-live can jump in.
       live_now: LiveSession.current && can?("orders.view") ? { id: LiveSession.current.id, title: LiveSession.current.title } : nil
     }
   end
 
-  private
-    # The headline numbers. A nil means the feature that produces it does not
-    # exist yet (or this person may not see it), and React shows a dash.
-    # As features land, each nil becomes a real query.
-    def stats
-      sees_orders = can?("orders.view")
+  # GET /dashboard/edit   the Customise page
+  def edit
+    render inertia: "Dashboard/Edit", props: Dashboard.new(Current.user).choices
+  end
 
-      {
-        # Everything claimed today that hasn't been cancelled.
-        sales_today: sees_orders ? Order.counted.where(created_at: Time.current.all_day).sum(:total_pesewas) : nil,
-        # Paid for and waiting to be packed.
-        orders_to_pack: sees_orders ? Order.paid.count : nil,
-        low_stock: can?("stock.view") ? StockLedger.needing_attention.count : nil,
-        # Everything buyers still owe, across every order that is still a
-        # sale: unpaid claims, part-payments and pay-on-delivery parcels.
-        money_owed: sees_orders ? Order.owing.sum(Arel.sql(Order::BALANCE_SQL)) : nil
-      }
+  # PATCH /dashboard
+  def update
+    dashboard = Dashboard.new(Current.user)
+
+    if params[:reset].present?
+      dashboard.reset
+      redirect_to root_path, notice: "Your dashboard is back to the standard layout."
+    else
+      chosen = params.fetch(:dashboard, {}).permit(tiles: [], panels: [])
+      dashboard.save(tiles: chosen[:tiles], panels: chosen[:panels])
+      redirect_to root_path, notice: "Dashboard saved."
     end
+  end
 
-    def recent_orders
+  private
+    # ---- One method per panel, named "<key>_panel" -----------------------
+
+    def recent_orders_panel
       Order.counted.newest_first.includes(:customer, :sales_channel, items: { variant: :product }).limit(6).map { |order| order_summary(order) }
     end
 
-    # The most urgent few, for the dashboard panel.
-    def low_stock_items
+    # The most urgent few.
+    def low_stock_panel
       StockLedger.needing_attention.includes(:product).limit(6).map { |variant|
         {
           id: variant.id,
@@ -55,5 +64,22 @@ class DashboardController < InertiaController
           level: variant.stock_level
         }
       }
+    end
+
+    def week_sales_panel
+      days = SalesReport.new(ReportPeriod.custom((Date.current - 6).iso8601, Date.current.iso8601)).over_time
+      days.map { |day| day.slice(:label, :short, :orders, :sales_pesewas) } # no profit: not everyone may see it
+    end
+
+    def top_products_panel
+      last_30_days.top_products(5).map { |row| row.slice(:id, :name, :units, :sales_pesewas) }
+    end
+
+    def channels_panel
+      last_30_days.by_channel
+    end
+
+    def last_30_days
+      @last_30_days ||= SalesReport.new(ReportPeriod.preset("30days"))
     end
 end

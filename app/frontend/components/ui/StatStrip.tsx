@@ -13,6 +13,7 @@ type Stat = {
 // Tailwind only generates classes it can see written out in full, so the
 // column counts are listed here instead of being built from a number.
 const columns: Record<number, string> = {
+  1: 'grid-cols-1',
   2: 'grid-cols-2',
   3: 'grid-cols-1 sm:grid-cols-3',
   4: 'grid-cols-2 xl:grid-cols-4',
@@ -21,6 +22,10 @@ const columns: Record<number, string> = {
 // A row of headline numbers, joined into one band.
 // Two per row on phones, all in one row on desktop.
 export default function StatStrip({ stats }: { stats: Stat[] }) {
+  // Five or more wrap onto further rows of four (two on phones). A last row
+  // that isn't full is padded with blank cells, so no grey gap shows.
+  const blanks = stats.length > 4 ? (4 - (stats.length % 4)) % 4 : 0
+
   return (
     <dl className={`grid gap-px overflow-hidden rounded-lg border border-taupe-200 bg-taupe-200 ${columns[stats.length] ?? columns[4]}`}>
       {stats.map((stat) => {
@@ -51,6 +56,10 @@ export default function StatStrip({ stats }: { stats: Stat[] }) {
           </div>
         )
       })}
+      {Array.from({ length: blanks }, (_, i) => (
+        // On phones the grid is two wide, so only an odd count needs a blank.
+        <div key={i} aria-hidden="true" className={`bg-white ${i < stats.length % 2 ? '' : 'hidden xl:block'}`} />
+      ))}
     </dl>
   )
 }

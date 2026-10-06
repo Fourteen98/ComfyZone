@@ -131,8 +131,8 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_equal [ 24_000, 0, 24_000 ], inertia.props[:stats].values_at(:sales_today, :orders_to_pack, :money_owed)
-    assert_equal [ "Ama Koranteng" ], inertia.props[:recent_orders].map { |o| o[:customer] }
+    assert_equal [ 24_000, 0, 24_000 ], [ dashboard_tile(:sales_today), dashboard_tile(:orders_to_pack), dashboard_tile(:money_owed) ]
+    assert_equal [ "Ama Koranteng" ], dashboard_panel(:recent_orders).map { |o| o[:customer] }
     assert_nil inertia.props[:live_now]
   end
 
@@ -142,7 +142,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_nil inertia.props[:stats][:sales_today]
-    assert_nil inertia.props[:recent_orders]
+    assert_nil dashboard_tile(:sales_today)
+    assert_nil dashboard_panel(:recent_orders)
   end
 end

@@ -8,6 +8,14 @@ Rails.application.routes.draw do
 
   # The home page. "dashboard#show" means DashboardController, action `show`.
   root "dashboard#show"
+  # The Customise page. A singular resource (each person has one dashboard),
+  # pointed at the same controller as the home page.
+  resource :dashboard, only: %i[ edit update ], controller: "dashboard"
+
+  resource :reports, only: :show do
+    # `constraints` limits what :kind may be; anything else is a 404.
+    get "export/:kind", action: :export, as: :export, constraints: { kind: /orders|payments/ }
+  end
 
   # Login / logout. `resource` is singular on purpose: a browser only ever has
   # ONE session, so the URLs have no :id (GET /session/new, POST /session,

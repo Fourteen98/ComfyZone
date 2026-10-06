@@ -56,3 +56,7 @@ gem "inertia_rails", "~> 3.22"
 gem "vite_rails", "~> 3.11"
 
 gem "webauthn", "~> 3.4"
+
+# CSV files for the report exports. Part of Ruby itself up to 3.3; a separate
+# gem from 3.4, so it is named here to keep working after an upgrade.
+gem "csv"

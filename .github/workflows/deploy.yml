@@ -67,4 +67,7 @@ jobs:
              docker compose build
              docker compose run --rm web ./bin/rails db:prepare
              docker compose up -d
-             docker compose ps'
+             docker compose ps
+             # Every build leaves the previous image behind, untagged. On a
+             # shared droplet those add up to a full disk. Remove them.
+             docker image prune -f'

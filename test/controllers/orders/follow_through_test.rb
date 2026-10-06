@@ -134,12 +134,12 @@ class Orders::FollowThroughTest < ActionDispatch::IntegrationTest
     @order.record_payment!(amount: "100", via: "momo", by: @owner)
 
     get root_path
-    assert_equal [ 0, 4_000 ], inertia.props[:stats].values_at(:orders_to_pack, :money_owed)
+    assert_equal [ 0, 4_000 ], [ dashboard_tile(:orders_to_pack), dashboard_tile(:money_owed) ]
 
     @order.record_payment!(amount: "40", via: "momo", by: @owner)
     get root_path
-    assert_equal [ 1, 0 ], inertia.props[:stats].values_at(:orders_to_pack, :money_owed)
-    assert_equal 12_000, inertia.props[:stats][:sales_today], "delivery fees are not sales"
+    assert_equal [ 1, 0 ], [ dashboard_tile(:orders_to_pack), dashboard_tile(:money_owed) ]
+    assert_equal 12_000, dashboard_tile(:sales_today), "delivery fees are not sales"
   end
 
   # ---- Who may do what ---------------------------------------------------

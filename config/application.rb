@@ -33,7 +33,10 @@ module Comfyzone
     # These settings can be overridden in specific environments using the files
     # in config/environments, which are processed later.
     #
-    # config.time_zone = "Central Time (US & Canada)"
+    # The business's clock. Times are still STORED in UTC (the Rails
+    # default, and the right one); this is the zone they are shown in, and
+    # the zone in which "today" and "this week" are worked out for reports.
+    config.time_zone = "Africa/Accra"
     # config.eager_load_paths << Rails.root.join("extras")
   end
 end
