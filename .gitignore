@@ -30,3 +30,7 @@
 /public/vite-ssr
 *.local
 .DS_Store
+
+# Editor settings, and the update bundles dropped in the project root.
+/.idea/
+/*.tgz

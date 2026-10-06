@@ -31,6 +31,21 @@ module ActiveSupport
   end
 end
 
+module ActionDispatch
+  class IntegrationTest
+    # After `get root_path`: the number on one dashboard tile, or nil if that
+    # tile isn't on this person's dashboard.
+    def dashboard_tile(key)
+      inertia.props[:tiles].find { |tile| tile[:key] == key.to_s }&.fetch(:value)
+    end
+
+    # The contents of one dashboard panel, or nil if it isn't shown.
+    def dashboard_panel(key)
+      inertia.props[:panels].find { |panel| panel[:key] == key.to_s }&.fetch(:data)
+    end
+  end
+end
+
 # Uploaded test photos land in tmp/storage. Clear out the previous run's
 # files before any test starts.
 FileUtils.rm_rf(Rails.root.join("tmp/storage"))

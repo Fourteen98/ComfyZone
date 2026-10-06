@@ -85,8 +85,8 @@ class StockControllerTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_equal 3, inertia.props[:stats][:low_stock]
-    assert_equal [ 0, 0, 2 ], inertia.props[:low_stock].map { |v| v[:stock] }
+    assert_equal 3, dashboard_tile(:low_stock)
+    assert_equal [ 0, 0, 2 ], dashboard_panel(:low_stock).map { |v| v[:stock] }
   end
 
   test "the dashboard says nothing about stock to people who may not see it" do
@@ -94,8 +94,8 @@ class StockControllerTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_nil inertia.props[:stats][:low_stock]
-    assert_nil inertia.props[:low_stock]
+    assert_nil dashboard_tile(:low_stock)
+    assert_nil dashboard_panel(:low_stock)
   end
 
   test "a product's warning level decides what counts as low" do
