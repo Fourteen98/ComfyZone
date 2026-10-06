@@ -1,0 +1,11 @@
+dress:
+  name: Ankara wrap dress
+  description: Bright print, wrap front.
+  price_pesewas: 12000
+  category: dresses
+  status: active
+
+old_bag:
+  name: Old tote bag
+  price_pesewas: 4500
+  status: archived

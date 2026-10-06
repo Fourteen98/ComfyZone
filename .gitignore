@@ -1,0 +1,32 @@
+/.bundle
+/.env*
+!/.env*.erb
+
+# Deploy secrets live in deploy/.env on the server only — never commit them.
+# (The root /.env* rule above is anchored to the repo root and misses this one.)
+/deploy/.env
+/deploy/.env.*
+!/deploy/.env.production.example
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/tmp/pids/*
+!/tmp/pids/
+!/tmp/pids/.keep
+/storage/*
+!/storage/.keep
+/tmp/storage/*
+!/tmp/storage/
+!/tmp/storage/.keep
+/public/assets
+/config/*.key
+
+# Vite / Node
+/node_modules
+/public/vite
+/public/vite-dev
+/public/vite-test
+/public/vite-ssr
+*.local
+.DS_Store

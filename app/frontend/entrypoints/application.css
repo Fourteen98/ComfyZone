@@ -1,0 +1,56 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+@plugin '@tailwindcss/forms';
+
+/* Brand fonts, bundled with the app so they load offline too. */
+@import '@fontsource-variable/cormorant-garamond';
+@import '@fontsource-variable/jost';
+
+/*
+ * Design tokens: the single source of truth for the brand.
+ *
+ * Tailwind turns every variable here into utility classes:
+ *   --color-wine-800  ->  bg-wine-800, text-wine-800, border-wine-800 ...
+ *   --font-display    ->  font-display
+ *
+ * To re-theme the whole app, change values here and nowhere else.
+ * Colours were sampled from the logo: the wine of the monogram and the
+ * taupe of the wall behind it.
+ */
+@theme {
+  --font-display: 'Cormorant Garamond Variable', 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Jost Variable', 'Jost', ui-sans-serif, system-ui, sans-serif;
+
+  /* Wine: the monogram. 800 is the brand colour. */
+  --color-wine-50: #f8f1f2;
+  --color-wine-100: #eedde0;
+  --color-wine-200: #ddbbc1;
+  --color-wine-300: #c48e98;
+  --color-wine-400: #a5606d;
+  --color-wine-500: #84404d;
+  --color-wine-600: #6a2f3b;
+  --color-wine-700: #53232d;
+  --color-wine-800: #3f1a22;
+  --color-wine-900: #2b1217;
+
+  /* Taupe: the wall. Used for surfaces, borders and quiet text. */
+  --color-taupe-50: #faf7f4;
+  --color-taupe-100: #f2ece6;
+  --color-taupe-200: #e4dad0;
+  --color-taupe-300: #d1c2b8;
+  --color-taupe-400: #b3a396;
+  --color-taupe-500: #968679;
+  --color-taupe-600: #7a6c61;
+  --color-taupe-700: #5f544b;
+  --color-taupe-800: #453d37;
+  --color-taupe-900: #2c2723;
+
+  /* Body text: a warm near-black that sits well beside the wine. */
+  --color-ink: #2a1f1d;
+}
+
+@layer base {
+  body {
+    @apply bg-taupe-50 font-sans text-ink antialiased;
+  }
+}

@@ -1,0 +1,17 @@
+<% password_digest = BCrypt::Password.create("password") %>
+
+# The owner.
+one:
+  name: Fazy Owner
+  email_address: one@example.com
+  password_digest: <%= password_digest %>
+  role: owner
+  webauthn_id: owner-webauthn-id
+
+# A helper with limited access.
+two:
+  name: Ama Helper
+  email_address: two@example.com
+  password_digest: <%= password_digest %>
+  role: assistant
+  webauthn_id: helper-webauthn-id

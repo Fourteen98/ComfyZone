@@ -1,0 +1,43 @@
+# Comfyzone production — runs alongside Maven Heart on the same droplet.
+# The Rails app (Puma) binds ONLY 127.0.0.1:3000; the host's nginx reverse-proxies
+# comfyzone.shop -> 127.0.0.1:3000 and terminates TLS.
+#
+# Uses the HOST's existing PostgreSQL (a dedicated comfyzone role + databases you
+# create there — see README). `network_mode: host` lets the container reach the
+# host Postgres on 127.0.0.1:5432 with no Postgres network reconfiguration, and
+# keeps Puma on localhost so nginx stays the only public door.
+#
+# Values marked ${...} come from an .env file next to this one (see
+# .env.production.example). Bring it up with:  docker compose up -d --build
+
+services:
+  web:
+    build:
+      context: ..
+    image: comfyzone:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      RAILS_ENV: production
+      DB_HOST: 127.0.0.1
+      COMFYZONE_DATABASE_PASSWORD: ${COMFYZONE_DATABASE_PASSWORD}
+      RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+      # WebAuthn/passkeys are bound to the exact site address — must match the
+      # public HTTPS origin, or passkey registration/login fails.
+      APP_ORIGIN: "https://comfyzone.shop"
+      # Rails serves /assets and /vite itself (nginx just proxies).
+      RAILS_SERVE_STATIC_FILES: "true"
+      # Run the Solid Queue worker inside Puma — fine for a single server.
+      SOLID_QUEUE_IN_PUMA: "true"
+      RAILS_LOG_TO_STDOUT: "true"
+      RAILS_MAX_THREADS: "5"
+    # Bind to localhost only (host networking would otherwise expose 3000
+    # publicly). Overriding the command means the entrypoint's auto db:prepare
+    # doesn't fire — run migrations once (see README).
+    command: ["./bin/rails", "server", "-b", "127.0.0.1", "-p", "3000"]
+    volumes:
+      # Active Storage uploads live outside the container.
+      - app_storage:/rails/storage
+
+volumes:
+  app_storage:

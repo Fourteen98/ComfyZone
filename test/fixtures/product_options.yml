@@ -1,0 +1,11 @@
+dress_size:
+  product: dress
+  name: Size
+  position: 1
+  values: <%= [ { label: "M" }, { label: "L" } ].to_json %>
+
+dress_colour:
+  product: dress
+  name: Colour
+  position: 2
+  values: <%= [ { label: "Black", swatch: "#1a1a1a" }, { label: "Red", swatch: "#c0262d" } ].to_json %>

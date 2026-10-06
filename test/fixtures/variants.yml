@@ -1,0 +1,39 @@
+dress_m_black:
+  product: dress
+  name: M / Black
+  sku: CZ-TEST-01
+  combination_key: colour=black|size=m
+  position: 1
+  option_values: <%= [ { name: "Size", label: "M" }, { name: "Colour", label: "Black", swatch: "#1a1a1a" } ].to_json %>
+
+dress_m_red:
+  product: dress
+  name: M / Red
+  sku: CZ-TEST-02
+  combination_key: colour=red|size=m
+  position: 2
+  option_values: <%= [ { name: "Size", label: "M" }, { name: "Colour", label: "Red", swatch: "#c0262d" } ].to_json %>
+
+dress_l_black:
+  product: dress
+  name: L / Black
+  sku: CZ-TEST-03
+  combination_key: colour=black|size=l
+  position: 3
+  option_values: <%= [ { name: "Size", label: "L" }, { name: "Colour", label: "Black", swatch: "#1a1a1a" } ].to_json %>
+
+dress_l_red:
+  product: dress
+  name: L / Red
+  sku: CZ-TEST-04
+  combination_key: colour=red|size=l
+  position: 4
+  option_values: <%= [ { name: "Size", label: "L" }, { name: "Colour", label: "Red", swatch: "#c0262d" } ].to_json %>
+  price_pesewas: 14000
+
+old_bag_default:
+  product: old_bag
+  name: Default
+  sku: CZ-TEST-05
+  combination_key: ""
+  position: 1

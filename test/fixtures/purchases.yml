@@ -1,0 +1,9 @@
+# Still on the way: stock not yet counted.
+on_the_way:
+  supplier: kumasi
+  user: one
+  purchased_on: 2026-10-01
+  delivery_method: delivery
+  transport_cost_pesewas: 7000
+  extra_costs_pesewas: 3000
+  status: ordered

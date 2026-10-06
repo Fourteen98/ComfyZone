@@ -1,0 +1,11 @@
+letters:
+  name: Letter sizes
+  option_name: Size
+  position: 1
+  values: <%= [ { label: "S" }, { label: "M" }, { label: "L" } ].to_json %>
+
+colours:
+  name: Colours
+  option_name: Colour
+  position: 2
+  values: <%= [ { label: "Black", swatch: "#1a1a1a" }, { label: "Red", swatch: "#c0262d" } ].to_json %>

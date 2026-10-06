@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title data-inertia><%= content_for(:title) || "The Comfy Zone" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="The Comfy Zone">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%# Tailwind, compiled by Vite from app/frontend/entrypoints/application.css %>
+    <%= vite_stylesheet_tag "application" %>
+
+    <%# Dev only: live-reload React components as you save files %>
+    <%= vite_react_refresh_tag %>
+    <%= vite_client_tag %>
+
+    <%# Boots React + Inertia (app/frontend/entrypoints/inertia.tsx) %>
+    <%= vite_typescript_tag "inertia.tsx" %>
+    <%= inertia_ssr_head %>
+  </head>
+
+  <body>
+    <%# For Inertia pages this yields a single <div id="app"> that React takes over.
+        For classic ERB pages (password reset) it yields their HTML as usual. %>
+    <%= yield %>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+tiktok:
+  name: TikTok
+  kind: social
+  position: 1
+  active: true
+
+whatsapp:
+  name: WhatsApp
+  kind: direct
+  position: 2
+  active: true
+
+instagram:
+  name: Instagram
+  kind: social
+  position: 3
+  active: true
+
+retired:
+  name: Market stall
+  kind: direct
+  position: 4
+  active: false

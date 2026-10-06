@@ -1,0 +1,17 @@
+dresses:
+  name: Dresses
+  slug: dresses
+  position: 1
+  active: true
+
+bags:
+  name: Bags
+  slug: bags
+  position: 2
+  active: true
+
+hidden:
+  name: Old season
+  slug: old-season
+  position: 3
+  active: false

@@ -1,0 +1,70 @@
+# Deploy comfyzone to the production droplet on every push to main.
+#
+# How it works (teaching notes):
+#   1. GitHub's runner checks out the code (it already has repo access — no
+#      GitHub credentials ever need to live on the server).
+#   2. The runner rsyncs the working tree to the droplet over SSH.
+#   3. The runner SSHes in and rebuilds + restarts the Docker container.
+#
+# Because the RUNNER pushes to the server, the server never needs to pull from
+# GitHub — so the only trust we grant is one SSH key, scoped to one server.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   SSH_PRIVATE_KEY  the PRIVATE half of a deploy-only keypair (see deploy/README)
+#   SSH_HOST         the droplet IP, e.g. 139.59.172.58
+#   SSH_USER         the SSH user, e.g. root
+#   DEPLOY_PATH      where comfyzone lives on the server, e.g. /var/www/comfyzone
+#
+# What is deliberately NOT touched on deploy:
+#   - deploy/.env         (server-only secrets: DB password + master key)
+#   - /etc/nginx/**       (certbot owns the live TLS + www->apex redirect)
+#   - storage/, log/, tmp/ (runtime data stays on the box)
+
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:   # lets you trigger a manual deploy from the Actions tab
+
+# Never let two deploys run at once; don't cancel one mid-flight either.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Sync code to server
+        run: |
+          rsync -az --delete \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude 'tmp' \
+            --exclude 'log' \
+            --exclude 'storage' \
+            --exclude 'deploy/.env' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
+            ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
+
+      - name: Build, migrate, restart
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            'set -e
+             cd "${{ secrets.DEPLOY_PATH }}/deploy"
+             docker compose build
+             docker compose run --rm web ./bin/rails db:prepare
+             docker compose up -d
+             docker compose ps'

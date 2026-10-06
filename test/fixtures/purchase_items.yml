@@ -1,0 +1,12 @@
+# 10 x GH₵ 60 = 600, and 5 x GH₵ 80 = 400. Goods total 1,000; extra costs 100.
+m_black:
+  purchase: on_the_way
+  variant: dress_m_black
+  quantity: 10
+  unit_cost_pesewas: 6000
+
+l_red:
+  purchase: on_the_way
+  variant: dress_l_red
+  quantity: 5
+  unit_cost_pesewas: 8000

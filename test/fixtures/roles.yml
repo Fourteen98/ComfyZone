@@ -1,0 +1,16 @@
+owner:
+  name: Owner
+  description: Full access to everything.
+  system: true
+  permissions: []
+
+assistant:
+  name: Sales assistant
+  description: Records sales.
+  system: false
+  permissions: ["products.view", "orders.view", "orders.create"]
+
+unused:
+  name: Unused
+  system: false
+  permissions: ["products.view"]
