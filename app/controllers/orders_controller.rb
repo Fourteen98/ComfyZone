@@ -2,8 +2,8 @@ class OrdersController < InertiaController
   include SaleCapture
 
   require_permission "orders.view", only: %i[ index show ]
-  require_permission "orders.create", only: %i[ new create ]
-  before_action :set_order, only: %i[ show cancel ]
+  require_permission "orders.create", only: %i[ new create edit update ]
+  before_action :set_order, only: %i[ show edit update cancel ]
 
   # Tabs that are not a single status.
   VIEWS = {
@@ -38,6 +38,7 @@ class OrdersController < InertiaController
         customer_location: @order.customer.location,
         live: @order.live_session && { id: @order.live_session.id, title: @order.live_session.title },
         recorded_by: @order.user.name,
+        note: @order.note,
         profit_pesewas: can?("costs.view") ? @order.profit_pesewas : nil,
         delivery: {
           method: @order.delivery_method,
@@ -70,6 +71,7 @@ class OrdersController < InertiaController
       # buttons; each action checks again on the server.
       can: {
         change: can?("orders.create") && (@order.claimed? || @order.paid? || @order.packed?), # delivery details
+        edit: can?("orders.create"),
         remove_items: can?("orders.create") && @order.claimed?,
         fulfil: can?("orders.fulfil"),
         refund: can?("orders.refund"),
@@ -106,6 +108,56 @@ class OrdersController < InertiaController
       redirect_to (live ? back : order_path(order)), notice: notice
     else
       redirect_to back, inertia: { errors: taker.errors }
+    end
+  end
+
+  # GET /orders/:id/edit
+  def edit
+    lines_open = @order.claimed?
+    on_order = @order.items.to_h { |item| [ item.variant_id, item.quantity ] }
+
+    render inertia: "Orders/Edit", props: {
+      order: {
+        id: @order.id,
+        status: @order.status,
+        customer: { id: @order.customer_id, label: @order.customer.display_name },
+        sales_channel_id: @order.sales_channel_id.to_s,
+        live: @order.live_session&.title, # set = the channel follows the live
+        note: @order.note.to_s,
+        lines_open: lines_open,
+        items: @order.items.sort_by(&:id).map { |item|
+          { variant_id: item.variant_id, name: item.variant.full_name, quantity: item.quantity,
+            price: Pesewas.to_input(item.unit_price_pesewas), unit_price_pesewas: item.unit_price_pesewas }
+        }
+      },
+      # What can be added. For things already on the order, "in stock"
+      # counts the ones this order is holding, since they could be given back.
+      products: lines_open ? sellable_products.each { |product|
+        product[:variants].each { |variant| variant[:stock] += on_order.fetch(variant[:id], 0) }
+      } : [],
+      buyers: known_buyers,
+      channels: sales_channels(SalesChannel.active.or(SalesChannel.where(id: @order.sales_channel_id)))
+    }
+  end
+
+  # PATCH /orders/:id
+  def update
+    given = params.fetch(:order, {})
+    editor = OrderEditor.new(
+      order: @order,
+      user: Current.user,
+      # Only replace the buyer if one was sent.
+      customer: given[:buyer].present? ? buyer : nil,
+      # Anything not sent is left as it is.
+      sales_channel: given.key?(:sales_channel_id) ? SalesChannel.find_by(id: given[:sales_channel_id]) : @order.sales_channel,
+      note: given.key?(:note) ? given[:note] : @order.note,
+      lines: given.key?(:items) ? given.permit(items: %i[ variant_id quantity price ]).fetch(:items, []) : nil
+    )
+
+    if editor.save
+      redirect_to order_path(@order), notice: "Order updated."
+    else
+      redirect_to edit_order_path(@order), inertia: { errors: editor.errors }
     end
   end
 

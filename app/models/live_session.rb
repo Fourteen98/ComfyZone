@@ -9,6 +9,7 @@ class LiveSession < ApplicationRecord
   before_validation :fill_in_defaults, on: :create
 
   validates :title, presence: true, length: { maximum: 60 }
+  validate :channel_has_usernames
   validate :no_other_live_running, on: :create
 
   scope :running, -> { where(ended_at: nil) }
@@ -36,6 +37,10 @@ class LiveSession < ApplicationRecord
     def fill_in_defaults
       self.started_at ||= Time.current
       self.title = "Live, #{started_at.strftime('%-d %b')}" if title.blank?
+    end
+
+    def channel_has_usernames
+      errors.add(:sales_channel, "must be somewhere buyers have usernames") if sales_channel && !sales_channel.social?
     end
 
     # A friendly message for the usual case. The unique index in the

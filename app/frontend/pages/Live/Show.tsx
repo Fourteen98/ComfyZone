@@ -1,8 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
-import Button from '@/components/ui/Button'
+import Button, { ButtonLink } from '@/components/ui/Button'
 import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
 import StatStrip from '@/components/ui/StatStrip'
@@ -83,11 +83,18 @@ export default function LiveShow({ live, stats, orders, can_sell, products, buye
             : `${live.started} to ${live.ended}, ${duration(live.minutes ?? 0)}.`
         }
         actions={
-          live.running &&
           can_sell && (
-            <Button type="button" variant="secondary" onClick={finish}>
-              End the live
-            </Button>
+            <>
+              <ButtonLink href={`/live/${live.id}/edit`} variant="secondary">
+                <Pencil className="size-5" aria-hidden="true" />
+                Edit
+              </ButtonLink>
+              {live.running && (
+                <Button type="button" variant="secondary" onClick={finish}>
+                  End the live
+                </Button>
+              )}
+            </>
           )
         }
       />
