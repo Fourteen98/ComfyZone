@@ -7,7 +7,13 @@ class Order < ApplicationRecord
   belongs_to :live_session, optional: true
   belongs_to :sales_channel, optional: true # where the sale came from
   belongs_to :delivery_area, optional: true # where it was sent, if it was
-  belongs_to :user
+  # Who recorded it. Empty for an order the shopper placed on the website.
+  belongs_to :user, optional: true
+
+  # Fills `public_token` with a long random string when the order is
+  # created. /order/<token> is the shopper's own link to it (they have no
+  # login), so it has to be impossible to guess.
+  has_secure_token :public_token
   has_many :items, class_name: "OrderItem", dependent: :destroy, inverse_of: :order
   has_many :stock_movements, as: :source
 

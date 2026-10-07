@@ -34,7 +34,10 @@ module Located
   # Set where they are from what a form sent. A place typed for the first
   # time is added to the list. If the form says nothing useful (no country,
   # or Ghana with no region), nothing is changed.
-  def locate(country:, region:, place:)
+  #
+  # add_place: false looks the place up but never adds it. For forms the
+  # public fills in (the shop checkout), so strangers can't grow the list.
+  def locate(country:, region:, place:, add_place: true)
     country = country.presence || Country::HOME
     return unless Country.known?(country)
 
@@ -45,7 +48,7 @@ module Located
     else
       self.country, self.region = country, nil
     end
-    self.delivery_area = DeliveryArea.locate(country: self.country, region: self.region, name: place)
+    self.delivery_area = DeliveryArea.locate(country: self.country, region: self.region, name: place, add: add_place)
   end
 
   # For an edit form, where an emptied field means "clear it": forget where

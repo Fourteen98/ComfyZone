@@ -47,7 +47,7 @@ class Products::VariantPricesControllerTest < ActionDispatch::IntegrationTest
       { id: variants(:dress_m_black).id, price: "1" }
     ] }
 
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     assert_nil variants(:dress_m_black).reload.price_pesewas
   end
 end

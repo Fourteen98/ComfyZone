@@ -44,7 +44,7 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
   useEffect(() => {
     if (query === filters.q) return
     const timer = setTimeout(() => {
-      router.get('/stock', params(filters.show, query), { preserveState: true, replace: true })
+      router.get('/admin/stock', params(filters.show, query), { preserveState: true, replace: true })
     }, 300)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,7 +74,7 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
         actions={
           can('stock.adjust') &&
           counts.all > 0 && (
-            <ButtonLink href="/stock/count" variant="secondary">
+            <ButtonLink href="/admin/stock/count" variant="secondary">
               <ClipboardList className="size-5" aria-hidden="true" />
               Stock take
             </ButtonLink>
@@ -99,7 +99,7 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
             <p className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
               {counts.uncosted === 1 ? '1 item is' : `${counts.uncosted} items are`} in stock with no cost recorded, so{' '}
               {counts.uncosted === 1 ? 'it counts' : 'they count'} as GH₵ 0 in "What it cost you" and in profit.{' '}
-              <Link href="/stock" data={params('uncosted')} className="font-medium underline underline-offset-4">
+              <Link href="/admin/stock" data={params('uncosted')} className="font-medium underline underline-offset-4">
                 Show {counts.uncosted === 1 ? 'it' : 'them'}
               </Link>
               , then open each one to say what it cost.
@@ -113,7 +113,7 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
                 return (
                   <Link
                     key={tab.key}
-                    href="/stock"
+                    href="/admin/stock"
                     data={params(tab.key)}
                     aria-current={active ? 'page' : undefined}
                     className={`-mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 font-medium ${
@@ -164,7 +164,7 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
                       )}
                     </span>
                     <h2 className="min-w-0 flex-1 truncate font-display text-2xl font-semibold text-wine-800">
-                      <Link href={`/products/${group.id}`} className="hover:underline">
+                      <Link href={`/admin/products/${group.id}`} className="hover:underline">
                         {group.name}
                       </Link>
                     </h2>
@@ -177,7 +177,7 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
                     {group.variants.map((variant) => (
                       <li key={variant.id}>
                         <Link
-                          href={`/stock/${variant.id}`}
+                          href={`/admin/stock/${variant.id}`}
                           className="flex min-h-14 items-center gap-3 px-4 py-2 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
                         >
                           <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">

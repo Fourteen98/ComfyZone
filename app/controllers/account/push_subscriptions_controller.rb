@@ -35,7 +35,7 @@ class Account::PushSubscriptionsController < ApplicationController
   def test
     subscription = mine.find(params.expect(:id))
     sent = Push.configured? && Push.deliver(subscription,
-      "title" => "The Comfy Zone", "body" => "Notifications are working on this device.", "path" => "/account", "tag" => "test")
+      "title" => "The Comfy Zone", "body" => "Notifications are working on this device.", "path" => "/admin/account", "tag" => "test")
 
     if sent
       redirect_to account_path, notice: "Sent. It should appear in a moment."

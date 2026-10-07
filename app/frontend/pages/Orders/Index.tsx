@@ -39,7 +39,7 @@ export default function OrdersIndex({ orders, filters, counts, can_create }: Pro
   const next = filters.status === 'paid' ? 'packed' : filters.status === 'packed' ? 'delivered' : null
   function move(order: OrderSummary) {
     // -> Orders::StagesController#update
-    router.patch(`/orders/${order.id}/stage`, { to: next }, { preserveScroll: true })
+    router.patch(`/admin/orders/${order.id}/stage`, { to: next }, { preserveScroll: true })
   }
 
   return (
@@ -50,7 +50,7 @@ export default function OrdersIndex({ orders, filters, counts, can_create }: Pro
         title="Orders"
         actions={
           can_create && (
-            <ButtonLink href="/orders/new">
+            <ButtonLink href="/admin/orders/new">
               <Plus className="size-5" aria-hidden="true" />
               Record a sale
             </ButtonLink>
@@ -72,7 +72,7 @@ export default function OrdersIndex({ orders, filters, counts, can_create }: Pro
               return (
                 <Link
                   key={tab.key || 'all'}
-                  href="/orders"
+                  href="/admin/orders"
                   data={{ status: tab.key || undefined }}
                   aria-current={on ? 'page' : undefined}
                   className={`-mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 font-medium ${

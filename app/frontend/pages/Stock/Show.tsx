@@ -72,21 +72,21 @@ export default function StockShow({ variant, movements, movements_total, can_adj
 
   function saveCost(event: FormEvent) {
     event.preventDefault()
-    costForm.patch(`/stock/${variant.id}/cost`, { preserveScroll: true }) // -> Stock::CostsController#update
+    costForm.patch(`/admin/stock/${variant.id}/cost`, { preserveScroll: true }) // -> Stock::CostsController#update
   }
 
   function submit(event: FormEvent) {
     event.preventDefault()
     form.transform((data) => ({ adjustment: data }))
     // -> Stock::AdjustmentsController#create
-    form.post(`/stock/${variant.id}/adjustments`, { preserveScroll: true, onSuccess: () => form.reset() })
+    form.post(`/admin/stock/${variant.id}/adjustments`, { preserveScroll: true, onSuccess: () => form.reset() })
   }
 
   return (
     <AppLayout>
       <Head title={`${variant.product.name}, ${variant.name}`} />
 
-      <Link href="/stock" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
+      <Link href="/admin/stock" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Stock
       </Link>
@@ -103,7 +103,7 @@ export default function StockShow({ variant, movements, movements_total, can_adj
         </p>
         <p className="text-sm text-taupe-700">{variant.sku}</p>
         {!variant.active && <Badge tone="muted">No longer offered</Badge>}
-        <Link href={`/products/${variant.product.id}`} className="text-sm font-medium text-wine-800 underline underline-offset-4">
+        <Link href={`/admin/products/${variant.product.id}`} className="text-sm font-medium text-wine-800 underline underline-offset-4">
           Open the product
         </Link>
       </div>

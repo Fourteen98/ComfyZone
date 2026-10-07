@@ -69,7 +69,7 @@ class StockLedger
     Push.notify("low_stock",
       title: sold_out ? "Sold out" : "Running low",
       body: sold_out ? "#{variant.full_name} has sold out." : "#{variant.full_name}: #{after} left.",
-      path: "/stock/#{variant.id}")
+      path: "/admin/stock/#{variant.id}")
     # No `except:` here. Unlike a sale, she wants to know stock ran out even
     # when it was her own sale that did it.
   end

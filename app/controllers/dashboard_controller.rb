@@ -40,7 +40,7 @@ class DashboardController < InertiaController
 
     if params[:reset].present?
       dashboard.reset
-      redirect_to root_path, notice: "Your dashboard is back to the standard layout."
+      redirect_to admin_root_path, notice: "Your dashboard is back to the standard layout."
     else
       chosen = params.fetch(:dashboard, {}).permit(tiles: [], panels: [])
       role = can?("roles.manage") ? Role.find_by(id: params[:role_id]) : nil
@@ -52,7 +52,7 @@ class DashboardController < InertiaController
         redirect_to edit_dashboard_path, notice: "Saved as the standard dashboard for #{role.name}. People who have customised their own keep theirs."
       else
         dashboard.save(tiles: chosen[:tiles], panels: chosen[:panels])
-        redirect_to root_path, notice: "Dashboard saved."
+        redirect_to admin_root_path, notice: "Dashboard saved."
       end
     end
   end

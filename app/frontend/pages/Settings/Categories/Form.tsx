@@ -25,9 +25,9 @@ export default function CategoryForm({ category }: Props) {
     form.transform((data) => ({ category: data }))
 
     if (editing) {
-      form.patch(`/settings/categories/${category.id}`)
+      form.patch(`/admin/settings/categories/${category.id}`)
     } else {
-      form.post('/settings/categories')
+      form.post('/admin/settings/categories')
     }
   }
 
@@ -40,7 +40,7 @@ export default function CategoryForm({ category }: Props) {
           ? ' Its 1 product is kept, with no category.'
           : ` Its ${category.products_count} products are kept, with no category.`
     if (!(await confirmAction(`Delete "${category.name}"?${kept}`, { confirm: 'Delete', danger: true }))) return
-    router.delete(`/settings/categories/${category.id}`)
+    router.delete(`/admin/settings/categories/${category.id}`)
   }
 
   return (
@@ -77,7 +77,7 @@ export default function CategoryForm({ category }: Props) {
           <Button type="submit" disabled={form.processing}>
             {editing ? 'Save changes' : 'Add category'}
           </Button>
-          <ButtonLink href="/settings/categories" variant="secondary">
+          <ButtonLink href="/admin/settings/categories" variant="secondary">
             Cancel
           </ButtonLink>
           {editing && (

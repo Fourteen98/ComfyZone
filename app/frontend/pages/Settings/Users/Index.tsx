@@ -23,7 +23,7 @@ export default function UsersIndex({ users }: { users: TeamMember[] }) {
         <p className="max-w-xl text-taupe-700">
           Everyone who can log in. A person's role decides what they can see and do.
         </p>
-        <ButtonLink href="/settings/users/new">
+        <ButtonLink href="/admin/settings/users/new">
           <UserPlus className="size-5" aria-hidden="true" />
           Add a person
         </ButtonLink>
@@ -34,7 +34,7 @@ export default function UsersIndex({ users }: { users: TeamMember[] }) {
           <li key={user.id}>
             {/* The whole row is the link, so it is easy to hit on a phone. */}
             <Link
-              href={`/settings/users/${user.id}/edit`}
+              href={`/admin/settings/users/${user.id}/edit`}
               className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-4 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
             >
               <div className="min-w-0 flex-1">

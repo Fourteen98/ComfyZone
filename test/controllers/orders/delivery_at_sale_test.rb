@@ -148,7 +148,7 @@ class Orders::DeliveryAtSaleTest < ActionDispatch::IntegrationTest
     delete session_path
     sign_in_as(users(:two))
     get settings_delivery_areas_path
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
   end
 
   test "a customer's region and place can be set, changed and cleared by hand" do

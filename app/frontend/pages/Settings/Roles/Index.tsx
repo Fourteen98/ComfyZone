@@ -24,7 +24,7 @@ export default function RolesIndex({ roles, permissions_total }: { roles: RoleRo
         <p className="max-w-xl text-taupe-700">
           A role is a named set of permissions. Give each person the role that matches their job.
         </p>
-        <ButtonLink href="/settings/roles/new">
+        <ButtonLink href="/admin/settings/roles/new">
           <Plus className="size-5" aria-hidden="true" />
           Add a role
         </ButtonLink>
@@ -59,7 +59,7 @@ export default function RolesIndex({ roles, permissions_total }: { roles: RoleRo
                 <div className={row}>{body}</div>
               ) : (
                 <Link
-                  href={`/settings/roles/${role.id}/edit`}
+                  href={`/admin/settings/roles/${role.id}/edit`}
                   className={`${row} hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700`}
                 >
                   {body}

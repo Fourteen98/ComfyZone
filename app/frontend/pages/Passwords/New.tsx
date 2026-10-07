@@ -15,7 +15,7 @@ export default function NewPassword({ sending }: { sending: boolean }) {
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    form.post('/passwords') // -> PasswordsController#create
+    form.post('/admin/passwords') // -> PasswordsController#create
   }
 
   return (
@@ -48,7 +48,7 @@ export default function NewPassword({ sending }: { sending: boolean }) {
         )}
 
         <p className="text-sm">
-          <Link href="/session/new" className="text-taupe-700 underline decoration-taupe-400 underline-offset-4 hover:text-wine-800">
+          <Link href="/admin/session/new" className="text-taupe-700 underline decoration-taupe-400 underline-offset-4 hover:text-wine-800">
             Back to log in
           </Link>
         </p>

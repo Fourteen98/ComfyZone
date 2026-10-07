@@ -5,7 +5,7 @@ class Settings::CategoriesControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:two))
 
     get settings_categories_path
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
 
     assert_no_difference "Category.count" do
       post settings_categories_path, params: { category: { name: "Sneaky" } }

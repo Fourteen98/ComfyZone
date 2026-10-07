@@ -42,7 +42,7 @@ export default function NewSession() {
     event.preventDefault()
     // POST /session -> SessionsController#create.
     // The CSRF token is attached automatically.
-    form.post('/session', {
+    form.post('/admin/session', {
       // Never keep a typed password on screen after a failed attempt.
       onError: () => form.reset('password'),
     })
@@ -123,7 +123,7 @@ export default function NewSession() {
           </form>
 
           <p className="mt-6 text-sm">
-            <Link href="/passwords/new" className="text-taupe-700 underline decoration-taupe-400 underline-offset-4 hover:text-wine-800">
+            <Link href="/admin/passwords/new" className="text-taupe-700 underline decoration-taupe-400 underline-offset-4 hover:text-wine-800">
               Forgot your password?
             </Link>
           </p>

@@ -34,6 +34,15 @@ class Product < ApplicationRecord
   validate :options_make_sense
 
   scope :ordered, -> { order(Arel.sql("lower(name)")) }
+  # What the public can see: she ticked "Show on the shop" and it isn't archived.
+  scope :on_shop, -> { active.where(listed: true) }
+
+  # /shop/12-ankara-wrap-dress. Rails calls to_param to build the :id part of
+  # a URL; `Product.find("12-ankara-wrap-dress")` reads the leading number
+  # and ignores the rest, so the words are only there for people (and Google).
+  def shop_param
+    "#{id}-#{name.parameterize}"
+  end
   # ILIKE = case-insensitive LIKE. sanitize_sql_like stops a typed % or _
   # from acting as a wildcard.
   scope :search, ->(text) { where("name ILIKE ?", "%#{sanitize_sql_like(text.to_s.strip)}%") }
@@ -69,6 +78,12 @@ class Product < ApplicationRecord
     end
 
     saved
+  end
+
+  # The lowest and highest selling price across its variants, in pesewas.
+  def price_range
+    prices = variants.map(&:selling_price_pesewas)
+    [ prices.min || price_pesewas, prices.max || price_pesewas ]
   end
 
   # Put the photos in the order of the given ids; the first becomes the cover.

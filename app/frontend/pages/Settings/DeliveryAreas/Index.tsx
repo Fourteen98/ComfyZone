@@ -28,7 +28,7 @@ export default function DeliveryAreasIndex({ areas }: { areas: AreaRow[] }) {
           The exact places within each region, and cities abroad. New ones are added by themselves when you type them on a sale or a
           customer. Come here to set the usual delivery fee for a place, fix a spelling, or hide one.
         </p>
-        <ButtonLink href="/settings/areas/new">
+        <ButtonLink href="/admin/settings/areas/new">
           <Plus className="size-5" aria-hidden="true" />
           Add a place
         </ButtonLink>
@@ -47,7 +47,7 @@ export default function DeliveryAreasIndex({ areas }: { areas: AreaRow[] }) {
             {places.map((area) => (
               <li key={area.id}>
                 <Link
-                  href={`/settings/areas/${area.id}/edit`}
+                  href={`/admin/settings/areas/${area.id}/edit`}
                   className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
                 >
                   <span className={`font-medium ${area.active ? '' : 'text-taupe-600'}`}>{area.name}</span>

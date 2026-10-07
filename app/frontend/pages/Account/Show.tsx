@@ -51,7 +51,7 @@ export default function AccountShow({ passkeys, push }: { passkeys: Passkey[]; p
 
   async function remove(passkey: Passkey) {
     if (!(await confirmAction(`Remove "${passkey.name}"? That device will need your password to log in.`, { confirm: 'Remove', danger: true }))) return
-    router.delete(`/account/passkeys/${passkey.id}`) // -> Account::PasskeysController#destroy
+    router.delete(`/admin/account/passkeys/${passkey.id}`) // -> Account::PasskeysController#destroy
   }
 
   return (

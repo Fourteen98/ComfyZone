@@ -115,7 +115,7 @@ class SmallGapsTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:two))
 
     get new_stock_count_path
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     post stock_count_path, params: { counts: { @black.id => "0" } }
     assert_equal 5, @black.reload.stock_on_hand
   end
@@ -236,7 +236,7 @@ class SmallGapsTest < ActionDispatch::IntegrationTest
 
     delete session_path
     sign_in_as(users(:two))
-    get root_path
+    get admin_root_path
     assert_equal %w[ orders_to_pack sales_today ], inertia.props[:tiles].pluck(:key)
   end
 
@@ -246,7 +246,7 @@ class SmallGapsTest < ActionDispatch::IntegrationTest
     delete session_path
     sign_in_as(users(:two))
 
-    get root_path
+    get admin_root_path
 
     assert_equal %w[ sales_today ], inertia.props[:tiles].pluck(:key)
   end

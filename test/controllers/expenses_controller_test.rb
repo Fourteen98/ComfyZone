@@ -52,7 +52,7 @@ class ExpensesControllerTest < ActionDispatch::IntegrationTest
   test "looking needs expenses.view; changing needs expenses.manage" do
     sign_in_as(users(:two))
     get expenses_path
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
 
     helper_may "expenses.view"
     get expenses_path
@@ -81,7 +81,7 @@ class ExpensesControllerTest < ActionDispatch::IntegrationTest
     users(:one).update!(dashboard_layout: { "tiles" => %w[ expenses_month net_profit_month ], "panels" => [] })
     sign_in_as(users(:one))
 
-    get root_path
+    get admin_root_path
 
     assert_equal [ 5_000, -5_000 ], [ dashboard_tile(:expenses_month), dashboard_tile(:net_profit_month) ]
   end

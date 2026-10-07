@@ -18,7 +18,7 @@ export default function EditPassword({ token }: { token: string }) {
     // One box, not two: with "Show" she can see what she typed, which is a
     // better check than typing it blind twice. Rails still gets both fields.
     form.transform((data) => ({ ...data, password_confirmation: data.password }))
-    form.put(`/passwords/${token}`) // -> PasswordsController#update
+    form.put(`/admin/passwords/${token}`) // -> PasswordsController#update
   }
 
   return (

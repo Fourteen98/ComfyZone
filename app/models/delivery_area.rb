@@ -36,14 +36,15 @@ class DeliveryArea < ApplicationRecord
   #
   #   DeliveryArea.locate(country: "Ghana", region: "Ashanti", name: "adum")  # finds "Adum"
   #   DeliveryArea.locate(country: "China", region: nil, name: "Guangzhou")    # adds it
-  def self.locate(name:, country: Country::HOME, region: nil)
+  # add: false only finds; nil if the place isn't already known.
+  def self.locate(name:, country: Country::HOME, region: nil, add: true)
     name = normalize_value_for(:name, name.to_s)
     region = region.presence
     return if name.blank? || !Country.known?(country)
     return if Country.home?(country) ? !Region.known?(region) : region.present?
 
     matching = where(country: country, region: region).where("lower(name) = ?", name.downcase)
-    matching.first || create!(country: country, region: region, name: name)
+    matching.first || (create!(country: country, region: region, name: name) if add)
   rescue ActiveRecord::RecordNotUnique
     # Two people typed the same new place at the same moment. The unique
     # index let one through; this one just uses it.

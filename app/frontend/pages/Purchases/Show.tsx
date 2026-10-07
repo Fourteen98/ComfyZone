@@ -66,12 +66,12 @@ export default function PurchaseShow({ purchase }: Props) {
   async function receive() {
     const message = `Add ${purchase.units} ${purchase.units === 1 ? 'item' : 'items'} to stock? This can't be undone, so check the quantities first.`
     if (!(await confirmAction(message, { confirm: 'Add to stock' }))) return
-    router.patch(`/purchases/${purchase.id}/receive`) // -> PurchasesController#receive
+    router.patch(`/admin/purchases/${purchase.id}/receive`) // -> PurchasesController#receive
   }
 
   async function destroy() {
     if (!(await confirmAction('Delete this purchase? Nothing was added to stock, so nothing else changes.', { confirm: 'Delete', danger: true }))) return
-    router.delete(`/purchases/${purchase.id}`)
+    router.delete(`/admin/purchases/${purchase.id}`)
   }
 
   return (
@@ -85,7 +85,7 @@ export default function PurchaseShow({ purchase }: Props) {
           manage &&
           ordered && (
             <>
-              <ButtonLink href={`/purchases/${purchase.id}/edit`} variant="secondary">
+              <ButtonLink href={`/admin/purchases/${purchase.id}/edit`} variant="secondary">
                 <Pencil className="size-5" aria-hidden="true" />
                 Edit
               </ButtonLink>
@@ -140,7 +140,7 @@ export default function PurchaseShow({ purchase }: Props) {
             {groups.map((group) => (
               <section key={group.productId} className="px-5 py-4">
                 <h3 className="font-medium">
-                  <Link href={`/products/${group.productId}`} className="hover:text-wine-800 hover:underline">
+                  <Link href={`/admin/products/${group.productId}`} className="hover:text-wine-800 hover:underline">
                     {group.product}
                   </Link>
                 </h3>

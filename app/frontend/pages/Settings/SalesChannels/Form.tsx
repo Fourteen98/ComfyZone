@@ -30,9 +30,9 @@ export default function SalesChannelForm({ channel }: Props) {
     form.transform((data) => ({ sales_channel: data }))
 
     if (editing) {
-      form.patch(`/settings/channels/${channel.id}`)
+      form.patch(`/admin/settings/channels/${channel.id}`)
     } else {
-      form.post('/settings/channels')
+      form.post('/admin/settings/channels')
     }
   }
 
@@ -43,7 +43,7 @@ export default function SalesChannelForm({ channel }: Props) {
         ? ''
         : ` Its ${channel.orders_count === 1 ? '1 order is' : `${channel.orders_count} orders are`} kept, with no channel. To keep the history, hide it instead.`
     if (!(await confirmAction(`Delete "${channel.name}"?${kept}`, { confirm: 'Delete', danger: true }))) return
-    router.delete(`/settings/channels/${channel.id}`)
+    router.delete(`/admin/settings/channels/${channel.id}`)
   }
 
   return (
@@ -98,7 +98,7 @@ export default function SalesChannelForm({ channel }: Props) {
           <Button type="submit" disabled={form.processing}>
             {editing ? 'Save changes' : 'Add channel'}
           </Button>
-          <ButtonLink href="/settings/channels" variant="secondary">
+          <ButtonLink href="/admin/settings/channels" variant="secondary">
             Cancel
           </ButtonLink>
           {editing && (

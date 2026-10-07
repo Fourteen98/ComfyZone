@@ -78,7 +78,7 @@ export default function OrderEdit({ order, products, buyers, channels }: Props) 
     event.preventDefault()
     setSaving(true)
     router.patch(
-      `/orders/${order.id}`, // -> OrdersController#update
+      `/admin/orders/${order.id}`, // -> OrdersController#update
       {
         order: {
           // Left out unless she picked someone else, so Rails keeps the buyer.
@@ -98,7 +98,7 @@ export default function OrderEdit({ order, products, buyers, channels }: Props) 
     <AppLayout>
       <Head title={`Edit order for ${order.customer.label}`} />
 
-      <Link href={`/orders/${order.id}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
+      <Link href={`/admin/orders/${order.id}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Back to the order
       </Link>
@@ -215,7 +215,7 @@ export default function OrderEdit({ order, products, buyers, channels }: Props) 
             <Button type="submit" disabled={saving || (order.lines_open && units === 0)}>
               {saving ? 'Saving…' : 'Save changes'}
             </Button>
-            <ButtonLink href={`/orders/${order.id}`} variant="secondary">
+            <ButtonLink href={`/admin/orders/${order.id}`} variant="secondary">
               Cancel
             </ButtonLink>
           </div>

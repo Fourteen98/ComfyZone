@@ -32,6 +32,9 @@ type Props = {
   /** Keeps ids unique if two of these are on one page. */
   name?: string
   errors?: Record<string, string[] | undefined>
+  /** On the public shop: worded for the person themselves ("your region"),
+      and a place she doesn't have yet is NOT added to her list. */
+  shopper?: boolean
 }
 
 // Where someone is: the country, then (at home) one of Ghana's regions,
@@ -43,7 +46,7 @@ type Props = {
 // list grows as she works, and nobody has to set it up first.
 //
 // Abroad there is no region: just the country and a city.
-export default function LocationFields({ value, onChange, locations, name = 'where', errors = {} }: Props) {
+export default function LocationFields({ value, onChange, locations, name = 'where', errors = {}, shopper = false }: Props) {
   const atHome = value.country === locations.home
   const here = locations.places.filter((place) => place.country === value.country && (!atHome || place.region === value.region))
   const typed = value.place.trim()
@@ -68,7 +71,7 @@ export default function LocationFields({ value, onChange, locations, name = 'whe
         <SelectField
           id={`${name}_region`}
           label="Region"
-          placeholder="Not known"
+          placeholder={shopper ? 'Choose your region' : 'Not known'}
           options={locations.regions.map((region) => ({ value: region, label: region }))}
           value={value.region}
           onChange={(e) => onChange({ ...value, region: e.target.value, place: '' })}
@@ -78,7 +81,7 @@ export default function LocationFields({ value, onChange, locations, name = 'whe
       <div>
         <TextField
           id={`${name}_place`}
-          label={atHome ? 'Exact place' : 'City or area'}
+          label={shopper ? 'Town or area' : atHome ? 'Exact place' : 'City or area'}
           list={`${name}_places`}
           autoComplete="off"
           maxLength={40}
@@ -95,7 +98,7 @@ export default function LocationFields({ value, onChange, locations, name = 'whe
             <option key={place.id} value={place.name} />
           ))}
         </datalist>
-        {typed !== '' && !known && (
+        {!shopper && typed !== '' && !known && (
           <p className="mt-1.5 text-sm text-taupe-700">New place. It will be added to {atHome ? value.region : value.country}.</p>
         )}
       </div>

@@ -89,18 +89,18 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
 
   // -> Orders::StagesController#update
   function move(to: 'packed' | 'delivered' | 'back') {
-    router.patch(`/orders/${order.id}/stage`, { to }, { preserveScroll: true })
+    router.patch(`/admin/orders/${order.id}/stage`, { to }, { preserveScroll: true })
   }
 
   async function cancel() {
     const money = paid > 0 ? ` You will still need to give back the ${formatMoney(paid)} they paid.` : ''
     if (!(await confirmAction(`Cancel ${order.customer}'s order? Everything on it goes back into stock.${money}`, { confirm: 'Cancel the order', dismiss: 'Keep the order', danger: true }))) return
-    router.patch(`/orders/${order.id}/cancel`) // -> OrdersController#cancel
+    router.patch(`/admin/orders/${order.id}/cancel`) // -> OrdersController#cancel
   }
 
   async function remove(item: OrderSummary['items'][number]) {
     if (!(await confirmAction(`Remove ${item.name}? It goes back into stock.`, { confirm: 'Remove', danger: true }))) return
-    router.delete(`/orders/${order.id}/items/${item.id}`, {
+    router.delete(`/admin/orders/${order.id}/items/${item.id}`, {
       preserveScroll: true,
     })
   }
@@ -108,7 +108,7 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
   function recordReturn() {
     // -> Orders::ReturnsController#create
     router.post(
-      `/orders/${order.id}/return`,
+      `/admin/orders/${order.id}/return`,
       { restock: restock === 'yes', items: Object.fromEntries(returnable.map((item) => [item.id, back(item)])) },
       { onSuccess: () => setOpen(null) },
     )
@@ -138,7 +138,7 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
     <AppLayout>
       <Head title={`Order for ${order.customer}`} />
 
-      <Link href="/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
+      <Link href="/admin/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Orders
       </Link>
@@ -149,7 +149,7 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
           description={`Order ${order.id}. Claimed ${order.at}. Recorded by ${order.recorded_by}.`}
           actions={
             can.edit && (
-              <ButtonLink href={`/orders/${order.id}/edit`} variant="secondary">
+              <ButtonLink href={`/admin/orders/${order.id}/edit`} variant="secondary">
                 <Pencil className="size-5" aria-hidden="true" />
                 Edit
               </ButtonLink>
@@ -163,7 +163,7 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
         <OrderStatusBadge status={status} />
         {order.channel && <p className="text-taupe-800">Came from {order.channel}</p>}
         {order.live && (
-          <Link href={`/live/${order.live.id}`} className="text-wine-800 underline decoration-taupe-400 underline-offset-4">
+          <Link href={`/admin/live/${order.live.id}`} className="text-wine-800 underline decoration-taupe-400 underline-offset-4">
             {order.live.title}
           </Link>
         )}

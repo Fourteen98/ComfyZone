@@ -40,7 +40,7 @@ class OrdersController < InertiaController
         customer_region: @order.customer.region,
         customer_place: @order.customer.delivery_area&.name,
         live: @order.live_session && { id: @order.live_session.id, title: @order.live_session.title },
-        recorded_by: @order.user.name,
+        recorded_by: @order.user&.name || "The shopper, on the website",
         note: @order.note,
         profit_pesewas: can?("costs.view") ? @order.profit_pesewas : nil,
         delivery: {

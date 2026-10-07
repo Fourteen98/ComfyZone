@@ -57,9 +57,9 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:two))
 
     get reports_path
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     get export_reports_path(kind: "orders", format: :csv)
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
   end
 
   test "downloads orders as a CSV file" do
@@ -106,7 +106,7 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
   test "only orders and payments can be exported" do
     sign_in_as(@owner)
 
-    get "/reports/export/users.csv"
+    get "/admin/reports/export/users.csv"
 
     assert_response :not_found
   end

@@ -27,7 +27,7 @@ export default function CustomersIndex({ customers, filters, total, can_manage }
   useEffect(() => {
     if (query === filters.q) return
     const timer = setTimeout(() => {
-      router.get('/customers', { q: query || undefined }, { preserveState: true, replace: true })
+      router.get('/admin/customers', { q: query || undefined }, { preserveState: true, replace: true })
     }, 300)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -42,7 +42,7 @@ export default function CustomersIndex({ customers, filters, total, can_manage }
         description="Everyone who has bought from you. New buyers are added automatically when they claim something."
         actions={
           can_manage && (
-            <ButtonLink href="/customers/new">
+            <ButtonLink href="/admin/customers/new">
               <Plus className="size-5" aria-hidden="true" />
               Add a customer
             </ButtonLink>
@@ -95,7 +95,7 @@ export default function CustomersIndex({ customers, filters, total, can_manage }
                   <li key={customer.id}>
                     {can_manage ? (
                       <Link
-                        href={`/customers/${customer.id}/edit`}
+                        href={`/admin/customers/${customer.id}/edit`}
                         className={`${row} hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700`}
                       >
                         {body}

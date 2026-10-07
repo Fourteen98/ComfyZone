@@ -96,7 +96,7 @@ export function usePush(publicKey: string) {
         }))
 
       // toJSON() gives { endpoint, keys: { p256dh, auth } }: exactly what Rails saves.
-      await send('POST', '/account/push_subscriptions', { ...subscription.toJSON(), device: guessDeviceName() })
+      await send('POST', '/admin/account/push_subscriptions', { ...subscription.toJSON(), device: guessDeviceName() })
       setEndpoint(subscription.endpoint)
       setState('on')
       return true

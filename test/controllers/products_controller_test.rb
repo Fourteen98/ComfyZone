@@ -22,7 +22,7 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:two))
 
     get new_product_path
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
 
     assert_no_difference "Product.count" do
       post products_path, params: PARAMS
@@ -38,7 +38,7 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
 
     get products_path
 
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
   end
 
   # --- listing ---
@@ -205,7 +205,7 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
   test "there is no delete route" do
     sign_in_as(users(:one))
 
-    delete "/products/#{products(:dress).id}"
+    delete "/admin/products/#{products(:dress).id}"
 
     assert_response :not_found
   end

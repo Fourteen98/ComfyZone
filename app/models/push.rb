@@ -16,7 +16,7 @@
 # public one when it subscribed. They live in environment variables on the
 # server (never in git). Make a pair with:  bin/rails push:keys
 #
-#   Push.notify("low_stock", title: "Running low", body: "Ankara dress: 2 left", path: "/stock")
+#   Push.notify("low_stock", title: "Running low", body: "Ankara dress: 2 left", path: "/admin/stock")
 module Push
   Topic = Data.define(:key, :label, :hint, :permission)
 

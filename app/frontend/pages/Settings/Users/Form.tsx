@@ -43,9 +43,9 @@ export default function UserForm({ user, roles }: Props) {
     form.transform((data) => ({ user: data }))
 
     if (editing) {
-      form.patch(`/settings/users/${user.id}`) // -> Settings::UsersController#update
+      form.patch(`/admin/settings/users/${user.id}`) // -> Settings::UsersController#update
     } else {
-      form.post('/settings/users') // -> Settings::UsersController#create
+      form.post('/admin/settings/users') // -> Settings::UsersController#create
     }
   }
 
@@ -133,7 +133,7 @@ export default function UserForm({ user, roles }: Props) {
           <Button type="submit" disabled={form.processing}>
             {editing ? 'Save changes' : 'Add person'}
           </Button>
-          <ButtonLink href="/settings/users" variant="secondary">
+          <ButtonLink href="/admin/settings/users" variant="secondary">
             Cancel
           </ButtonLink>
         </div>

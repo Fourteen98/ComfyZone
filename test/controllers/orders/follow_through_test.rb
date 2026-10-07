@@ -133,11 +133,11 @@ class Orders::FollowThroughTest < ActionDispatch::IntegrationTest
     @order.set_delivery!(delivery_method: "delivery", fee: "20", address: "Osu")
     @order.record_payment!(amount: "100", via: "momo", by: @owner)
 
-    get root_path
+    get admin_root_path
     assert_equal [ 0, 4_000 ], [ dashboard_tile(:orders_to_pack), dashboard_tile(:money_owed) ]
 
     @order.record_payment!(amount: "40", via: "momo", by: @owner)
-    get root_path
+    get admin_root_path
     assert_equal [ 1, 0 ], [ dashboard_tile(:orders_to_pack), dashboard_tile(:money_owed) ]
     assert_equal 12_000, dashboard_tile(:sales_today), "delivery fees are not sales"
   end
@@ -148,9 +148,9 @@ class Orders::FollowThroughTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:two))
 
     post order_payments_path(@order), params: { payment: { amount: "120", via: "cash" } }
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     patch order_stage_path(@order), params: { to: "packed" }
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     assert_equal [ "claimed", 0 ], @order.reload.values_at(:status, :paid_pesewas)
 
     helper_may "orders.fulfil"
@@ -164,9 +164,9 @@ class Orders::FollowThroughTest < ActionDispatch::IntegrationTest
     @order.deliver!
 
     post order_refunds_path(@order), params: { refund: { amount: "120", via: "cash" } }
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     post order_return_path(@order), params: { restock: "true" }
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     assert_equal [ "delivered", 12_000 ], @order.reload.values_at(:status, :paid_pesewas)
   end
 
@@ -177,7 +177,7 @@ class Orders::FollowThroughTest < ActionDispatch::IntegrationTest
     get order_path(@order)
     assert_not inertia.props[:can][:cancel]
     patch cancel_order_path(@order)
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     assert @order.reload.claimed?
 
     @order.refund!(amount: "50", via: "cash", by: @owner)

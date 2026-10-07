@@ -28,12 +28,12 @@ export default function PushSettings({ push }: { push: PushProps }) {
     const mine = device.id === here?.id
     if (!(await confirmAction(`Turn notifications off on ${mine ? 'this device' : `"${device.device}"`}?`, { confirm: 'Turn off', danger: true }))) return
     if (mine) await turnOff()
-    router.delete(`/account/push_subscriptions/${device.id}`, { preserveScroll: true })
+    router.delete(`/admin/account/push_subscriptions/${device.id}`, { preserveScroll: true })
   }
 
   function toggle(device: Device, topic: string, wanted: boolean) {
     const topics = wanted ? [...device.topics, topic] : device.topics.filter((key) => key !== topic)
-    router.patch(`/account/push_subscriptions/${device.id}`, { topics }, { preserveScroll: true })
+    router.patch(`/admin/account/push_subscriptions/${device.id}`, { topics }, { preserveScroll: true })
   }
 
   return (
@@ -98,7 +98,7 @@ export default function PushSettings({ push }: { push: PushProps }) {
                   type="button"
                   variant="secondary"
                   className="min-h-10! px-3!"
-                  onClick={() => router.post(`/account/push_subscriptions/${device.id}/test`, {}, { preserveScroll: true })}
+                  onClick={() => router.post(`/admin/account/push_subscriptions/${device.id}/test`, {}, { preserveScroll: true })}
                 >
                   Send a test
                 </Button>

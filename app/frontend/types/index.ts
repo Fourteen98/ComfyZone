@@ -22,4 +22,6 @@ export type SharedProps = {
     /** Permission keys this person holds, e.g. ["products.view", ...]. */
     permissions: string[]
   }
+  /** Only on the public shop's pages (Shop::BaseController). */
+  shop?: { cart_count: number; staff: boolean }
 }

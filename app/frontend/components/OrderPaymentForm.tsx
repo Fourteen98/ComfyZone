@@ -35,7 +35,7 @@ export default function OrderPaymentForm({ orderId, kind, suggestedPesewas, ways
         : { payment: { amount: data.amount, via: data.via, reference: hasReference ? data.reference : '' } },
     )
     // -> Orders::RefundsController#create or Orders::PaymentsController#create
-    form.post(`/orders/${orderId}/${refund ? 'refunds' : 'payments'}`, { preserveScroll: true, onSuccess: onCancel })
+    form.post(`/admin/orders/${orderId}/${refund ? 'refunds' : 'payments'}`, { preserveScroll: true, onSuccess: onCancel })
   }
 
   // Ids differ per kind so both forms can be on the page at once.

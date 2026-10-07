@@ -31,7 +31,7 @@ export default function CustomerForm({ customer, locations, others = [] }: Props
       `Merge ${twin.label} into this customer? Their orders move here, anything missing here is copied across, and ${twin.label} is removed. This can't be undone.`,
       { confirm: 'Merge them' },
     )
-    if (sure) router.post(`/customers/${customer.id}/merge`, { other_id: twin.id }) // -> CustomersController#merge
+    if (sure) router.post(`/admin/customers/${customer.id}/merge`, { other_id: twin.id }) // -> CustomersController#merge
   }
 
   const editing = customer !== null
@@ -53,9 +53,9 @@ export default function CustomerForm({ customer, locations, others = [] }: Props
     form.transform((data) => ({ customer: data }))
 
     if (editing) {
-      form.patch(`/customers/${customer.id}`)
+      form.patch(`/admin/customers/${customer.id}`)
     } else {
-      form.post('/customers')
+      form.post('/admin/customers')
     }
   }
 
@@ -108,7 +108,7 @@ export default function CustomerForm({ customer, locations, others = [] }: Props
           <Button type="submit" disabled={form.processing}>
             {editing ? 'Save changes' : 'Add customer'}
           </Button>
-          <ButtonLink href="/customers" variant="secondary">
+          <ButtonLink href="/admin/customers" variant="secondary">
             Cancel
           </ButtonLink>
         </div>

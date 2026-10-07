@@ -32,7 +32,7 @@ class Stock::AdjustmentsControllerTest < ActionDispatch::IntegrationTest
 
     post stock_adjustments_path(@variant), params: { adjustment: { reason: "lost", quantity: "5" } }
 
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     assert_equal 10, @variant.reload.stock_on_hand
 
     get stock_path(@variant)

@@ -22,7 +22,7 @@ export default function CategoriesIndex({
   // -> Settings::CategoriesController#move. preserveScroll keeps the page
   // where it is, so she can tap an arrow several times in a row.
   const move = (category: CategoryRow, direction: 'up' | 'down') =>
-    router.patch(`/settings/categories/${category.id}/move`, { direction }, { preserveScroll: true })
+    router.patch(`/admin/settings/categories/${category.id}/move`, { direction }, { preserveScroll: true })
 
   return (
     <SettingsLayout>
@@ -33,7 +33,7 @@ export default function CategoriesIndex({
           The kinds of things you sell. Each product can sit in one category, which you can then filter your product
           list by. They show in this order.
         </p>
-        <ButtonLink href="/settings/categories/new">
+        <ButtonLink href="/admin/settings/categories/new">
           <Plus className="size-5" aria-hidden="true" />
           Add a category
         </ButtonLink>
@@ -43,7 +43,7 @@ export default function CategoriesIndex({
         {categories.map((category, index) => (
           <li key={category.id} className="flex items-center gap-1 pr-2">
             <Link
-              href={`/settings/categories/${category.id}/edit`}
+              href={`/admin/settings/categories/${category.id}/edit`}
               className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
             >
               <span className={`font-medium ${category.active ? '' : 'text-taupe-600'}`}>{category.name}</span>
@@ -75,7 +75,7 @@ export default function CategoriesIndex({
       {uncategorised_count > 0 && (
         <p className="mt-3 text-sm text-taupe-700">
           {products(uncategorised_count)} {uncategorised_count === 1 ? 'has' : 'have'} no category yet.{' '}
-          <Link href="/products?category=none" className="font-medium text-wine-800 underline underline-offset-4">
+          <Link href="/admin/products?category=none" className="font-medium text-wine-800 underline underline-offset-4">
             See {uncategorised_count === 1 ? 'it' : 'them'}
           </Link>
         </p>

@@ -45,10 +45,10 @@ function friendly(error: unknown): string {
 export async function registerPasskey(name: string): Promise<string | null> {
   try {
     const optionsJSON = await post<Parameters<typeof startRegistration>[0]['optionsJSON']>(
-      '/account/passkeys/challenge',
+      '/admin/account/passkeys/challenge',
     )
     const credential = await startRegistration({ optionsJSON }) // Face ID / fingerprint prompt
-    await post('/account/passkeys', { credential, name })
+    await post('/admin/account/passkeys', { credential, name })
     return null
   } catch (error) {
     return friendly(error)
@@ -59,10 +59,10 @@ export async function registerPasskey(name: string): Promise<string | null> {
 export async function loginWithPasskey(): Promise<{ redirectTo: string } | { error: string }> {
   try {
     const optionsJSON = await post<Parameters<typeof startAuthentication>[0]['optionsJSON']>(
-      '/session/passkey/challenge',
+      '/admin/session/passkey/challenge',
     )
     const credential = await startAuthentication({ optionsJSON }) // Face ID / fingerprint prompt
-    const result = await post<{ redirect_to: string }>('/session/passkey', { credential })
+    const result = await post<{ redirect_to: string }>('/admin/session/passkey', { credential })
     return { redirectTo: result.redirect_to }
   } catch (error) {
     return { error: friendly(error) }

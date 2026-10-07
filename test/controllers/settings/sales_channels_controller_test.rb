@@ -42,7 +42,7 @@ class Settings::SalesChannelsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:two))
 
     get settings_sales_channels_path
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     post settings_sales_channels_path, params: { sales_channel: { name: "Jumia", kind: "direct" } }
     assert_not SalesChannel.exists?(name: "Jumia")
   end

@@ -7,13 +7,13 @@ import { useCan } from '@/lib/permissions'
 // The sections inside Settings. More get added here as they are built
 // (payment methods, delivery zones...).
 const tabs = [
-  { label: 'Options', href: '/settings/options', permission: 'settings.manage' },
-  { label: 'Categories', href: '/settings/categories', permission: 'settings.manage' },
-  { label: 'Sales channels', href: '/settings/channels', permission: 'settings.manage' },
-  { label: 'Locations', href: '/settings/areas', permission: 'settings.manage' },
-  { label: 'Payment methods', href: '/settings/payments', permission: 'settings.manage' },
-  { label: 'Team', href: '/settings/users', permission: 'users.manage' },
-  { label: 'Roles', href: '/settings/roles', permission: 'roles.manage' },
+  { label: 'Options', href: '/admin/settings/options', permission: 'settings.manage' },
+  { label: 'Categories', href: '/admin/settings/categories', permission: 'settings.manage' },
+  { label: 'Sales channels', href: '/admin/settings/channels', permission: 'settings.manage' },
+  { label: 'Locations', href: '/admin/settings/areas', permission: 'settings.manage' },
+  { label: 'Payment methods', href: '/admin/settings/payments', permission: 'settings.manage' },
+  { label: 'Team', href: '/admin/settings/users', permission: 'users.manage' },
+  { label: 'Roles', href: '/admin/settings/roles', permission: 'roles.manage' },
 ]
 
 // A layout inside a layout: the app frame, then the Settings title and tabs,

@@ -52,9 +52,9 @@ export default function SupplierForm({ supplier, products, locations }: Props) {
     }))
 
     if (editing) {
-      form.patch(`/suppliers/${supplier.id}`) // -> SuppliersController#update
+      form.patch(`/admin/suppliers/${supplier.id}`) // -> SuppliersController#update
     } else {
-      form.post('/suppliers') // -> SuppliersController#create
+      form.post('/admin/suppliers') // -> SuppliersController#create
     }
   }
 
@@ -130,7 +130,7 @@ export default function SupplierForm({ supplier, products, locations }: Props) {
           <Button type="submit" disabled={form.processing}>
             {editing ? 'Save changes' : 'Add supplier'}
           </Button>
-          <ButtonLink href={editing ? `/suppliers/${supplier.id}` : '/suppliers'} variant="secondary">
+          <ButtonLink href={editing ? `/admin/suppliers/${supplier.id}` : '/admin/suppliers'} variant="secondary">
             Cancel
           </ButtonLink>
         </div>

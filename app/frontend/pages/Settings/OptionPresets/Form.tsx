@@ -41,16 +41,16 @@ export default function OptionPresetForm({ preset, option_names }: Props) {
     }))
 
     if (editing) {
-      form.patch(`/settings/options/${preset.id}`)
+      form.patch(`/admin/settings/options/${preset.id}`)
     } else {
-      form.post('/settings/options')
+      form.post('/admin/settings/options')
     }
   }
 
   async function destroy() {
     if (!editing) return
     if (!(await confirmAction(`Delete "${preset.name}"? Products you have already added keep their choices.`, { confirm: 'Delete', danger: true }))) return
-    router.delete(`/settings/options/${preset.id}`)
+    router.delete(`/admin/settings/options/${preset.id}`)
   }
 
   return (
@@ -115,7 +115,7 @@ export default function OptionPresetForm({ preset, option_names }: Props) {
           <Button type="submit" disabled={form.processing}>
             {editing ? 'Save changes' : 'Add list'}
           </Button>
-          <ButtonLink href="/settings/options" variant="secondary">
+          <ButtonLink href="/admin/settings/options" variant="secondary">
             Cancel
           </ButtonLink>
           {editing && (

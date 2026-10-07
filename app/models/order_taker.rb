@@ -22,6 +22,10 @@ class OrderTaker
   attr_accessor :customer, :user, :live_session, :sales_channel, :lines
   # Optional, for a sale recorded by hand: { delivery_method:, fee:, address:, area: }
   attr_accessor :delivery
+  # Optional: a note to keep on a NEW order (the shopper's message at checkout).
+  attr_accessor :note
+  # true for the public shop: only products she has listed there can be bought.
+  attr_accessor :shop
   attr_reader :order
 
   validate :has_a_customer
@@ -59,10 +63,11 @@ class OrderTaker
     def announce
       return if live_session
 
+      # No user = the shopper placed it themselves on the website.
       Push.notify("orders",
-        title: "New sale",
-        body: "#{@order.customer.display_name}, GH₵ #{Pesewas.to_input(@order.total_pesewas)}. Recorded by #{user.name}.",
-        path: "/orders/#{@order.id}",
+        title: user ? "New sale" : "New order from the shop",
+        body: "#{@order.customer.display_name}, GH₵ #{Pesewas.to_input(@order.total_pesewas)}." + (user ? " Recorded by #{user.name}." : ""),
+        path: "/admin/orders/#{@order.id}",
         except: user)
     end
 
@@ -83,7 +88,7 @@ class OrderTaker
       channel = live_session ? live_session.sales_channel : sales_channel
       return existing if existing
 
-      order = Order.create!(customer: customer, live_session: live_session, sales_channel: channel, user: user)
+      order = Order.create!(customer: customer, live_session: live_session, sales_channel: channel, user: user, note: note.presence)
       # An order added to a live after it ended was really claimed during
       # it. Dating it then keeps it on the right day in the reports.
       order.update_column(:created_at, live_session.ended_at) if live_session&.ended_at
@@ -94,6 +99,10 @@ class OrderTaker
 
     def add(variant_id, quantity)
       variant = Variant.active.find_by(id: variant_id)
+      # The shop sells only what is listed. Checked here, at the moment of
+      # sale, because a product can be taken off the shop while it sits in
+      # someone's cart.
+      variant = nil if shop && variant && !(variant.product.active? && variant.product.listed?)
       raise StockLedger::NotEnough, "One of those items is no longer available" unless variant
 
       # Take the stock FIRST. This locks the variant and refuses if there

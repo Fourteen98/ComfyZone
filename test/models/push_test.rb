@@ -106,7 +106,7 @@ class PushTest < ActiveSupport::TestCase
       assert_no_enqueued_jobs { StockLedger.record!(variant: variant, quantity: -1, reason: "recount") } # 4: fine
 
       assert_enqueued_with(job: PushJob, args: [ "low_stock",
-        { "title" => "Running low", "body" => "Ankara wrap dress, M / Black: 3 left.", "path" => "/stock/#{variant.id}", "tag" => "low_stock" }, nil ]) do
+        { "title" => "Running low", "body" => "Ankara wrap dress, M / Black: 3 left.", "path" => "/admin/stock/#{variant.id}", "tag" => "low_stock" }, nil ]) do
         StockLedger.record!(variant: variant, quantity: -1, reason: "recount") # 3: crossed
       end
 
@@ -142,7 +142,7 @@ class PushTest < ActiveSupport::TestCase
       taker = OrderTaker.new(customer: customer, user: users(:two), lines: [ { variant_id: variant.id, quantity: 1 } ])
       assert_enqueued_jobs(1, only: PushJob) { assert taker.save }
       topic, payload, except = enqueued_jobs.last["arguments"]
-      assert_equal [ "orders", "New sale", "/orders/#{taker.order.id}", users(:two).id ], [ topic, payload["title"], payload["path"], except ]
+      assert_equal [ "orders", "New sale", "/admin/orders/#{taker.order.id}", users(:two).id ], [ topic, payload["title"], payload["path"], except ]
       assert_match "Ama Koranteng", payload["body"]
 
       live = LiveSession.create!(user: users(:one), started_at: Time.current, sales_channel: sales_channels(:tiktok))

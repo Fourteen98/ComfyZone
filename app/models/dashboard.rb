@@ -23,21 +23,21 @@ class Dashboard
   sales = ->(period) { SalesReport.new(period).totals }
 
   TILES = [
-    Tile.new("sales_today", "Sales today", %w[ orders.view ], :money, "/orders", -> { sales.(today.())[:sales_pesewas] }),
-    Tile.new("sales_week", "Sales this week", %w[ orders.view ], :money, "/reports?range=week", -> { sales.(week.())[:sales_pesewas] }),
-    Tile.new("sales_month", "Sales this month", %w[ orders.view ], :money, "/reports?range=month", -> { sales.(month.())[:sales_pesewas] }),
-    Tile.new("profit_today", "Profit today", %w[ orders.view costs.view ], :money, "/reports?range=today", -> { sales.(today.())[:profit_pesewas] }),
-    Tile.new("profit_month", "Profit this month", %w[ orders.view costs.view ], :money, "/reports?range=month", -> { sales.(month.())[:profit_pesewas] }),
-    Tile.new("expenses_month", "Expenses this month", %w[ expenses.view ], :money, "/expenses", -> { Expense.during(month.()).sum(:amount_pesewas) }),
-    Tile.new("net_profit_month", "Net profit this month", %w[ orders.view costs.view expenses.view ], :money, "/reports?range=month",
+    Tile.new("sales_today", "Sales today", %w[ orders.view ], :money, "/admin/orders", -> { sales.(today.())[:sales_pesewas] }),
+    Tile.new("sales_week", "Sales this week", %w[ orders.view ], :money, "/admin/reports?range=week", -> { sales.(week.())[:sales_pesewas] }),
+    Tile.new("sales_month", "Sales this month", %w[ orders.view ], :money, "/admin/reports?range=month", -> { sales.(month.())[:sales_pesewas] }),
+    Tile.new("profit_today", "Profit today", %w[ orders.view costs.view ], :money, "/admin/reports?range=today", -> { sales.(today.())[:profit_pesewas] }),
+    Tile.new("profit_month", "Profit this month", %w[ orders.view costs.view ], :money, "/admin/reports?range=month", -> { sales.(month.())[:profit_pesewas] }),
+    Tile.new("expenses_month", "Expenses this month", %w[ expenses.view ], :money, "/admin/expenses", -> { Expense.during(month.()).sum(:amount_pesewas) }),
+    Tile.new("net_profit_month", "Net profit this month", %w[ orders.view costs.view expenses.view ], :money, "/admin/reports?range=month",
              -> { sales.(month.())[:profit_pesewas] - Expense.during(month.()).sum(:amount_pesewas) }),
-    Tile.new("orders_to_pay", "Orders to be paid", %w[ orders.view ], :count, "/orders?status=claimed", -> { Order.claimed.count }),
-    Tile.new("orders_to_pack", "Orders to pack", %w[ orders.view ], :count, "/orders?status=paid", -> { Order.paid.count }),
-    Tile.new("orders_to_deliver", "Orders to deliver", %w[ orders.view ], :count, "/orders?status=packed", -> { Order.packed.count }),
-    Tile.new("money_owed", "Money owed to you", %w[ orders.view ], :money, "/orders?status=claimed", -> { Order.owing.sum(Arel.sql(Order::BALANCE_SQL)) }),
-    Tile.new("refunds_due", "Refunds to give", %w[ orders.view ], :count, "/orders?status=refunds", -> { Order.refund_due.count }),
-    Tile.new("low_stock", "Low on stock", %w[ stock.view ], :count, "/stock?show=low", -> { StockLedger.needing_attention.count }),
-    Tile.new("stock_value", "Stock value", %w[ stock.view costs.view ], :money, "/stock", -> { StockLedger.value_pesewas })
+    Tile.new("orders_to_pay", "Orders to be paid", %w[ orders.view ], :count, "/admin/orders?status=claimed", -> { Order.claimed.count }),
+    Tile.new("orders_to_pack", "Orders to pack", %w[ orders.view ], :count, "/admin/orders?status=paid", -> { Order.paid.count }),
+    Tile.new("orders_to_deliver", "Orders to deliver", %w[ orders.view ], :count, "/admin/orders?status=packed", -> { Order.packed.count }),
+    Tile.new("money_owed", "Money owed to you", %w[ orders.view ], :money, "/admin/orders?status=claimed", -> { Order.owing.sum(Arel.sql(Order::BALANCE_SQL)) }),
+    Tile.new("refunds_due", "Refunds to give", %w[ orders.view ], :count, "/admin/orders?status=refunds", -> { Order.refund_due.count }),
+    Tile.new("low_stock", "Low on stock", %w[ stock.view ], :count, "/admin/stock?show=low", -> { StockLedger.needing_attention.count }),
+    Tile.new("stock_value", "Stock value", %w[ stock.view costs.view ], :money, "/admin/stock", -> { StockLedger.value_pesewas })
   ].freeze
 
   PANELS = [
@@ -68,7 +68,7 @@ class Dashboard
   def tiles
     chosen(TILES, "tiles").map do |tile|
       # A reports link is no use to someone who can't open reports.
-      href = tile.href.start_with?("/reports") && !@user.can?("reports.view") ? nil : tile.href
+      href = tile.href.start_with?("/admin/reports") && !@user.can?("reports.view") ? nil : tile.href
       { key: tile.key, label: tile.label, format: tile.format, href: href, value: tile.value.call }
     end
   end

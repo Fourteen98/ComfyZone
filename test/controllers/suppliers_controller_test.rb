@@ -102,6 +102,6 @@ class SuppliersControllerTest < ActionDispatch::IntegrationTest
     assert_no_difference "Supplier.count" do
       post suppliers_path, params: { supplier: { name: "Sneaky", phone: "020 111 2222" } }
     end
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
   end
 end

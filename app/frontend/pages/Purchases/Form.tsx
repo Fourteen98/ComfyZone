@@ -168,9 +168,9 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
     }))
 
     if (editing) {
-      form.patch(`/purchases/${purchase.id}`) // -> PurchasesController#update
+      form.patch(`/admin/purchases/${purchase.id}`) // -> PurchasesController#update
     } else {
-      form.post('/purchases') // -> PurchasesController#create
+      form.post('/admin/purchases') // -> PurchasesController#create
     }
   }
 
@@ -303,7 +303,7 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
             {products.length === 0 ? (
               <p className="text-taupe-700">
                 You have no products yet.{' '}
-                <Link href="/products/new" className="font-medium text-wine-800 underline underline-offset-4">
+                <Link href="/admin/products/new" className="font-medium text-wine-800 underline underline-offset-4">
                   Add a product
                 </Link>{' '}
                 first, then come back to record buying it.
@@ -548,7 +548,7 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
               Adding to stock is final. If the goods have not arrived, save them as on the way and mark them arrived
               later.
             </p>
-            <ButtonLink href={editing ? `/purchases/${purchase.id}` : '/purchases'} variant="secondary" block>
+            <ButtonLink href={editing ? `/admin/purchases/${purchase.id}` : '/admin/purchases'} variant="secondary" block>
               Cancel
             </ButtonLink>
           </div>
