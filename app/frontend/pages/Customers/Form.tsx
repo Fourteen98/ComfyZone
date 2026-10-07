@@ -4,14 +4,16 @@ import AppLayout from '@/layouts/AppLayout'
 import Alert from '@/components/ui/Alert'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import PageHeader from '@/components/ui/PageHeader'
+import SelectField from '@/components/ui/SelectField'
 import TextAreaField from '@/components/ui/TextAreaField'
 import TextField from '@/components/ui/TextField'
 
 type Props = {
-  customer: { id: number; handle: string; name: string; phone: string; location: string; note: string } | null
+  customer: { id: number; handle: string; name: string; phone: string; location: string; note: string; delivery_area_id: string } | null
+  delivery_areas: { value: string; label: string }[]
 }
 
-export default function CustomerForm({ customer }: Props) {
+export default function CustomerForm({ customer, delivery_areas }: Props) {
   const editing = customer !== null
 
   const form = useForm({
@@ -19,6 +21,7 @@ export default function CustomerForm({ customer }: Props) {
     name: customer?.name ?? '',
     phone: customer?.phone ?? '',
     location: customer?.location ?? '',
+    delivery_area_id: customer?.delivery_area_id ?? '',
     note: customer?.note ?? '',
   })
   const errors = form.errors as Record<string, string[] | undefined>
@@ -67,11 +70,21 @@ export default function CustomerForm({ customer }: Props) {
           onChange={(e) => form.setData('handle', e.target.value)}
           error={errors.handle}
         />
+        {delivery_areas.length > 0 && (
+          <SelectField
+            id="delivery_area_id"
+            label="Delivery area"
+            placeholder="Not set"
+            options={delivery_areas}
+            value={form.data.delivery_area_id}
+            onChange={(e) => form.setData('delivery_area_id', e.target.value)}
+          />
+        )}
         <TextField
           id="location"
-          label="Where they are"
+          label="Address or landmark"
           maxLength={80}
-          placeholder="Area or town, for delivery"
+          placeholder="Street or landmark, for the rider"
           value={form.data.location}
           onChange={(e) => form.setData('location', e.target.value)}
           error={errors.location}

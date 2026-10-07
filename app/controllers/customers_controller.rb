@@ -14,7 +14,7 @@ class CustomersController < InertiaController
         term: term, phone: digits.length >= 3 ? "%#{digits}%" : nil
       )
     end
-    customers = customers.limit(300).to_a
+    customers = customers.includes(:delivery_area).limit(300).to_a
 
     counted = Order.counted.where(customer: customers)
     counts = counted.group(:customer_id).count
@@ -27,7 +27,8 @@ class CustomersController < InertiaController
           display_name: customer.display_name,
           handle: customer.handle,
           phone: customer.phone,
-          location: customer.location,
+          # "East Legon, near the Shell station"
+          location: [ customer.delivery_area&.name, customer.location ].compact.join(", ").presence,
           orders_count: counts.fetch(customer.id, 0),
           spent_pesewas: spent.fetch(customer.id, 0)
         }
@@ -39,7 +40,7 @@ class CustomersController < InertiaController
   end
 
   def new
-    render inertia: "Customers/Form", props: { customer: nil }
+    render inertia: "Customers/Form", props: { customer: nil, delivery_areas: areas }
   end
 
   def create
@@ -56,8 +57,10 @@ class CustomersController < InertiaController
     render inertia: "Customers/Form", props: {
       customer: {
         id: @customer.id, handle: @customer.handle.to_s, name: @customer.name.to_s, phone: @customer.phone.to_s,
-        location: @customer.location.to_s, note: @customer.note.to_s
-      }
+        location: @customer.location.to_s, note: @customer.note.to_s,
+        delivery_area_id: @customer.delivery_area_id.to_s
+      },
+      delivery_areas: areas
     }
   end
 
@@ -75,6 +78,10 @@ class CustomersController < InertiaController
     end
 
     def customer_params
-      params.expect(customer: [ :handle, :name, :phone, :location, :note ])
+      params.expect(customer: [ :handle, :name, :phone, :location, :note, :delivery_area_id ])
+    end
+
+    def areas
+      DeliveryArea.active.ordered.map { |area| { value: area.id.to_s, label: area.name } }
     end
 end

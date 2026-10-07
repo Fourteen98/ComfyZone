@@ -3,7 +3,14 @@ import { useState } from 'react'
 import Button from '@/components/ui/Button'
 import TextField from '@/components/ui/TextField'
 
-export type Buyer = { id: number; handle: string | null; name: string | null; phone: string | null }
+export type Buyer = {
+  id: number
+  handle: string | null
+  name: string | null
+  phone: string | null
+  location: string | null // street or landmark
+  delivery_area_id: number | null // where they usually are
+}
 
 // Who is buying, as sent to Rails (OrdersController#buyer):
 //   { id }                     someone she picked from her customers
@@ -14,8 +21,9 @@ type Props = {
   buyers: Buyer[]
   /** Ask for the username first (a social channel) or the name first. */
   usernameFirst: boolean
-  /** Tells the parent who is chosen (null = nobody yet) and what to call them. */
-  onChange: (choice: BuyerChoice | null, label: string) => void
+  /** Tells the parent who is chosen (null = nobody yet), what to call them,
+      and the known customer behind the choice, if there is one. */
+  onChange: (choice: BuyerChoice | null, label: string, known?: Buyer) => void
 }
 
 const digits = (text: string) => text.replace(/\D/g, '')
@@ -53,7 +61,7 @@ export default function BuyerPicker({ buyers, usernameFirst, onChange }: Props) 
 
   function pick(buyer: Buyer) {
     setPicked(buyer)
-    onChange({ id: buyer.id }, buyerLabel(buyer))
+    onChange({ id: buyer.id }, buyerLabel(buyer), buyer)
   }
 
   function startOver() {

@@ -9,10 +9,12 @@ import Panel from '@/components/ui/Panel'
 import Steps from '@/components/ui/Steps'
 import OrderDeliveryForm from '@/components/OrderDeliveryForm'
 import type { Delivery } from '@/components/OrderDeliveryForm'
+import type { DeliveryArea } from '@/components/DeliveryFields'
 import OrderPaymentForm from '@/components/OrderPaymentForm'
 import OrderStatusBadge from '@/components/OrderStatusBadge'
 import { formatMoney } from '@/lib/format'
 import type { OrderSummary } from '@/lib/orders'
+import { confirmAction } from '@/lib/confirm'
 
 type Payment = {
   id: number
@@ -44,6 +46,7 @@ type Props = {
     }
     payments: Payment[]
   }
+  delivery_areas: DeliveryArea[]
   ways_to_pay: { value: string; label: string }[]
   // What this person may do to this order right now (OrdersController#show).
   can: {
@@ -56,7 +59,7 @@ type Props = {
 }
 
 // Props from OrdersController#show
-export default function OrderShow({ order, ways_to_pay, can }: Props) {
+export default function OrderShow({ order, delivery_areas, ways_to_pay, can }: Props) {
   // Which of the small forms is open. Only ever one at a time.
   const [open, setOpen] = useState<'delivery' | 'refund' | 'return' | null>(null)
   const [restock, setRestock] = useState<'yes' | 'no' | ''>('')
@@ -72,14 +75,14 @@ export default function OrderShow({ order, ways_to_pay, can }: Props) {
     router.patch(`/orders/${order.id}/stage`, { to }, { preserveScroll: true })
   }
 
-  function cancel() {
+  async function cancel() {
     const money = paid > 0 ? ` You will still need to give back the ${formatMoney(paid)} they paid.` : ''
-    if (!window.confirm(`Cancel ${order.customer}'s order? Everything on it goes back into stock.${money}`)) return
+    if (!(await confirmAction(`Cancel ${order.customer}'s order? Everything on it goes back into stock.${money}`, { confirm: 'Cancel the order', dismiss: 'Keep the order', danger: true }))) return
     router.patch(`/orders/${order.id}/cancel`) // -> OrdersController#cancel
   }
 
-  function remove(item: OrderSummary['items'][number]) {
-    if (!window.confirm(`Remove ${item.name}? It goes back into stock.`)) return
+  async function remove(item: OrderSummary['items'][number]) {
+    if (!(await confirmAction(`Remove ${item.name}? It goes back into stock.`, { confirm: 'Remove', danger: true }))) return
     router.delete(`/orders/${order.id}/items/${item.id}`, {
       preserveScroll: true,
     })
@@ -293,6 +296,7 @@ export default function OrderShow({ order, ways_to_pay, can }: Props) {
               <OrderDeliveryForm
                 orderId={order.id}
                 delivery={delivery}
+                areas={delivery_areas}
                 knownLocation={order.customer_location}
                 onDone={() => setOpen(null)}
               />
@@ -309,7 +313,7 @@ export default function OrderShow({ order, ways_to_pay, can }: Props) {
               <p>They will collect it.</p>
             ) : (
               <div className="space-y-1">
-                <p>Being sent to them, {delivery.fee_pesewas > 0 ? `${formatMoney(delivery.fee_pesewas)} delivery` : 'free delivery'}.</p>
+                <p>Being sent to them{delivery.area ? ` in ${delivery.area}` : ''}, {delivery.fee_pesewas > 0 ? `${formatMoney(delivery.fee_pesewas)} delivery` : 'free delivery'}.</p>
                 {/* whitespace-pre-line keeps the line breaks she typed. */}
                 {delivery.address ? (
                   <p className="whitespace-pre-line text-taupe-800">{delivery.address}</p>

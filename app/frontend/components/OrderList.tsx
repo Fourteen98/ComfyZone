@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import { OrderBadges } from '@/components/OrderStatusBadge'
 import { formatMoney } from '@/lib/format'
 import type { OrderSummary } from '@/lib/orders'
+import { confirmAction } from '@/lib/confirm'
 
 type Props = {
   orders: (OrderSummary & { live?: string | null })[]
@@ -18,8 +19,8 @@ type Props = {
 // A list of orders with their lines. Used on the live screen ("Claims so
 // far"), the orders page and the dashboard.
 export default function OrderList({ orders, removable = false, showStatus = true, action }: Props) {
-  function remove(order: OrderSummary, item: OrderSummary['items'][number]) {
-    if (!window.confirm(`Remove ${item.name} from ${order.customer}'s order? It goes back into stock.`)) return
+  async function remove(order: OrderSummary, item: OrderSummary['items'][number]) {
+    if (!(await confirmAction(`Remove ${item.name} from ${order.customer}'s order? It goes back into stock.`, { confirm: 'Remove', danger: true }))) return
     // -> Orders::ItemsController#destroy
     router.delete(`/orders/${order.id}/items/${item.id}`, { preserveScroll: true })
   }

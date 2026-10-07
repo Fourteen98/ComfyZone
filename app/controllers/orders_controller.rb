@@ -43,7 +43,9 @@ class OrdersController < InertiaController
           method: @order.delivery_method,
           fee: @order.delivery_fee, # "25" or "25.50", ready for the form
           fee_pesewas: @order.delivery_fee_pesewas,
-          address: @order.delivery_address
+          address: @order.delivery_address,
+          area_id: @order.delivery_area_id,
+          area: @order.delivery_area&.name
         },
         # The stages it has been through, for the small timeline.
         timeline: {
@@ -62,6 +64,7 @@ class OrdersController < InertiaController
           }
         }
       ),
+      delivery_areas: delivery_areas,
       ways_to_pay: Payment::WAYS.map { |value, label| { value: value, label: label } },
       # What THIS person may do to THIS order right now. React only shows
       # buttons; each action checks again on the server.
@@ -77,7 +80,9 @@ class OrdersController < InertiaController
 
   # GET /orders/new   a sale made outside a live (WhatsApp, a walk-in)
   def new
-    render inertia: "Orders/New", props: { products: sellable_products, buyers: known_buyers, channels: sales_channels }
+    render inertia: "Orders/New", props: {
+      products: sellable_products, buyers: known_buyers, channels: sales_channels, delivery_areas: delivery_areas
+    }
   end
 
   # POST /orders
@@ -90,6 +95,7 @@ class OrdersController < InertiaController
       live_session: live,
       # Ignored during a live, where the live's own channel is used.
       sales_channel: SalesChannel.active.find_by(id: params.dig(:order, :sales_channel_id)),
+      delivery: live ? nil : delivery_params,
       lines: line_params
     )
     back = live ? live_path(live) : new_order_path
@@ -122,7 +128,7 @@ class OrdersController < InertiaController
 
   private
     def set_order
-      @order = Order.includes(:customer, :sales_channel, items: { variant: :product }).find(params.expect(:id))
+      @order = Order.includes(:customer, :sales_channel, :delivery_area, items: { variant: :product }).find(params.expect(:id))
     end
 
     # Whoever records sales may cancel a fresh claim. Once money has been
@@ -143,6 +149,16 @@ class OrdersController < InertiaController
       return Customer.for_claim(given) unless given.is_a?(ActionController::Parameters)
 
       Customer.for_sale(**given.permit(:id, :handle, :name, :phone).to_h.symbolize_keys)
+    end
+
+    # { delivery_method: "delivery", fee: "25", address: "...", area: <DeliveryArea> }, or nil
+    def delivery_params
+      given = params.dig(:order, :delivery)
+      return unless given.is_a?(ActionController::Parameters)
+
+      given = given.permit(:delivery_method, :fee, :address, :area_id)
+      { delivery_method: given[:delivery_method], fee: given[:fee], address: given[:address],
+        area: DeliveryArea.active.find_by(id: given[:area_id]) }
     end
 
     def line_params

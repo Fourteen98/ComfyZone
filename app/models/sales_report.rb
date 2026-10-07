@@ -106,6 +106,15 @@ class SalesReport
       .sort_by { |row| -row[:amount_pesewas] }
   end
 
+  # What the business spent in the period on things that aren't stock.
+  def expenses_pesewas
+    Expense.during(period).sum(:amount_pesewas)
+  end
+
+  def expenses_by_category
+    Expense.during(period).by_category.map { |name, amount| { name: name, amount_pesewas: amount } }
+  end
+
   private
     # Times are stored in UTC. To ask "which DAY was this?" they must first
     # be shifted to the business's clock, or a sale at 12:30 am would land

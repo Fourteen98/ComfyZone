@@ -4,6 +4,7 @@ import SettingsLayout from '@/layouts/SettingsLayout'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import Checkbox from '@/components/ui/Checkbox'
 import TextField from '@/components/ui/TextField'
+import { confirmAction } from '@/lib/confirm'
 
 type Props = {
   // null when adding; the category when editing.
@@ -30,7 +31,7 @@ export default function CategoryForm({ category }: Props) {
     }
   }
 
-  function destroy() {
+  async function destroy() {
     if (!editing) return
     const kept =
       category.products_count === 0
@@ -38,7 +39,7 @@ export default function CategoryForm({ category }: Props) {
         : category.products_count === 1
           ? ' Its 1 product is kept, with no category.'
           : ` Its ${category.products_count} products are kept, with no category.`
-    if (!window.confirm(`Delete "${category.name}"?${kept}`)) return
+    if (!(await confirmAction(`Delete "${category.name}"?${kept}`, { confirm: 'Delete', danger: true }))) return
     router.delete(`/settings/categories/${category.id}`)
   }
 

@@ -12,6 +12,8 @@ Rails.application.routes.draw do
   # pointed at the same controller as the home page.
   resource :dashboard, only: %i[ edit update ], controller: "dashboard"
 
+  resources :expenses, except: :show
+
   resource :reports, only: :show do
     # `constraints` limits what :kind may be; anything else is a 404.
     get "export/:kind", action: :export, as: :export, constraints: { kind: /orders|payments/ }
@@ -103,6 +105,9 @@ Rails.application.routes.draw do
     end
     resources :sales_channels, path: "channels", except: :show do
       patch :move, on: :member # /settings/channels/:id/move
+    end
+    resources :delivery_areas, path: "areas", except: :show do
+      patch :move, on: :member # /settings/areas/:id/move
     end
   end
 

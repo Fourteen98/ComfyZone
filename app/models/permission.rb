@@ -35,7 +35,9 @@ module Permission
     },
     "Money" => {
       "costs.view"   => "See cost prices and profit",
-      "reports.view" => "See reports"
+      "reports.view" => "See reports",
+      "expenses.view"   => "See expenses",
+      "expenses.manage" => "Record and change expenses"
     },
     "Settings" => {
       "settings.manage" => "Change business settings",

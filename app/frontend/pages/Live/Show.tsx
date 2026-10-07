@@ -11,6 +11,7 @@ import SaleCapture from '@/components/SaleCapture'
 import type { Buyer, SellableProduct } from '@/components/SaleCapture'
 import { formatMoney } from '@/lib/format'
 import type { OrderSummary } from '@/lib/orders'
+import { confirmAction } from '@/lib/confirm'
 
 type Props = {
   live: {
@@ -51,8 +52,8 @@ export default function LiveShow({ live, stats, orders, can_sell, products, buye
   const minutes = useMinutesSince(live.started_at, live.running)
   const duration = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`)
 
-  function finish() {
-    if (!window.confirm('End this live? You can still record sales afterwards, but they will not count towards it.')) return
+  async function finish() {
+    if (!(await confirmAction('End this live? You can still record sales afterwards, but they will not count towards it.', { confirm: 'End the live' }))) return
     router.patch(`/live/${live.id}/finish`) // -> LiveSessionsController#finish
   }
 

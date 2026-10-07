@@ -6,6 +6,7 @@ class Order < ApplicationRecord
   belongs_to :customer
   belongs_to :live_session, optional: true
   belongs_to :sales_channel, optional: true # where the sale came from
+  belongs_to :delivery_area, optional: true # where it was sent, if it was
   belongs_to :user
   has_many :items, class_name: "OrderItem", dependent: :destroy, inverse_of: :order
   has_many :stock_movements, as: :source
@@ -114,17 +115,24 @@ class Order < ApplicationRecord
 
   # ---- Delivery --------------------------------------------------------
 
-  def set_delivery!(delivery_method:, fee:, address:)
+  # area: a DeliveryArea (or nil). Its usual fee is used when no fee is
+  # given; a fee that IS given wins, so one order can be an exception.
+  def set_delivery!(delivery_method:, fee:, address:, area: nil)
     transaction do
       lock!
       raise WrongStage, "Delivery can't be changed once an order is #{status}." unless claimed? || paid? || packed?
 
       self.delivery_method = delivery_method.presence
-      self.delivery_address = address.to_s.strip.presence
-      # A pick-up has no delivery fee, whatever was left in the box.
-      self.delivery_fee = delivery_method_delivery? ? fee : 0
+      # A pick-up has no address, area or fee, whatever was left in the form.
+      self.delivery_address = delivery_method_delivery? ? address.to_s.strip.presence : nil
+      self.delivery_area = delivery_method_delivery? ? area : nil
+      self.delivery_fee = if !delivery_method_delivery? then 0
+      elsif fee.to_s.strip.empty? && area then area.fee
+      else fee
+      end
       settle # a new fee can turn "paid" back into "to be paid"
       save!
+      remember_where_they_are
     end
   rescue ActiveRecord::RecordInvalid
     # Nothing was saved, so put this object back the way the database has
@@ -258,6 +266,16 @@ class Order < ApplicationRecord
       settle
       save!
       payment
+    end
+
+    # The first delivery teaches us where a customer is, so the next one
+    # starts filled in. Blanks only: what is already known is not replaced.
+    def remember_where_they_are
+      return unless delivery_method_delivery?
+
+      customer.delivery_area ||= delivery_area
+      customer.location ||= delivery_address
+      customer.save! if customer.changed?
     end
 
     def put_back(item, by:, reason:)

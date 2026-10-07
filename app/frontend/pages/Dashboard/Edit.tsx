@@ -6,6 +6,7 @@ import Button, { ButtonLink } from '@/components/ui/Button'
 import PageHeader from '@/components/ui/PageHeader'
 import PickAndOrder from '@/components/ui/PickAndOrder'
 import type { Pick } from '@/components/ui/PickAndOrder'
+import { confirmAction } from '@/lib/confirm'
 
 // Props from DashboardController#edit (Dashboard#choices): everything this
 // person is allowed to show, with what is switched on now, in their order.
@@ -22,8 +23,8 @@ export default function DashboardEdit({ tiles, panels, max_tiles, customised }: 
     form.patch('/dashboard') // -> DashboardController#update
   }
 
-  function reset() {
-    if (!window.confirm('Go back to the standard dashboard?')) return
+  async function reset() {
+    if (!(await confirmAction('Go back to the standard dashboard?', { confirm: 'Reset it' }))) return
     router.patch('/dashboard', { reset: true })
   }
 

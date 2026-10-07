@@ -15,6 +15,7 @@ import { formatMoney } from '@/lib/format'
 import { useCan } from '@/lib/permissions'
 import StockLevelBadge from '@/components/StockLevelBadge'
 import type { StockLevel } from '@/lib/stock'
+import { confirmAction } from '@/lib/confirm'
 
 type VariantRow = {
   id: number
@@ -65,8 +66,8 @@ export default function ProductShow({ product }: Props) {
     form.patch(`/products/${product.id}/variant_prices`, { preserveScroll: true })
   }
 
-  function archive() {
-    if (!window.confirm(`Archive ${product.name}? It leaves your product list but keeps its history.`)) return
+  async function archive() {
+    if (!(await confirmAction(`Archive ${product.name}? It leaves your product list but keeps its history.`, { confirm: 'Archive' }))) return
     router.patch(`/products/${product.id}/archive`)
   }
 

@@ -28,6 +28,7 @@ type Props = {
   lives: { id: number; name: string; orders: number; sales_pesewas: number }[]
   customers: { id: number; name: string; orders: number; sales_pesewas: number }[] | null // null = may not see customers
   money_in: { name: string; amount_pesewas: number }[]
+  expenses: { total_pesewas: number; by_category: { name: string; amount_pesewas: number }[] } | null // null = may not see
   sees_costs: boolean
 }
 
@@ -51,7 +52,7 @@ function Change({ now, before, days }: { now: number; before: number; days: numb
 }
 
 export default function ReportsShow(props: Props) {
-  const { period, presets, totals, previous, over_time, top_products, channels, lives, customers, money_in, sees_costs } = props
+  const { period, presets, totals, previous, over_time, top_products, channels, lives, customers, money_in, expenses, sees_costs } = props
   const [from, setFrom] = useState(period.from)
   const [to, setTo] = useState(period.to)
   const [custom, setCustom] = useState(period.key === 'custom')
@@ -73,6 +74,11 @@ export default function ReportsShow(props: Props) {
     ...(totals.profit_pesewas !== undefined ? [{ label: 'Profit', value: formatMoney(totals.profit_pesewas) }] : []),
     { label: 'Orders', value: String(totals.orders), hint: totals.units === 1 ? '1 item' : `${totals.units} items` },
     { label: 'Average order', value: formatMoney(totals.orders === 0 ? 0 : Math.round(totals.sales_pesewas / totals.orders)) },
+    // Expenses, and what is really left, for those allowed to see them.
+    ...(expenses ? [{ label: 'Expenses', value: formatMoney(expenses.total_pesewas), href: '/expenses' }] : []),
+    ...(expenses && totals.profit_pesewas !== undefined
+      ? [{ label: 'Net profit', value: formatMoney(totals.profit_pesewas - expenses.total_pesewas), hint: 'Profit less expenses' }]
+      : []),
   ]
 
   return (
@@ -179,6 +185,16 @@ export default function ReportsShow(props: Props) {
               empty="Nobody bought in this period."
               format={formatMoney}
               rows={customers.map((row) => ({ key: row.id, label: row.name, note: orders(row.orders), value: row.sales_pesewas }))}
+            />
+          </Panel>
+        )}
+
+        {expenses && (
+          <Panel title="Expenses">
+            <BarList
+              empty="Nothing spent in this period."
+              format={formatMoney}
+              rows={expenses.by_category.map((row) => ({ key: row.name, label: row.name, value: row.amount_pesewas }))}
             />
           </Panel>
         )}

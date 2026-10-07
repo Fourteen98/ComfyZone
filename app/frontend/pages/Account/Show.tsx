@@ -10,6 +10,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
 import TextField from '@/components/ui/TextField'
 import { guessDeviceName, passkeysSupported, registerPasskey } from '@/lib/passkeys'
+import { confirmAction } from '@/lib/confirm'
 
 type Passkey = {
   id: number
@@ -44,8 +45,8 @@ export default function AccountShow({ passkeys }: { passkeys: Passkey[] }) {
     }
   }
 
-  function remove(passkey: Passkey) {
-    if (!window.confirm(`Remove "${passkey.name}"? That device will need your password to log in.`)) return
+  async function remove(passkey: Passkey) {
+    if (!(await confirmAction(`Remove "${passkey.name}"? That device will need your password to log in.`, { confirm: 'Remove', danger: true }))) return
     router.delete(`/account/passkeys/${passkey.id}`) // -> Account::PasskeysController#destroy
   }
 

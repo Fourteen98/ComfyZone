@@ -1,5 +1,6 @@
 class Customer < ApplicationRecord
   has_many :orders, dependent: :restrict_with_error
+  belongs_to :delivery_area, optional: true # where they usually are
 
   # "@Ama_K " -> "ama_k". nil if nothing is left.
   normalizes :handle, with: ->(handle) { handle.to_s.strip.delete_prefix("@").gsub(/\s+/, "").downcase.presence }
