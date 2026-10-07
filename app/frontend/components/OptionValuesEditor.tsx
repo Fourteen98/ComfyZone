@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import Button from '@/components/ui/Button'
+import ColourField from '@/components/ui/ColourField'
 
 export type OptionValue = { label: string; swatch?: string | null }
 
@@ -92,17 +93,11 @@ export default function OptionValuesEditor({ values, onChange, withSwatches, err
             {values.map((value, index) => (
               // Index as key is right here: rows have no id of their own, and
               // keeping the key stable while typing keeps the cursor in place.
-              <li key={index} className="flex items-center gap-1 px-2 py-1.5">
+              <li key={index} className="flex flex-wrap items-center gap-1 px-2 py-1.5">
                 <span className="w-7 text-center text-sm text-taupe-500 tabular-nums">{index + 1}</span>
 
                 {withSwatches && (
-                  <input
-                    type="color"
-                    aria-label={`Colour for ${value.label}`}
-                    value={value.swatch ?? '#b3a396'}
-                    onChange={(e) => update(index, { swatch: e.target.value })}
-                    className="size-9 shrink-0 cursor-pointer rounded-md border border-taupe-300 bg-white p-0.5"
-                  />
+                  <ColourField label={value.label} value={value.swatch} onChange={(swatch) => update(index, { swatch })} />
                 )}
 
                 <input
@@ -110,35 +105,39 @@ export default function OptionValuesEditor({ values, onChange, withSwatches, err
                   value={value.label}
                   maxLength={30}
                   onChange={(e) => update(index, { label: e.target.value })}
-                  className="min-h-10 min-w-0 flex-1 rounded-md border-transparent bg-transparent px-2 text-base hover:border-taupe-300 focus:border-wine-700 focus:bg-white focus:ring-1 focus:ring-wine-700"
+                  className="min-h-10 min-w-24 flex-1 rounded-md border-transparent bg-transparent px-2 text-base hover:border-taupe-300 focus:border-wine-700 focus:bg-white focus:ring-1 focus:ring-wine-700"
                 />
 
-                <button
-                  type="button"
-                  className={iconButton}
-                  onClick={() => move(index, -1)}
-                  disabled={index === 0}
-                  aria-label={`Move ${value.label} up`}
-                >
-                  <ArrowUp className="size-5" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className={iconButton}
-                  onClick={() => move(index, 1)}
-                  disabled={index === values.length - 1}
-                  aria-label={`Move ${value.label} down`}
-                >
-                  <ArrowDown className="size-5" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className={iconButton}
-                  onClick={() => remove(index)}
-                  aria-label={`Remove ${value.label}`}
-                >
-                  <X className="size-5" aria-hidden="true" />
-                </button>
+                {/* Kept together, so on a narrow phone all three drop to the
+                    next line as one group instead of splitting up. */}
+                <span className="ml-auto flex shrink-0">
+                  <button
+                    type="button"
+                    className={iconButton}
+                    onClick={() => move(index, -1)}
+                    disabled={index === 0}
+                    aria-label={`Move ${value.label} up`}
+                  >
+                    <ArrowUp className="size-5" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className={iconButton}
+                    onClick={() => move(index, 1)}
+                    disabled={index === values.length - 1}
+                    aria-label={`Move ${value.label} down`}
+                  >
+                    <ArrowDown className="size-5" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className={iconButton}
+                    onClick={() => remove(index)}
+                    aria-label={`Remove ${value.label}`}
+                  >
+                    <X className="size-5" aria-hidden="true" />
+                  </button>
+                </span>
               </li>
             ))}
           </ol>
