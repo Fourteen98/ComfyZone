@@ -4,6 +4,8 @@ import type { FormEvent } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import Checkbox from '@/components/ui/Checkbox'
+import MoneyField from '@/components/ui/MoneyField'
 import Chip from '@/components/ui/Chip'
 import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
@@ -11,7 +13,7 @@ import SelectField from '@/components/ui/SelectField'
 import TextField from '@/components/ui/TextField'
 import StockLevelBadge from '@/components/StockLevelBadge'
 import type { OptionValue } from '@/components/OptionValuesEditor'
-import { formatMoney } from '@/lib/format'
+import { formatMoney, toMoneyInput } from '@/lib/format'
 import { adjustmentReasons, reasonLabels } from '@/lib/stock'
 import type { StockLevel } from '@/lib/stock'
 
@@ -42,10 +44,12 @@ type Props = {
   movements: Movement[]
   movements_total: number
   can_adjust: boolean
+  can_set_cost: boolean
+  siblings_without_cost: number
 }
 
 // Props from StockController#show
-export default function StockShow({ variant, movements, movements_total, can_adjust }: Props) {
+export default function StockShow({ variant, movements, movements_total, can_adjust, can_set_cost, siblings_without_cost }: Props) {
   const form = useForm({ reason: '', quantity: '', note: '' })
   const errors = form.errors as Record<string, string[] | undefined>
 
@@ -57,6 +61,19 @@ export default function StockShow({ variant, movements, movements_total, can_adj
   // What the count will become, shown before she saves. Rails works out the
   // real figure again at the moment of saving, from the latest number.
   const after = !typed || !direction ? null : direction === 'set' ? amount : direction === 'out' ? variant.stock - amount : variant.stock + amount
+
+  // ----- what one cost (for stock that never came through a purchase) -----
+  const noCost = variant.average_cost_pesewas === 0
+  const costForm = useForm({
+    cost: variant.average_cost_pesewas ? toMoneyInput(variant.average_cost_pesewas) : '',
+    whole_product: siblings_without_cost > 0,
+  })
+  const costErrors = costForm.errors as Record<string, string[] | undefined>
+
+  function saveCost(event: FormEvent) {
+    event.preventDefault()
+    costForm.patch(`/stock/${variant.id}/cost`, { preserveScroll: true }) // -> Stock::CostsController#update
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -106,6 +123,40 @@ export default function StockShow({ variant, movements, movements_total, can_adj
                 ` Each one cost you ${formatMoney(variant.average_cost_pesewas)} on average.`}
             </p>
           </section>
+
+          {can_set_cost && (
+            <Panel title="What each one cost you">
+              <form onSubmit={saveCost} className="space-y-4">
+                <p className="text-sm text-taupe-700">
+                  {noCost
+                    ? 'The app has not been told. Until it is, this item counts as GH₵ 0 in your stock value, and selling it looks like pure profit.'
+                    : 'Worked out from your purchases. Change it only if it is wrong; the next purchase is blended in as usual.'}
+                </p>
+                <MoneyField
+                  id="cost"
+                  aria-label="What each one cost you"
+                  placeholder="0.00"
+                  required
+                  value={costForm.data.cost}
+                  onChange={(e) => {
+                    costForm.setData('cost', e.target.value)
+                    costForm.clearErrors('cost')
+                  }}
+                  error={costErrors.cost}
+                />
+                {siblings_without_cost > 0 && (
+                  <Checkbox
+                    label={`Use it for the ${siblings_without_cost} other ${siblings_without_cost === 1 ? 'option' : 'options'} of ${variant.product.name} with no cost yet`}
+                    checked={costForm.data.whole_product}
+                    onChange={(e) => costForm.setData('whole_product', e.target.checked)}
+                  />
+                )}
+                <Button type="submit" block variant={noCost ? 'primary' : 'secondary'} disabled={costForm.processing}>
+                  Save the cost
+                </Button>
+              </form>
+            </Panel>
+          )}
 
           {can_adjust && (
             <Panel title="Correct the count">

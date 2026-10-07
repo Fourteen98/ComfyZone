@@ -37,7 +37,7 @@ class Dashboard
     Tile.new("money_owed", "Money owed to you", %w[ orders.view ], :money, "/orders?status=claimed", -> { Order.owing.sum(Arel.sql(Order::BALANCE_SQL)) }),
     Tile.new("refunds_due", "Refunds to give", %w[ orders.view ], :count, "/orders?status=refunds", -> { Order.refund_due.count }),
     Tile.new("low_stock", "Low on stock", %w[ stock.view ], :count, "/stock?show=low", -> { StockLedger.needing_attention.count }),
-    Tile.new("stock_value", "Stock value", %w[ stock.view costs.view ], :money, "/stock", -> { Variant.sum("stock_on_hand * average_cost_pesewas") })
+    Tile.new("stock_value", "Stock value", %w[ stock.view costs.view ], :money, "/stock", -> { StockLedger.value_pesewas })
   ].freeze
 
   PANELS = [

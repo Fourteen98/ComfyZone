@@ -84,6 +84,23 @@ class StockLedger
       .order("variants.stock_on_hand ASC, lower(products.name), variants.position")
   end
 
+  # What everything on the shelf cost her. The same items the Stock page
+  # lists (active variants of active products), so the dashboard tile and
+  # the Stock page always agree. Negative counts are treated as none.
+  def self.sellable
+    Variant.active.joins(:product).merge(Product.active)
+  end
+
+  def self.value_pesewas
+    sellable.sum("GREATEST(variants.stock_on_hand, 0) * variants.average_cost_pesewas")
+  end
+
+  # In stock but with no cost recorded: these count as GH₵ 0 in the value
+  # above until she says what they cost (CostCorrection).
+  def self.uncosted
+    sellable.where("variants.stock_on_hand > 0 AND variants.average_cost_pesewas = 0")
+  end
+
   # Moving average: (value of what is on the shelf + value arriving) / new count.
   #
   #   10 on hand at GH₵ 50  +  10 arriving for GH₵ 700  ->  20 at GH₵ 60
@@ -91,6 +108,11 @@ class StockLedger
   # Rational arithmetic (to_r) keeps the division exact until the final round.
   def self.blended_cost(variant, quantity, total_cost_pesewas)
     on_hand = [ variant.stock_on_hand, 0 ].max # ignore negative stock
+    # A cost of 0 means "never told", not "free" (stock counted in by hand
+    # has no cost). Blending real money with those zeros would halve the
+    # answer, so units of unknown cost are simply valued at the new price.
+    return (total_cost_pesewas.to_r / quantity).round if variant.average_cost_pesewas.zero?
+
     value_on_hand = on_hand * variant.average_cost_pesewas
 
     ((value_on_hand + total_cost_pesewas).to_r / (on_hand + quantity)).round

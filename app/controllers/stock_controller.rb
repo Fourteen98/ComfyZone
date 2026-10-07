@@ -11,10 +11,12 @@ class StockController < InertiaController
     variants = variants.where("products.name ILIKE ?", "%#{Product.sanitize_sql_like(params[:q].strip)}%") if params[:q].present?
 
     all = variants.to_a
-    show = %w[ low out ].include?(params[:show]) ? params[:show] : "all"
+    uncosted = can?("costs.view") ? all.select { |variant| variant.stock_on_hand.positive? && variant.average_cost_pesewas.zero? } : []
+    show = %w[ low out ].include?(params[:show]) || (params[:show] == "uncosted" && uncosted.any?) ? params[:show] : "all"
     shown = case show
     when "low" then all.select { |variant| variant.stock_level == :low }
     when "out" then all.select { |variant| variant.stock_level == :out }
+    when "uncosted" then uncosted
     else all
     end
 
@@ -25,7 +27,10 @@ class StockController < InertiaController
       counts: {
         all: all.size,
         low: all.count { |variant| variant.stock_level == :low },
-        out: all.count { |variant| variant.stock_level == :out }
+        out: all.count { |variant| variant.stock_level == :out },
+        # In stock with no cost recorded, so worth GH₵ 0 in the total below.
+        # nil for people who may not see costs.
+        uncosted: can?("costs.view") ? uncosted.size : nil
       },
       totals: {
         units: all.sum { |variant| [ variant.stock_on_hand, 0 ].max },
@@ -55,7 +60,10 @@ class StockController < InertiaController
       },
       movements: movements.map { |movement| movement_props(movement) },
       movements_total: variant.stock_movements.count,
-      can_adjust: can?("stock.adjust")
+      can_adjust: can?("stock.adjust"),
+      can_set_cost: can?("stock.adjust") && can?("costs.view"),
+      # How many other sizes/colours of this product also have no cost yet.
+      siblings_without_cost: can?("costs.view") ? variant.product.variants.where(average_cost_pesewas: 0).where.not(id: variant.id).count : 0
     }
   end
 
@@ -73,7 +81,8 @@ class StockController < InertiaController
             option_values: variant.option_values,
             stock: variant.stock_on_hand,
             level: variant.stock_level,
-            value_pesewas: can?("costs.view") ? variant.stock_value_pesewas : nil
+            value_pesewas: can?("costs.view") ? variant.stock_value_pesewas : nil,
+            no_cost: can?("costs.view") && variant.stock_on_hand.positive? && variant.average_cost_pesewas.zero?
           }
         }
       }

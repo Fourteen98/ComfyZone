@@ -27,7 +27,7 @@ class StockControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Ankara wrap dress", group[:name]
     assert_equal [ [ "M / Black", 10, "ok" ], [ "M / Red", 0, "out" ], [ "L / Black", 0, "out" ], [ "L / Red", 2, "low" ] ],
       group[:variants].map { |v| v.values_at(:name, :stock, :level).map(&:to_s).then { |n, s, l| [ n, s.to_i, l ] } }
-    assert_equal({ all: 4, low: 1, out: 2 }.stringify_keys, inertia.props[:counts].to_h.stringify_keys)
+    assert_equal({ all: 4, low: 1, out: 2, uncosted: 0 }.stringify_keys, inertia.props[:counts].to_h.stringify_keys)
     assert_equal 12, inertia.props[:totals][:units]
     assert_equal 76_000, inertia.props[:totals][:value_pesewas]
     assert_nil inertia.props[:groups].find { |g| g[:name] == "Old tote bag" }, "archived products are left out"

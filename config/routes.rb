@@ -79,6 +79,8 @@ Rails.application.routes.draw do
 
   resources :stock, only: %i[ index show ], controller: "stock" do
     resources :adjustments, only: :create, module: :stock
+    # What one cost, for stock that never came through a purchase.
+    resource :cost, only: :update, module: :stock
   end
 
   # Lives. The URLs say /live, the controller is LiveSessionsController.

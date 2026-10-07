@@ -20,14 +20,16 @@ type VariantRow = {
   stock: number
   level: StockLevel
   value_pesewas: number | null // null = may not see costs
+  no_cost: boolean // in stock, but the app was never told what it cost
 }
 
 type Group = { id: number; name: string; low_stock_at: number; thumb_url: string | null; variants: VariantRow[] }
 
 type Props = {
   groups: Group[]
-  filters: { show: 'all' | 'low' | 'out'; q: string }
-  counts: { all: number; low: number; out: number }
+  filters: { show: 'all' | 'low' | 'out' | 'uncosted'; q: string }
+  // uncosted: null = may not see costs
+  counts: { all: number; low: number; out: number; uncosted: number | null }
   totals: { units: number; value_pesewas: number | null }
 }
 
@@ -52,6 +54,8 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
     { key: 'all', label: 'Everything', count: counts.all },
     { key: 'low', label: 'Running low', count: counts.low },
     { key: 'out', label: 'Out of stock', count: counts.out },
+    // Only there while something needs a cost; it disappears once all are set.
+    ...(counts.uncosted ? [{ key: 'uncosted', label: 'No cost yet', count: counts.uncosted }] : []),
   ]
 
   const stats = [
@@ -89,6 +93,18 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
           <div className="mt-6">
             <StatStrip stats={stats} />
           </div>
+
+          {/* Why "What it cost you" may look too low, and where to fix it. */}
+          {counts.uncosted ? (
+            <p className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
+              {counts.uncosted === 1 ? '1 item is' : `${counts.uncosted} items are`} in stock with no cost recorded, so{' '}
+              {counts.uncosted === 1 ? 'it counts' : 'they count'} as GH₵ 0 in "What it cost you" and in profit.{' '}
+              <Link href="/stock" data={params('uncosted')} className="font-medium underline underline-offset-4">
+                Show {counts.uncosted === 1 ? 'it' : 'them'}
+              </Link>
+              , then open each one to say what it cost.
+            </p>
+          ) : null}
 
           <div className="mt-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-taupe-200">
             <nav aria-label="Show" className="flex gap-1 overflow-x-auto">
@@ -174,7 +190,7 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
                           <StockLevelBadge level={variant.level} />
                           {variant.value_pesewas !== null && variant.stock > 0 && (
                             <span className="hidden w-28 text-right text-sm text-taupe-700 tabular-nums sm:block">
-                              {formatMoney(variant.value_pesewas)}
+                              {variant.no_cost ? 'No cost yet' : formatMoney(variant.value_pesewas)}
                             </span>
                           )}
                           <span
