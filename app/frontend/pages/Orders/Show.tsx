@@ -34,6 +34,7 @@ type Props = {
     customer_id: number
     customer_phone: string | null
     customer_location: string | null
+    customer_country: string | null
     customer_region: string | null
     customer_place: string | null
     live: { id: number; title: string } | null
@@ -345,7 +346,7 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
                 orderId={order.id}
                 delivery={delivery}
                 locations={locations}
-                known={{ region: order.customer_region, place: order.customer_place, address: order.customer_location }}
+                known={{ country: order.customer_country, region: order.customer_region, place: order.customer_place, address: order.customer_location }}
                 onDone={() => setOpen(null)}
               />
             ) : delivery.method === null ? (
@@ -361,7 +362,7 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
               <p>They will collect it.</p>
             ) : (
               <div className="space-y-1">
-                <p>Being sent to them{delivery.place ? ` in ${delivery.place}, ${delivery.region}` : ''}, {delivery.fee_pesewas > 0 ? `${formatMoney(delivery.fee_pesewas)} delivery` : 'free delivery'}.</p>
+                <p>Being sent to them{delivery.place ? ` in ${delivery.place}, ${delivery.region ?? delivery.country}` : ''}, {delivery.fee_pesewas > 0 ? `${formatMoney(delivery.fee_pesewas)} delivery` : 'free delivery'}.</p>
                 {/* whitespace-pre-line keeps the line breaks she typed. */}
                 {delivery.address ? (
                   <p className="whitespace-pre-line text-taupe-800">{delivery.address}</p>

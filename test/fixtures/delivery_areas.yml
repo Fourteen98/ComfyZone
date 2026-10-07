@@ -1,23 +1,33 @@
 osu:
   name: Osu
+  country: Ghana
   region: Greater Accra
   fee_pesewas: 2000
   active: true
 
 tema:
   name: Tema
+  country: Ghana
   region: Greater Accra
   fee_pesewas: 4500
   active: true
 
 adum:
   name: Adum
+  country: Ghana
   region: Ashanti
   fee_pesewas: 7000
   active: true
 
 closed:
   name: Wa
+  country: Ghana
   region: Upper West
   fee_pesewas: 8000
   active: false
+
+guangzhou:
+  name: Guangzhou
+  country: China
+  fee_pesewas: 0
+  active: true

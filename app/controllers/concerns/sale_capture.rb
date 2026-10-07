@@ -2,6 +2,7 @@
 # new-order page so both offer exactly the same products and buyers.
 module SaleCapture
   extend ActiveSupport::Concern
+  include LocationPicker # location_options, where_from
 
   private
     # Everything she could sell right now, with live stock counts.
@@ -29,24 +30,14 @@ module SaleCapture
     def known_buyers
       Customer.includes(:delivery_area).order(updated_at: :desc).limit(500).map { |customer|
         { id: customer.id, handle: customer.handle, name: customer.name, phone: customer.phone,
-          location: customer.location, region: customer.region, place: customer.delivery_area&.name }
+          location: customer.location, country: customer.country, region: customer.region,
+          place: customer.delivery_area&.name }
       }
     end
 
     # Where a sale can come from, for the pills on the capture screen.
     def sales_channels(scope = SalesChannel.active)
       scope.ordered.map { |channel| { id: channel.id, name: channel.name, kind: channel.kind } }
-    end
-
-    # Everything a region + place picker needs: the fixed regions, and the
-    # places known so far (each with its usual delivery fee).
-    def location_options
-      {
-        regions: Region::ALL,
-        places: DeliveryArea.active.where.not(region: nil).ordered.map { |area|
-          { id: area.id, region: area.region, name: area.name, fee: area.fee, fee_pesewas: area.fee_pesewas }
-        }
-      }
     end
 
     def order_summary(order)

@@ -1,4 +1,5 @@
 class PurchasesController < InertiaController
+  include LocationPicker
   require_permission "purchases.view", only: %i[ index show ]
   require_permission "purchases.manage", except: %i[ index show ]
 
@@ -92,10 +93,13 @@ class PurchasesController < InertiaController
     # new one (new_supplier: { name, phone }). A new one is only built here;
     # it is saved together with the purchase, or not at all.
     def chosen_supplier
-      fields = params.fetch(:purchase, {}).permit(:supplier_id, new_supplier: %i[ name phone ])
+      fields = params.fetch(:purchase, {}).permit(:supplier_id, new_supplier: %i[ name phone country region place ])
 
       if fields[:new_supplier].present?
-        Supplier.new(fields[:new_supplier])
+        supplier = Supplier.new(fields[:new_supplier].slice(:name, :phone))
+        # Where they are, if she said. (Goods bought abroad: say which country.)
+        supplier.locate(**fields[:new_supplier].slice(:country, :region, :place).to_h.symbolize_keys.reverse_merge(country: nil, region: nil, place: nil))
+        supplier
       else
         Supplier.find_by(id: fields[:supplier_id])
       end
@@ -151,6 +155,7 @@ class PurchasesController < InertiaController
         purchased_on: purchase.purchased_on.strftime("%-d %b %Y"),
         supplier: purchase.supplier&.name,
         supplier_phone: purchase.supplier&.phone,
+        supplier_where: purchase.supplier&.where_text,
         delivery_method: purchase.delivery_method,
         reference: purchase.reference,
         status: purchase.status,
@@ -208,7 +213,8 @@ class PurchasesController < InertiaController
         },
         # Set when arriving from a supplier's page ("Record a purchase from them").
         preselected_supplier_id: Supplier.find_by(id: params[:supplier_id])&.id,
-        products: pickable_products
+        products: pickable_products,
+        locations: location_options # for a new supplier's country, region and place
       }
     end
 

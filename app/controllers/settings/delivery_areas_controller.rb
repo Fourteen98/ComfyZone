@@ -9,7 +9,7 @@ class Settings::DeliveryAreasController < InertiaController
 
     render inertia: "Settings/DeliveryAreas/Index", props: {
       areas: DeliveryArea.ordered.map { |area|
-        { id: area.id, name: area.name, region: area.region, fee: area.fee, fee_pesewas: area.fee_pesewas, active: area.active,
+        { id: area.id, name: area.name, group: area.group_name, fee: area.fee, fee_pesewas: area.fee_pesewas, active: area.active,
           orders_count: counts.fetch(area.id, 0) }
       }
     }
@@ -17,7 +17,7 @@ class Settings::DeliveryAreasController < InertiaController
 
   # GET /settings/areas/new
   def new
-    render inertia: "Settings/DeliveryAreas/Form", props: { area: nil, regions: Region::ALL }
+    render inertia: "Settings/DeliveryAreas/Form", props: { area: nil, countries: Country::ALL, home: Country::HOME, regions: Region::ALL }
   end
 
   # POST /settings/areas
@@ -34,12 +34,14 @@ class Settings::DeliveryAreasController < InertiaController
   # GET /settings/areas/:id/edit
   def edit
     render inertia: "Settings/DeliveryAreas/Form", props: {
-      area: { id: @area.id, name: @area.name, region: @area.region.to_s, fee: @area.fee, active: @area.active,
+      area: { id: @area.id, name: @area.name, country: @area.country || Country::HOME, region: @area.region.to_s, fee: @area.fee, active: @area.active,
                  orders_count: @area.orders.count },
+      countries: Country::ALL,
+      home: Country::HOME,
       regions: Region::ALL,
       # Other places, for folding a misspelt twin into this one.
       others: DeliveryArea.where.not(id: @area.id).ordered.map { |area|
-        { value: area.id, label: [ area.name, area.region ].compact.join(", ") }
+        { value: area.id, label: [ area.name, area.group_name ].compact.join(", ") }
       }
     }
   end
@@ -75,6 +77,6 @@ class Settings::DeliveryAreasController < InertiaController
     end
 
     def area_params
-      params.expect(delivery_area: [ :name, :region, :fee, :active ])
+      params.expect(delivery_area: [ :name, :country, :region, :fee, :active ])
     end
 end

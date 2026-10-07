@@ -1,6 +1,8 @@
 class Supplier < ApplicationRecord
   has_many :purchases, dependent: :nullify
 
+  include Located # country, region, exact place; locate(...), where_text
+
   # Many-to-many, in two steps: the pairings, then "through" them to the
   # products. This gives supplier.products, supplier.product_ids, and
   # supplier.product_ids = [4, 7] to replace the whole set.
@@ -23,6 +25,8 @@ class Supplier < ApplicationRecord
     if: -> { phone.present? }
   validate :phone_has_enough_digits, if: -> { phone.present? }
   validates :note, length: { maximum: 500 }
+  normalizes :location, with: ->(text) { text.to_s.squish.presence }
+  validates :location, length: { maximum: 80 }
 
   scope :ordered, -> { order(Arel.sql("lower(name)")) }
 

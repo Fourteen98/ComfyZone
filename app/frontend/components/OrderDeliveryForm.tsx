@@ -11,7 +11,8 @@ export type Delivery = {
   fee: string // as typed, e.g. "25"
   fee_pesewas: number
   address: string | null
-  region: string | null // where it is going
+  country: string | null // where it is going
+  region: string | null
   place: string | null
 }
 
@@ -20,7 +21,7 @@ type Props = {
   delivery: Delivery
   locations: Locations
   /** Where this customer usually is, to start the form with. */
-  known: { region: string | null; place: string | null; address: string | null }
+  known: { country: string | null; region: string | null; place: string | null; address: string | null }
   onDone: () => void
 }
 
@@ -30,8 +31,10 @@ type Props = {
 export default function OrderDeliveryForm({ orderId, delivery, locations, known, onDone }: Props) {
   const form = useForm<DeliveryChoice & Where>({
     delivery_method: delivery.method ?? '',
-    region: delivery.region ?? known.region ?? '',
-    place: delivery.place ?? known.place ?? '',
+    // Where it went last time if it was sent, else where the customer is.
+    ...(delivery.place || delivery.country
+      ? { country: delivery.country ?? locations.home, region: delivery.region ?? '', place: delivery.place ?? '' }
+      : { country: known.country ?? locations.home, region: known.region ?? '', place: known.place ?? '' }),
     fee: delivery.fee_pesewas > 0 ? delivery.fee : '',
     address: delivery.address ?? known.address ?? '',
   })

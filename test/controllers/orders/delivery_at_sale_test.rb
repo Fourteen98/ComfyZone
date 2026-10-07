@@ -101,8 +101,10 @@ class Orders::DeliveryAtSaleTest < ActionDispatch::IntegrationTest
     get new_order_path
 
     assert_equal Region::ALL, inertia.props[:locations][:regions]
-    assert_equal [ [ "Ashanti", "Adum", 7_000 ], [ "Greater Accra", "Osu", 2_000 ], [ "Greater Accra", "Tema", 4_500 ] ],
-      inertia.props[:locations][:places].map { |place| place.values_at(:region, :name, :fee_pesewas) }
+    assert_equal [ [ "Ghana", "Ashanti", "Adum", 7_000 ], [ "Ghana", "Greater Accra", "Osu", 2_000 ], [ "Ghana", "Greater Accra", "Tema", 4_500 ],
+                   [ "China", nil, "Guangzhou", 0 ] ],
+      inertia.props[:locations][:places].map { |place| place.values_at(:country, :region, :name, :fee_pesewas) }
+    assert_equal [ "Ghana", "Ghana" ], [ inertia.props[:locations][:home], inertia.props[:locations][:countries].first ]
     ama = inertia.props[:buyers].find { |buyer| buyer[:id] == customers(:ama).id }
     assert_equal [ "Greater Accra", "Osu", "East Legon" ], ama.values_at(:region, :place, :location)
   end
@@ -121,11 +123,11 @@ class Orders::DeliveryAtSaleTest < ActionDispatch::IntegrationTest
   # ---- Settings > Locations ---------------------------------------------
 
   test "adds, edits and deletes a place" do
-    post settings_delivery_areas_path, params: { delivery_area: { name: "Madina", region: "Greater Accra", fee: "30" } }
+    post settings_delivery_areas_path, params: { delivery_area: { name: "Madina", country: "Ghana", region: "Greater Accra", fee: "30" } }
     area = DeliveryArea.find_by!(name: "Madina")
     assert_equal 3_000, area.fee_pesewas
 
-    patch settings_delivery_area_path(area), params: { delivery_area: { name: "Madina", region: "Greater Accra", fee: "", active: false } }
+    patch settings_delivery_area_path(area), params: { delivery_area: { name: "Madina", country: "Ghana", region: "Greater Accra", fee: "", active: false } }
     assert_equal [ 0, false ], area.reload.values_at(:fee_pesewas, :active)
 
     order = sale(location: OSU, delivery: { delivery_method: "delivery", fee: "", address: "" })
@@ -135,11 +137,11 @@ class Orders::DeliveryAtSaleTest < ActionDispatch::IntegrationTest
   end
 
   test "a place needs a region, a name not already in it, and a readable fee" do
-    post settings_delivery_areas_path, params: { delivery_area: { name: "osu", region: "Greater Accra", fee: "abc" } }
+    post settings_delivery_areas_path, params: { delivery_area: { name: "osu", country: "Ghana", region: "Greater Accra", fee: "abc" } }
     follow_redirect!
     assert_equal %w[ fee name ], inertia.props[:errors].keys.map(&:to_s).sort
 
-    post settings_delivery_areas_path, params: { delivery_area: { name: "Nowhere", region: "", fee: "" } }
+    post settings_delivery_areas_path, params: { delivery_area: { name: "Nowhere", country: "Ghana", region: "", fee: "" } }
     follow_redirect!
     assert inertia.props[:errors][:region].any?
 
@@ -163,5 +165,115 @@ class Orders::DeliveryAtSaleTest < ActionDispatch::IntegrationTest
 
     patch customer_path(kofi), params: { customer: params.merge(region: "", place: "") }
     assert_equal [ nil, nil ], kofi.reload.values_at(:region, :delivery_area)
+  end
+
+  # ---- Countries ----------------------------------------------------------
+
+  test "a buyer abroad is saved with their country and city, and no region" do
+    order = sale(location: { country: "United Kingdom", region: "", place: "London" })
+
+    assert_equal [ "United Kingdom", nil, "London", "London, United Kingdom" ],
+      [ order.customer.country, order.customer.region, order.customer.delivery_area.name, order.customer.where_text ]
+  end
+
+  test "Ghana with no region says nothing, so nothing is recorded" do
+    assert_nil sale(location: { country: "Ghana", region: "", place: "" }).customer.country
+  end
+
+  test "an order can be sent abroad, with the fee typed" do
+    order = sale
+
+    patch order_delivery_path(order), params: { delivery: { delivery_method: "delivery", country: "United States", region: "", place: "Houston", fee: "450", address: "" } }
+    get order_path(order)
+
+    assert_equal [ "United States", nil, "Houston", 45_000 ], inertia.props[:order][:delivery].values_at(:country, :region, :place, :fee_pesewas)
+  end
+
+  test "reports list regions at home and countries abroad side by side" do
+    sale(location: OSU)
+    sale(buyer: { name: "London buyer" }, location: { country: "United Kingdom", region: "", place: "London" })
+
+    get reports_path, params: { range: "today" }
+
+    assert_equal [ "Greater Accra", "United Kingdom" ], inertia.props[:regions].pluck(:name).sort
+    assert_equal [ [ "London", "United Kingdom" ], [ "Osu", "Greater Accra" ] ], inertia.props[:places].map { |p| p.values_at(:name, :region) }.sort
+  end
+
+  test "a customer's country can be set by hand, and Ghana alone clears it" do
+    kofi = customers(:kofi)
+    params = { handle: "kofi.b", name: "", phone: "", location: "", note: "" }
+
+    patch customer_path(kofi), params: { customer: params.merge(country: "Nigeria", region: "", place: "Lagos") }
+    assert_equal [ "Nigeria", "Lagos" ], [ kofi.reload.country, kofi.delivery_area.name ]
+    get edit_customer_path(kofi)
+    assert_equal [ "Nigeria", "", "Lagos" ], inertia.props[:customer].values_at(:country, :region, :place)
+
+    patch customer_path(kofi), params: { customer: params.merge(country: "Ghana", region: "", place: "") }
+    assert_equal [ nil, nil ], kofi.reload.values_at(:country, :delivery_area)
+  end
+
+  # ---- Suppliers ----------------------------------------------------------
+
+  test "a supplier abroad: country, city and address" do
+    post suppliers_path, params: { supplier: { name: "Guangzhou Fabrics", phone: "+86 20 1234 5678", note: "", location: "Zhongda market, stall 14",
+                                               country: "China", region: "", place: "Guangzhou" } }
+
+    supplier = Supplier.find_by!(name: "Guangzhou Fabrics")
+    assert_equal [ "China", delivery_areas(:guangzhou), "Zhongda market, stall 14" ], supplier.values_at(:country, :delivery_area, :location)
+
+    get supplier_path(supplier)
+    assert_equal [ "Guangzhou, China, Zhongda market, stall 14", true ], inertia.props[:supplier].values_at(:where, :abroad)
+    get suppliers_path
+    assert_equal "Guangzhou, China", inertia.props[:suppliers].find { |s| s[:id] == supplier.id }[:where]
+  end
+
+  test "a supplier at home has a region and place, editable and clearable" do
+    supplier = suppliers(:kumasi)
+    base = { name: supplier.name, phone: "024 111 2222", note: "", location: "" }
+
+    patch supplier_path(supplier), params: { supplier: base.merge(country: "Ghana", region: "Ashanti", place: "Kejetia") }
+    assert_equal [ "Ghana", "Ashanti", "Kejetia" ], [ supplier.reload.country, supplier.region, supplier.delivery_area.name ]
+    get edit_supplier_path(supplier)
+    assert_equal [ "Ghana", "Ashanti", "Kejetia" ], inertia.props[:supplier].values_at(:country, :region, :place)
+    assert inertia.props[:locations][:countries].include?("China")
+
+    patch supplier_path(supplier), params: { supplier: base.merge(country: "Ghana", region: "", place: "") }
+    assert_nil supplier.reload.country
+  end
+
+  test "sending no location at all leaves a supplier where they were" do
+    supplier = suppliers(:kumasi)
+    supplier.update!(country: "China")
+
+    patch supplier_path(supplier), params: { supplier: { name: supplier.name, phone: "024 111 2222", note: "x" } }
+
+    assert_equal "China", supplier.reload.country
+  end
+
+  # ---- During a live ------------------------------------------------------
+
+  test "a claim during a live can note where the buyer is; delivery is chosen later" do
+    live = LiveSession.create!(user: users(:one))
+
+    order = sale(buyer: "@newbuyer", live: live, location: { country: "Ghana", region: "Ashanti", place: "Adum" },
+                 delivery: { delivery_method: "delivery", fee: "", address: "" })
+
+    assert_equal [ "Ghana", "Ashanti", delivery_areas(:adum) ], order.customer.values_at(:country, :region, :delivery_area)
+    assert_nil order.delivery_method, "pick-up or delivery is still decided afterwards"
+
+    get live_path(live)
+    assert_equal Region::ALL, inertia.props[:locations][:regions]
+    buyer = inertia.props[:buyers].find { |b| b[:handle] == "newbuyer" }
+    assert_equal [ "Ashanti", "Adum" ], buyer.values_at(:region, :place)
+  end
+
+  test "a claim that says nothing about location leaves a known buyer where they were" do
+    customers(:ama).update!(delivery_area: delivery_areas(:osu))
+    live = LiveSession.create!(user: users(:one))
+
+    sale(buyer: "@ama_k", live: live)
+    sale(buyer: "@ama_k", live: live, location: { country: "Ghana", region: "", place: "" })
+
+    assert_equal delivery_areas(:osu), customers(:ama).reload.delivery_area
   end
 end

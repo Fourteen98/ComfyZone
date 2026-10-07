@@ -29,6 +29,7 @@ type Props = {
     purchased_on: string
     supplier: string | null
     supplier_phone: string | null
+    supplier_where: string | null // "Guangzhou, China"
     delivery_method: 'pickup' | 'delivery'
     reference: string | null
     status: 'ordered' | 'received'
@@ -110,6 +111,7 @@ export default function PurchaseShow({ purchase }: Props) {
             {purchase.supplier_phone}
           </a>
         )}
+        {purchase.supplier_where && <p className="text-taupe-700">{purchase.supplier_where}</p>}
         {purchase.received_at && <p className="text-taupe-700">Arrived {purchase.received_at}</p>}
         {purchase.reference && <p className="text-taupe-700">Ref {purchase.reference}</p>}
       </div>

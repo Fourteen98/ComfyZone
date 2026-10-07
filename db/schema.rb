@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_070005) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -63,6 +63,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_070005) do
     t.datetime "updated_at", null: false
     t.bigint "delivery_area_id"
     t.string "region"
+    t.string "country"
+    t.index ["country"], name: "index_customers_on_country"
     t.index ["delivery_area_id"], name: "index_customers_on_delivery_area_id"
     t.index ["handle"], name: "index_customers_on_handle", unique: true, where: "(handle IS NOT NULL)"
     t.index ["phone"], name: "index_customers_on_phone"
@@ -76,7 +78,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_070005) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "region"
-    t.index "region, lower((name)::text)", name: "index_delivery_areas_on_region_and_lower_name", unique: true
+    t.string "country"
+    t.index "country, COALESCE(region, ''::character varying), lower((name)::text)", name: "index_delivery_areas_on_country_region_and_lower_name", unique: true
     t.index ["region"], name: "index_delivery_areas_on_region"
     t.check_constraint "fee_pesewas >= 0", name: "delivery_areas_fee_not_negative"
   end
@@ -342,7 +345,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_070005) do
     t.text "note"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "country"
+    t.string "region"
+    t.bigint "delivery_area_id"
+    t.string "location"
     t.index "lower((name)::text)", name: "index_suppliers_on_lower_name", unique: true
+    t.index ["delivery_area_id"], name: "index_suppliers_on_delivery_area_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -406,6 +414,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_070005) do
   add_foreign_key "sessions", "users"
   add_foreign_key "stock_movements", "users"
   add_foreign_key "stock_movements", "variants"
+  add_foreign_key "suppliers", "delivery_areas", on_delete: :nullify
   add_foreign_key "users", "roles"
   add_foreign_key "variants", "products"
 end

@@ -12,6 +12,7 @@ import type { Buyer, SellableProduct } from '@/components/SaleCapture'
 import { formatMoney } from '@/lib/format'
 import type { OrderSummary } from '@/lib/orders'
 import { confirmAction } from '@/lib/confirm'
+import type { Locations } from '@/components/LocationFields'
 
 type Props = {
   live: {
@@ -32,6 +33,7 @@ type Props = {
   // Only sent while claims can be recorded, to people who can sell.
   products?: SellableProduct[]
   buyers?: Buyer[]
+  locations?: Locations // countries, regions and known places
 }
 
 // How long the live has been on, updating by itself.
@@ -50,7 +52,7 @@ function useMinutesSince(iso: string, running: boolean) {
 }
 
 // Props from LiveSessionsController#show
-export default function LiveShow({ live, stats, orders, can_sell, adding, products, buyers }: Props) {
+export default function LiveShow({ live, stats, orders, can_sell, adding, products, buyers, locations }: Props) {
   const minutes = useMinutesSince(live.started_at, live.running)
   const duration = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`)
 
@@ -127,7 +129,7 @@ export default function LiveShow({ live, stats, orders, can_sell, adding, produc
 
       {(live.running || adding) && can_sell && products && buyers && (
         <div className="mt-6">
-          <SaleCapture products={products} buyers={buyers} liveId={live.id} liveChannel={live.channel} />
+          <SaleCapture products={products} buyers={buyers} liveId={live.id} liveChannel={live.channel} locations={locations} />
         </div>
       )}
 

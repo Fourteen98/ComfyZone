@@ -12,6 +12,7 @@ type SupplierRow = {
   id: number
   name: string
   phone: string | null
+  where: string | null // "Guangzhou, China"
   products: string[] // names of what they sell
   purchases_count: number
   spent_pesewas: number
@@ -87,6 +88,7 @@ export default function SuppliersIndex({ suppliers, filters, total }: Props) {
                       <p className="truncate font-medium">{supplier.name}</p>
                       <p className="text-sm text-taupe-700 tabular-nums">
                         {supplier.phone ?? <span className="text-amber-800">No phone number yet</span>}
+                        {supplier.where && <span className="text-taupe-600">, {supplier.where}</span>}
                       </p>
                       <p className="mt-1.5 flex flex-wrap gap-1.5">
                         {supplier.products.length === 0 ? (

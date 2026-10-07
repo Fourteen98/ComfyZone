@@ -14,6 +14,8 @@ import SelectField from '@/components/ui/SelectField'
 import TextAreaField from '@/components/ui/TextAreaField'
 import TextField from '@/components/ui/TextField'
 import type { OptionValue } from '@/components/OptionValuesEditor'
+import LocationFields, { nowhere } from '@/components/LocationFields'
+import type { Locations } from '@/components/LocationFields'
 import { formatMoney, toPesewas } from '@/lib/format'
 
 type PickableVariant = { id: number; name: string; option_values: (OptionValue & { name: string })[]; stock: number }
@@ -39,6 +41,7 @@ type Props = {
     items: { variant_id: number; quantity: number; unit_cost: string }[]
   } | null
   today: string
+  locations: Locations
   suppliers: { id: number; name: string; phone: string | null; product_ids: number[] }[]
   // Set when she came from a supplier's page.
   preselected_supplier_id: number | null
@@ -49,7 +52,7 @@ type Props = {
 // and how many of each variant.
 type Block = { productId: number; cost: string; quantities: Record<number, string> }
 
-export default function PurchaseForm({ purchase, today, suppliers, preselected_supplier_id, products }: Props) {
+export default function PurchaseForm({ purchase, today, suppliers, preselected_supplier_id, products, locations }: Props) {
   const editing = purchase !== null
   const byId = new Map(products.map((product) => [product.id, product]))
 
@@ -59,6 +62,7 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
     supplier_id: String(purchase?.supplier_id ?? preselected_supplier_id ?? ''),
     new_supplier_name: '',
     new_supplier_phone: '',
+    new_supplier_where: nowhere(locations.home),
     reference: purchase?.reference ?? '',
     // Deliberately empty on a new purchase: she must say which it was.
     delivery_method: (purchase?.delivery_method ?? '') as 'pickup' | 'delivery' | '',
@@ -123,7 +127,9 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
         // Either an existing supplier's id, or the details of a new one.
         supplier_id: data.supplier_id === 'new' ? '' : data.supplier_id,
         new_supplier:
-          data.supplier_id === 'new' ? { name: data.new_supplier_name, phone: data.new_supplier_phone } : undefined,
+          data.supplier_id === 'new'
+            ? { name: data.new_supplier_name, phone: data.new_supplier_phone, ...data.new_supplier_where }
+            : undefined,
         reference: data.reference,
         delivery_method: data.delivery_method,
         transport_cost: data.transport_cost,
@@ -223,6 +229,15 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                   onChange={(e) => set('new_supplier_phone', e.target.value)}
                   error={errors.new_supplier_phone}
                 />
+                {/* Where they are. For goods bought abroad, pick the country. */}
+                <div className="sm:col-span-2">
+                  <LocationFields
+                    name="new_supplier_where"
+                    value={form.data.new_supplier_where}
+                    locations={locations}
+                    onChange={(where) => form.setData('new_supplier_where', where)}
+                  />
+                </div>
               </div>
             )}
           </Panel>
