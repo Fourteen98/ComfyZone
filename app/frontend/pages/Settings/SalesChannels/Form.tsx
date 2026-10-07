@@ -6,6 +6,7 @@ import Button, { ButtonLink } from '@/components/ui/Button'
 import Checkbox from '@/components/ui/Checkbox'
 import ChoiceCards from '@/components/ui/ChoiceCards'
 import TextField from '@/components/ui/TextField'
+import { confirmAction } from '@/lib/confirm'
 
 type Kind = 'social' | 'direct'
 
@@ -35,13 +36,13 @@ export default function SalesChannelForm({ channel }: Props) {
     }
   }
 
-  function destroy() {
+  async function destroy() {
     if (!editing) return
     const kept =
       channel.orders_count === 0
         ? ''
         : ` Its ${channel.orders_count === 1 ? '1 order is' : `${channel.orders_count} orders are`} kept, with no channel. To keep the history, hide it instead.`
-    if (!window.confirm(`Delete "${channel.name}"?${kept}`)) return
+    if (!(await confirmAction(`Delete "${channel.name}"?${kept}`, { confirm: 'Delete', danger: true }))) return
     router.delete(`/settings/channels/${channel.id}`)
   }
 

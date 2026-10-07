@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_150001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -61,8 +61,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_150001) do
     t.text "note"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "delivery_area_id"
+    t.index ["delivery_area_id"], name: "index_customers_on_delivery_area_id"
     t.index ["handle"], name: "index_customers_on_handle", unique: true, where: "(handle IS NOT NULL)"
     t.index ["phone"], name: "index_customers_on_phone"
+  end
+
+  create_table "delivery_areas", force: :cascade do |t|
+    t.string "name", null: false
+    t.integer "fee_pesewas", default: 0, null: false
+    t.integer "position", default: 0, null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((name)::text)", name: "index_delivery_areas_on_lower_name", unique: true
+    t.check_constraint "fee_pesewas >= 0", name: "delivery_areas_fee_not_negative"
+  end
+
+  create_table "expenses", force: :cascade do |t|
+    t.date "spent_on", null: false
+    t.string "category", null: false
+    t.integer "amount_pesewas", null: false
+    t.string "note"
+    t.string "paid_via"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["spent_on"], name: "index_expenses_on_spent_on"
+    t.index ["user_id"], name: "index_expenses_on_user_id"
+    t.check_constraint "amount_pesewas > 0", name: "expenses_amount_positive"
   end
 
   create_table "live_sessions", force: :cascade do |t|
@@ -123,8 +150,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_150001) do
     t.datetime "delivered_at"
     t.datetime "returned_at"
     t.bigint "sales_channel_id"
+    t.bigint "delivery_area_id"
     t.index ["created_at"], name: "index_orders_on_created_at"
     t.index ["customer_id"], name: "index_orders_on_customer_id"
+    t.index ["delivery_area_id"], name: "index_orders_on_delivery_area_id"
     t.index ["live_session_id"], name: "index_orders_on_live_session_id"
     t.index ["sales_channel_id"], name: "index_orders_on_sales_channel_id"
     t.index ["status"], name: "index_orders_on_status"
@@ -333,11 +362,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_150001) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "customers", "delivery_areas", on_delete: :nullify
+  add_foreign_key "expenses", "users"
   add_foreign_key "live_sessions", "sales_channels", on_delete: :nullify
   add_foreign_key "live_sessions", "users"
   add_foreign_key "order_items", "orders", on_delete: :cascade
   add_foreign_key "order_items", "variants"
   add_foreign_key "orders", "customers"
+  add_foreign_key "orders", "delivery_areas", on_delete: :nullify
   add_foreign_key "orders", "live_sessions", on_delete: :nullify
   add_foreign_key "orders", "sales_channels", on_delete: :nullify
   add_foreign_key "orders", "users"

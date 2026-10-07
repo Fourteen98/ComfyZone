@@ -8,6 +8,7 @@ import Checkbox from '@/components/ui/Checkbox'
 import TextField from '@/components/ui/TextField'
 import OptionValuesEditor from '@/components/OptionValuesEditor'
 import type { OptionValue } from '@/components/OptionValuesEditor'
+import { confirmAction } from '@/lib/confirm'
 
 type Props = {
   // null when adding; the list when editing.
@@ -46,9 +47,9 @@ export default function OptionPresetForm({ preset, option_names }: Props) {
     }
   }
 
-  function destroy() {
+  async function destroy() {
     if (!editing) return
-    if (!window.confirm(`Delete "${preset.name}"? Products you have already added keep their choices.`)) return
+    if (!(await confirmAction(`Delete "${preset.name}"? Products you have already added keep their choices.`, { confirm: 'Delete', danger: true }))) return
     router.delete(`/settings/options/${preset.id}`)
   }
 

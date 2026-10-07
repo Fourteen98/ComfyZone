@@ -5,6 +5,7 @@ import Alert from '@/components/ui/Alert'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import Checkbox from '@/components/ui/Checkbox'
 import TextField from '@/components/ui/TextField'
+import { confirmAction } from '@/lib/confirm'
 
 type PermissionGroup = {
   name: string
@@ -60,9 +61,9 @@ export default function RoleForm({ role, permission_groups }: Props) {
     }
   }
 
-  function destroy() {
+  async function destroy() {
     if (!editing) return
-    if (!window.confirm(`Delete the ${role.name} role? This can't be undone.`)) return
+    if (!(await confirmAction(`Delete the ${role.name} role? This can't be undone.`, { confirm: 'Delete', danger: true }))) return
     router.delete(`/settings/roles/${role.id}`) // -> Settings::RolesController#destroy
   }
 

@@ -6,6 +6,7 @@ import Alert from '@/components/ui/Alert'
 import { navigation } from '@/lib/navigation'
 import type { NavItem } from '@/lib/navigation'
 import { useCan } from '@/lib/permissions'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 // The frame around every logged-in page.
 //
@@ -108,6 +109,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           {children}
         </div>
       </main>
+
+      {/* The one "are you sure?" dialog, opened with confirmAction(). */}
+      <ConfirmDialog />
 
       {/* ---------- Phone "More" sheet ----------
           Slides up from the bottom bar with every section that doesn't fit

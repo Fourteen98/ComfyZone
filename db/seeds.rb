@@ -101,3 +101,12 @@ end
 }.each do |name, kind|
   SalesChannel.find_or_create_by!(name: name) { |channel| channel.kind = kind }
 end
+
+# ---------- Delivery areas (development only) ----------
+# Examples to try the app with. The real list belongs to the business and is
+# typed into Settings > Delivery areas, so production starts empty.
+if Rails.env.development?
+  { "Osu" => "20", "East Legon" => "25", "Madina" => "30", "Tema" => "45", "Kasoa" => "50" }.each do |name, fee|
+    DeliveryArea.find_or_create_by!(name: name) { |area| area.fee = fee }
+  end
+end

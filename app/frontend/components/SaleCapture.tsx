@@ -6,10 +6,12 @@ import BuyerPicker from '@/components/BuyerPicker'
 import type { Buyer, BuyerChoice } from '@/components/BuyerPicker'
 import Button from '@/components/ui/Button'
 import ChoicePills from '@/components/ui/ChoicePills'
+import DeliveryFields, { noDelivery } from '@/components/DeliveryFields'
+import type { DeliveryArea, DeliveryChoice } from '@/components/DeliveryFields'
 import { Swatch } from '@/components/ui/Chip'
 import QuantityStepper from '@/components/ui/QuantityStepper'
 import type { OptionValue } from '@/components/OptionValuesEditor'
-import { formatMoney } from '@/lib/format'
+import { formatMoney, toPesewas } from '@/lib/format'
 import type { SalesChannel } from '@/lib/orders'
 
 export type SellableVariant = {
@@ -31,6 +33,8 @@ type Props = {
   liveChannel?: string | null
   /** Outside a live: the places a sale can come from, for her to pick one. */
   channels?: SalesChannel[]
+  /** Outside a live: the places she delivers to. */
+  deliveryAreas?: DeliveryArea[]
 }
 
 // The "who wants what" screen. It has two ways of asking WHO:
@@ -45,7 +49,7 @@ type Props = {
 //
 // Stock shown here was correct when the page loaded. Rails checks it again
 // at the moment of the claim, and refuses if something has just sold out.
-export default function SaleCapture({ products, buyers, liveId, liveChannel, channels = [] }: Props) {
+export default function SaleCapture({ products, buyers, liveId, liveChannel, channels = [], deliveryAreas = [] }: Props) {
   const errors = usePage().props.errors as Record<string, string[] | undefined>
   const buyerInput = useRef<HTMLInputElement>(null)
   const inLive = liveId !== undefined
@@ -56,6 +60,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   const [channelId, setChannelId] = useState('')
   const [choice, setChoice] = useState<{ buyer: BuyerChoice; label: string } | null>(null)
   const [sales, setSales] = useState(0) // counts sales made, to reset BuyerPicker
+  const [delivery, setDelivery] = useState<DeliveryChoice>(noDelivery)
   const [basket, setBasket] = useState<Record<number, number>>({}) // variant id -> quantity
   const [search, setSearch] = useState('')
   const [openProduct, setOpenProduct] = useState<number | null>(null)
@@ -98,6 +103,8 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
     }
   }
 
+  // For the total on screen only. Rails works out the real fee on save.
+  const deliveryFee = !inLive && delivery.delivery_method === 'delivery' ? toPesewas(delivery.fee) : 0
   const channel = channels.find((c) => String(c.id) === channelId)
   const who = inLive ? (typed ? `@${typed}` : '') : (choice?.label ?? '')
 
@@ -111,6 +118,8 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           buyer: inLive ? buyer : choice?.buyer,
           live_session_id: liveId,
           sales_channel_id: inLive ? undefined : channelId || undefined,
+          // Pick-up or delivery, if she chose. During a live it is sorted out afterwards.
+          delivery: inLive || delivery.delivery_method === '' ? undefined : delivery,
           items: lines.map((line) => ({ variant_id: line.variant.id, quantity: line.quantity })),
         },
       },
@@ -122,6 +131,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           setBasket({})
           setBuyer('')
           setChoice(null)
+          setDelivery(noDelivery)
           setSales(sales + 1)
           setSearch('')
           setOpenProduct(null)
@@ -216,8 +226,22 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
               key={sales}
               buyers={buyers}
               usernameFirst={channel?.kind === 'social'}
-              onChange={(buyer, label) => setChoice(buyer ? { buyer, label } : null)}
+              onChange={(buyer, label, known) => {
+                setChoice(buyer ? { buyer, label } : null)
+                // A customer we know: start delivery from where they were
+                // last time. She only has to tap "It is sent to them".
+                if (known) {
+                  const area = deliveryAreas.find((a) => a.id === known.delivery_area_id)
+                  setDelivery({
+                    ...delivery,
+                    area_id: area ? String(area.id) : '',
+                    fee: area && area.fee_pesewas > 0 ? area.fee : '',
+                    address: known.location ?? '',
+                  })
+                }
+              }}
             />
+            <DeliveryFields value={delivery} onChange={setDelivery} areas={deliveryAreas} errors={errors} />
           </>
         )}
       </section>
@@ -261,8 +285,9 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           <div className="hidden border-t border-taupe-200 p-5 lg:block">
             <p className="flex items-baseline justify-between tabular-nums">
               <span className="text-taupe-700">{units === 1 ? '1 item' : `${units} items`}</span>
-              <span className="text-2xl font-semibold text-wine-800">{formatMoney(total)}</span>
+              <span className="text-2xl font-semibold text-wine-800">{formatMoney(total + deliveryFee)}</span>
             </p>
+            {deliveryFee > 0 && <p className="text-right text-sm text-taupe-700">includes {formatMoney(deliveryFee)} delivery</p>}
             <Button type="button" block className="mt-4" disabled={!ready} onClick={claim}>
               {claimLabel}
             </Button>
@@ -392,7 +417,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
         <div className="flex items-center gap-3">
           <p className="min-w-0 flex-1 tabular-nums">
             <span className="block text-sm text-taupe-700">{units === 1 ? '1 item' : `${units} items`}</span>
-            <span className="block text-xl leading-tight font-semibold text-wine-800">{formatMoney(total)}</span>
+            <span className="block text-xl leading-tight font-semibold text-wine-800">{formatMoney(total + deliveryFee)}</span>
           </p>
           <Button type="button" disabled={!ready} onClick={claim} className="max-w-[60%] truncate">
             {claimLabel}

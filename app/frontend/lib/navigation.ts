@@ -1,4 +1,4 @@
-import { BarChart3, Boxes, LayoutDashboard, Radio, ReceiptText, Settings, Shirt, Store, Truck, Users } from 'lucide-react'
+import { BarChart3, Boxes, LayoutDashboard, Radio, ReceiptText, Settings, Shirt, Store, Truck, Users, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export type NavItem = {
@@ -26,6 +26,7 @@ export const navigation: NavItem[] = [
   { label: 'Live sales', href: '/live', icon: Radio, ready: true, mobile: true, permissions: ['orders.view'] },
   { label: 'Orders', href: '/orders', icon: ReceiptText, ready: true, mobile: true, permissions: ['orders.view'] },
   { label: 'Customers', href: '/customers', icon: Users, ready: true, permissions: ['customers.view'] },
+  { label: 'Expenses', href: '/expenses', icon: Wallet, ready: true, permissions: ['expenses.view'] },
   { label: 'Reports', href: '/reports', icon: BarChart3, ready: true, permissions: ['reports.view'] },
   {
     label: 'Settings',

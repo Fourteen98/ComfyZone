@@ -20,6 +20,8 @@ class OrderTaker
   include ActiveModel::Model
 
   attr_accessor :customer, :user, :live_session, :sales_channel, :lines
+  # Optional, for a sale recorded by hand: { delivery_method:, fee:, address:, area: }
+  attr_accessor :delivery
   attr_reader :order
 
   validate :has_a_customer
@@ -65,7 +67,12 @@ class OrderTaker
       existing = live_session && Order.claimed.where(customer: customer, live_session: live_session).lock.first
       # A claim during a live came from wherever the live is.
       channel = live_session ? live_session.sales_channel : sales_channel
-      existing || Order.create!(customer: customer, live_session: live_session, sales_channel: channel, user: user)
+      return existing if existing
+
+      order = Order.create!(customer: customer, live_session: live_session, sales_channel: channel, user: user)
+      # Pick-up or delivery, if she said so while recording the sale.
+      order.set_delivery!(**delivery) if delivery && delivery[:delivery_method].present?
+      order
     end
 
     def add(variant_id, quantity)

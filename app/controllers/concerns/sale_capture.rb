@@ -28,13 +28,19 @@ module SaleCapture
     # the buyer box. Capped: beyond this, typing the name still works.
     def known_buyers
       Customer.order(updated_at: :desc).limit(500).map { |customer|
-        { id: customer.id, handle: customer.handle, name: customer.name, phone: customer.phone }
+        { id: customer.id, handle: customer.handle, name: customer.name, phone: customer.phone,
+          location: customer.location, delivery_area_id: customer.delivery_area_id }
       }
     end
 
     # Where a sale can come from, for the pills on the capture screen.
     def sales_channels(scope = SalesChannel.active)
       scope.ordered.map { |channel| { id: channel.id, name: channel.name, kind: channel.kind } }
+    end
+
+    # The places she delivers to, with the usual fee ready for a money box.
+    def delivery_areas
+      DeliveryArea.active.ordered.map { |area| { id: area.id, name: area.name, fee: area.fee, fee_pesewas: area.fee_pesewas } }
     end
 
     def order_summary(order)

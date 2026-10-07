@@ -6,6 +6,7 @@ import Alert from '@/components/ui/Alert'
 import Button from '@/components/ui/Button'
 import Lightbox from '@/components/ui/Lightbox'
 import { shrinkPhoto } from '@/lib/images'
+import { confirmAction } from '@/lib/confirm'
 
 export type Photo = { id: number; thumb_url: string; large_url: string }
 
@@ -71,8 +72,8 @@ export default function ProductGallery({ productId, productName, photos, maxPhot
     router.patch(`/products/${productId}/photos/order`, { ids }, { preserveScroll: true, onSuccess: () => setChosen(0) })
   }
 
-  function remove(photo: Photo) {
-    if (!window.confirm('Remove this photo?')) return
+  async function remove(photo: Photo) {
+    if (!(await confirmAction('Remove this photo?', { confirm: 'Remove', danger: true }))) return
     router.delete(`/products/${productId}/photos/${photo.id}`, { preserveScroll: true })
   }
 

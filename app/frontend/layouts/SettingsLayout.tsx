@@ -10,6 +10,7 @@ const tabs = [
   { label: 'Options', href: '/settings/options', permission: 'settings.manage' },
   { label: 'Categories', href: '/settings/categories', permission: 'settings.manage' },
   { label: 'Sales channels', href: '/settings/channels', permission: 'settings.manage' },
+  { label: 'Delivery areas', href: '/settings/areas', permission: 'settings.manage' },
   { label: 'Team', href: '/settings/users', permission: 'users.manage' },
   { label: 'Roles', href: '/settings/roles', permission: 'roles.manage' },
 ]

@@ -9,6 +9,7 @@ import StatusBadge from '@/components/PurchaseStatusBadge'
 import type { OptionValue } from '@/components/OptionValuesEditor'
 import { formatMoney } from '@/lib/format'
 import { useCan } from '@/lib/permissions'
+import { confirmAction } from '@/lib/confirm'
 
 type Item = {
   id: number
@@ -58,14 +59,14 @@ export default function PurchaseShow({ purchase }: Props) {
     else groups.push({ productId: item.product_id, product: item.product, items: [item] })
   }
 
-  function receive() {
+  async function receive() {
     const message = `Add ${purchase.units} ${purchase.units === 1 ? 'item' : 'items'} to stock? This can't be undone, so check the quantities first.`
-    if (!window.confirm(message)) return
+    if (!(await confirmAction(message, { confirm: 'Add to stock' }))) return
     router.patch(`/purchases/${purchase.id}/receive`) // -> PurchasesController#receive
   }
 
-  function destroy() {
-    if (!window.confirm('Delete this purchase? Nothing was added to stock, so nothing else changes.')) return
+  async function destroy() {
+    if (!(await confirmAction('Delete this purchase? Nothing was added to stock, so nothing else changes.', { confirm: 'Delete', danger: true }))) return
     router.delete(`/purchases/${purchase.id}`)
   }
 

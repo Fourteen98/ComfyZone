@@ -1,0 +1,17 @@
+osu:
+  name: Osu
+  fee_pesewas: 2000
+  position: 1
+  active: true
+
+tema:
+  name: Tema
+  fee_pesewas: 4500
+  position: 2
+  active: true
+
+closed:
+  name: Kumasi
+  fee_pesewas: 8000
+  position: 3
+  active: false

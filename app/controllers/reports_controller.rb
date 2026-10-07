@@ -30,6 +30,8 @@ class ReportsController < InertiaController
       lives: report.lives,
       customers: can?("customers.view") ? report.top_customers : nil,
       money_in: report.money_in,
+      # nil = this person may not see expenses.
+      expenses: can?("expenses.view") ? { total_pesewas: report.expenses_pesewas, by_category: report.expenses_by_category } : nil,
       sees_costs: sees_costs
     }
   end
