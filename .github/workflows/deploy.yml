@@ -51,7 +51,7 @@ jobs:
        github.event.workflow_run.event == 'push')
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Deploy exactly the commit CI tested, not whatever main is by now.
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
