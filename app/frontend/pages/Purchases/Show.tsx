@@ -7,7 +7,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
 import StatusBadge from '@/components/PurchaseStatusBadge'
 import type { OptionValue } from '@/components/OptionValuesEditor'
-import { formatMoney } from '@/lib/format'
+import { formatForeign, formatMoney } from '@/lib/format'
 import { useCan } from '@/lib/permissions'
 import { confirmAction } from '@/lib/confirm'
 
@@ -19,6 +19,7 @@ type Item = {
   option_values: (OptionValue & { name: string })[]
   quantity: number
   unit_cost_pesewas: number
+  foreign_unit_cost_minor: number | null // only on a purchase paid in another currency
   landed_unit_cost_pesewas: number | null // known once received
   line_total_pesewas: number
 }
@@ -41,6 +42,8 @@ type Props = {
     goods_total_pesewas: number
     transport_cost_pesewas: number
     extra_costs_pesewas: number
+    // Set when the supplier was paid in another currency.
+    foreign: { code: string; symbol: string; rate: string; goods_total_minor: number } | null
     items: Item[]
   }
 }
@@ -152,7 +155,10 @@ export default function PurchaseShow({ purchase }: Props) {
                         )}
                       </p>
                       <p className="text-taupe-700">
-                        {item.quantity} at {formatMoney(item.unit_cost_pesewas)}
+                        {item.quantity} at{' '}
+                        {purchase.foreign && item.foreign_unit_cost_minor !== null
+                          ? `${formatForeign(item.foreign_unit_cost_minor, purchase.foreign.symbol)} (${formatMoney(item.unit_cost_pesewas)})`
+                          : formatMoney(item.unit_cost_pesewas)}
                       </p>
                       <p className="w-32 text-right font-medium">{formatMoney(item.line_total_pesewas)}</p>
                       {item.landed_unit_cost_pesewas !== null &&
@@ -176,6 +182,12 @@ export default function PurchaseShow({ purchase }: Props) {
                 <dt className="text-taupe-700">{purchase.units === 1 ? '1 item' : `${purchase.units} items`}</dt>
                 <dd>{formatMoney(purchase.goods_total_pesewas)}</dd>
               </div>
+              {purchase.foreign && (
+                <p className="-mt-1 text-sm text-taupe-700">
+                  Paid {formatForeign(purchase.foreign.goods_total_minor, purchase.foreign.symbol)} at {purchase.foreign.rate} cedis to 1{' '}
+                  {purchase.foreign.code}
+                </p>
+              )}
               <div className="flex items-baseline justify-between gap-4">
                 <dt className="text-taupe-700">{pickup ? 'Pick-up trip' : 'Delivery'}</dt>
                 <dd>{formatMoney(purchase.transport_cost_pesewas)}</dd>

@@ -40,6 +40,10 @@ Rails.application.routes.draw do
     resources :passkeys, only: %i[ create destroy ] do
       post :challenge, on: :collection
     end
+    # Notifications, one row per device (see app/models/push.rb).
+    resources :push_subscriptions, only: %i[ create update destroy ] do
+      post :test, on: :member
+    end
   end
 
   # Products. `member` routes act on one product: /products/:id/archive

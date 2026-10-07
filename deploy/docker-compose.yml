@@ -31,6 +31,17 @@ services:
       SOLID_QUEUE_IN_PUMA: "true"
       RAILS_LOG_TO_STDOUT: "true"
       RAILS_MAX_THREADS: "5"
+      # Email for "forgot password". All optional: leave them out of .env and
+      # the app simply doesn't send mail. (The `:-` means "empty if not set".)
+      SMTP_ADDRESS: ${SMTP_ADDRESS:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      # Push notifications to phones. Make the pair once with
+      #   docker compose run --rm web ./bin/rails push:keys
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
     # Bind to localhost only (host networking would otherwise expose 3000
     # publicly). Overriding the command means the entrypoint's auto db:prepare
     # doesn't fire — run migrations once (see README).

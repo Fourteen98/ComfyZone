@@ -1,4 +1,5 @@
-# Deploy comfyzone to the production droplet on every push to main.
+# Deploy comfyzone to the production droplet after a push to main, but ONLY
+# once the CI workflow (tests, lint, security scans) has passed on it.
 #
 # How it works (teaching notes):
 #   1. GitHub's runner checks out the code (it already has repo access — no
@@ -22,10 +23,17 @@
 
 name: Deploy
 
+# `workflow_run` means "start when another workflow finishes". So the order
+# is: push to main -> CI runs -> CI finishes -> this workflow starts, and the
+# `if:` on the job below lets it continue only when CI was green.
+# A failing test now stops the deploy; the site keeps running the last good
+# version.
 on:
-  push:
+  workflow_run:
+    workflows: [ CI ]        # must match the `name:` at the top of ci.yml
+    types: [ completed ]
     branches: [ main ]
-  workflow_dispatch:   # lets you trigger a manual deploy from the Actions tab
+  workflow_dispatch:   # manual deploy from the Actions tab (skips the wait; use with care)
 
 # Never let two deploys run at once; don't cancel one mid-flight either.
 concurrency:
@@ -35,9 +43,18 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Go ahead when started by hand, or when CI passed for a PUSH to main.
+    # (CI also runs for pull requests; those must never deploy.)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # Deploy exactly the commit CI tested, not whatever main is by now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Configure SSH
         run: |

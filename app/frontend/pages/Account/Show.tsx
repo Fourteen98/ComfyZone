@@ -12,6 +12,8 @@ import TextField from '@/components/ui/TextField'
 import { guessDeviceName, passkeysSupported, registerPasskey } from '@/lib/passkeys'
 import { confirmAction } from '@/lib/confirm'
 import InstallApp from '@/components/InstallApp'
+import PushSettings from '@/components/PushSettings'
+import type { PushProps } from '@/components/PushSettings'
 
 type Passkey = {
   id: number
@@ -21,7 +23,8 @@ type Passkey = {
 }
 
 // Props from AccountsController#show
-export default function AccountShow({ passkeys }: { passkeys: Passkey[] }) {
+// `push` is null until the server has been given its notification keys.
+export default function AccountShow({ passkeys, push }: { passkeys: Passkey[]; push: PushProps | null }) {
   const user = usePage().props.auth.user!
   const supported = passkeysSupported()
 
@@ -61,6 +64,12 @@ export default function AccountShow({ passkeys }: { passkeys: Passkey[] }) {
         <div className="mb-6">
           <InstallApp />
         </div>
+
+        {push && (
+          <div className="mb-6">
+            <PushSettings push={push} />
+          </div>
+        )}
 
         <Panel title="Passkeys">
           <p className="text-taupe-700">

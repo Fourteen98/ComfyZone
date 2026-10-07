@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_090003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -264,6 +264,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
     t.integer "landed_total_pesewas"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "foreign_unit_cost_minor"
     t.index ["purchase_id", "variant_id"], name: "index_purchase_items_on_purchase_id_and_variant_id", unique: true
     t.index ["purchase_id"], name: "index_purchase_items_on_purchase_id"
     t.index ["variant_id"], name: "index_purchase_items_on_variant_id"
@@ -283,11 +284,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
     t.datetime "updated_at", null: false
     t.string "delivery_method", null: false
     t.integer "transport_cost_pesewas", default: 0, null: false
+    t.string "currency", default: "GHS", null: false
+    t.decimal "exchange_rate", precision: 12, scale: 4
     t.index ["purchased_on"], name: "index_purchases_on_purchased_on"
     t.index ["status"], name: "index_purchases_on_status"
     t.index ["supplier_id"], name: "index_purchases_on_supplier_id"
     t.index ["user_id"], name: "index_purchases_on_user_id"
+    t.check_constraint "currency::text = 'GHS'::text AND exchange_rate IS NULL OR currency::text <> 'GHS'::text AND exchange_rate > 0::numeric", name: "purchases_rate_matches_currency"
     t.check_constraint "delivery_method::text = ANY (ARRAY['pickup'::character varying, 'delivery'::character varying]::text[])", name: "purchases_delivery_method_known"
+  end
+
+  create_table "push_subscriptions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "endpoint", null: false
+    t.string "p256dh", null: false
+    t.string "auth", null: false
+    t.string "topics", default: [], null: false, array: true
+    t.string "device"
+    t.datetime "last_sent_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["endpoint"], name: "index_push_subscriptions_on_endpoint", unique: true
+    t.index ["user_id"], name: "index_push_subscriptions_on_user_id"
   end
 
   create_table "roles", force: :cascade do |t|
@@ -411,6 +429,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
   add_foreign_key "purchase_items", "variants"
   add_foreign_key "purchases", "suppliers", on_delete: :nullify
   add_foreign_key "purchases", "users"
+  add_foreign_key "push_subscriptions", "users", on_delete: :cascade
   add_foreign_key "sessions", "users"
   add_foreign_key "stock_movements", "users"
   add_foreign_key "stock_movements", "variants"

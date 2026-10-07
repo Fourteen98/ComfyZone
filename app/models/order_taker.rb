@@ -48,10 +48,24 @@ class OrderTaker
     end
 
     @order = nil unless saved
+    announce if saved
     saved
   end
 
   private
+    # Tell the others a sale came in. Not during a live: claims arrive every
+    # few seconds there, and the phone that would buzz is the one she is
+    # streaming from.
+    def announce
+      return if live_session
+
+      Push.notify("orders",
+        title: "New sale",
+        body: "#{@order.customer.display_name}, GH₵ #{Pesewas.to_input(@order.total_pesewas)}. Recorded by #{user.name}.",
+        path: "/orders/#{@order.id}",
+        except: user)
+    end
+
     # [{variant_id: 3, quantity: 1}, {variant_id: 3, quantity: 2}] -> { 3 => 3 }
     def wanted
       Array(lines).each_with_object(Hash.new(0)) do |line, totals|

@@ -1,6 +1,16 @@
-<p>
-  You can reset your password on
-  <%= link_to "this password reset page", edit_password_url(@user.password_reset_token) %>.
+<%# Email clients ignore stylesheets, so every style is written on the tag. %>
+<p style="margin:0 0 16px">Hello <%= @user.name %>,</p>
 
-  This link will expire in <%= distance_of_time_in_words(0, @user.password_reset_token_expires_in) %>.
+<p style="margin:0 0 24px">
+  Someone asked to reset the password for your Comfy Zone account. If that was you, choose a new one here:
+</p>
+
+<p style="margin:0 0 24px">
+  <%= link_to "Choose a new password", edit_password_url(@user.password_reset_token),
+        style: "display:inline-block;background:#3f1a22;color:#ffffff;text-decoration:none;font-weight:600;padding:14px 22px;border-radius:8px" %>
+</p>
+
+<p style="margin:0 0 16px;color:#6b5d57">
+  The link works for <%= distance_of_time_in_words(0, @user.password_reset_token_expires_in) %>, and only once.
+  If you didn't ask for this, ignore this email: your password stays as it is.
 </p>

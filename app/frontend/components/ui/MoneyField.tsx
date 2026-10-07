@@ -6,12 +6,14 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
   label?: string
   hint?: string
   error?: string | string[]
+  /** The currency sign shown in the box. Cedis unless told otherwise. */
+  symbol?: string
 }
 
 // An amount in cedis. She types "120" or "120.50"; Rails turns it into
 // pesewas (see app/models/pesewas.rb). inputMode="decimal" brings up the
 // number keypad with a decimal point on phones.
-export default function MoneyField({ id, label, hint, error, className = '', ...props }: Props) {
+export default function MoneyField({ id, label, hint, error, symbol = 'GH₵', className = '', ...props }: Props) {
   const message = Array.isArray(error) ? error[0] : error
 
   return (
@@ -22,7 +24,7 @@ export default function MoneyField({ id, label, hint, error, className = '', ...
         </label>
       )}
       <div className="relative">
-        <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-taupe-600">GH₵</span>
+        <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-taupe-600">{symbol}</span>
         <input
           id={id}
           name={id}

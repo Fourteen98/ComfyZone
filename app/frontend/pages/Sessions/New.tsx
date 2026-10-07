@@ -1,8 +1,8 @@
-import { Head, router, useForm, usePage } from '@inertiajs/react'
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react'
 import { Fingerprint } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import logoWall from '@/assets/brand/logo-wall.jpg'
+import AuthShell from '@/components/AuthShell'
 import Alert from '@/components/ui/Alert'
 import Button from '@/components/ui/Button'
 import TextField from '@/components/ui/TextField'
@@ -49,26 +49,8 @@ export default function NewSession() {
   }
 
   return (
-    // Phone: the logo on top, the form below.
-    // Desktop (lg and up): logo on the left, form on the right.
-    <div className="flex min-h-dvh flex-col lg:flex-row">
+    <AuthShell title="Welcome back" lead="Log in to manage stock and sales.">
       <Head title="Log in" />
-
-      {/* The brand side. The logo photo is the whole panel; the background
-          colour underneath matches the wall so nothing flashes while it loads. */}
-      <div className="h-[42dvh] shrink-0 bg-taupe-500 lg:h-auto lg:w-[55%]">
-        <img
-          src={logoWall}
-          alt="The Comfy Zone by Fazy. Comfort meets style."
-          className="size-full object-cover object-[center_45%]"
-        />
-      </div>
-
-      {/* The form side. */}
-      <main className="flex flex-1 items-start justify-center px-6 py-10 lg:items-center lg:px-12">
-        <div className="w-full max-w-sm">
-          <h1 className="font-display text-4xl font-semibold text-wine-800 lg:text-5xl">Welcome back</h1>
-          <p className="mt-2 text-taupe-700">Log in to manage stock and sales.</p>
 
           {passkeysSupported() && (
             <div className="mt-8">
@@ -140,18 +122,11 @@ export default function NewSession() {
             </Button>
           </form>
 
-          {/* A plain <a>, not <Link>: the password reset pages are still
-              classic Rails ERB views, so we want a normal full page load. */}
           <p className="mt-6 text-sm">
-            <a
-              href="/passwords/new"
-              className="text-taupe-700 underline decoration-taupe-400 underline-offset-4 hover:text-wine-800"
-            >
+            <Link href="/passwords/new" className="text-taupe-700 underline decoration-taupe-400 underline-offset-4 hover:text-wine-800">
               Forgot your password?
-            </a>
+            </Link>
           </p>
-        </div>
-      </main>
-    </div>
+    </AuthShell>
   )
 }

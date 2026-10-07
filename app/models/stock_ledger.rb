@@ -34,8 +34,10 @@ class StockLedger
         variant.average_cost_pesewas = blended_cost(variant, quantity, total_cost_pesewas)
       end
 
+      before = variant.stock_on_hand
       variant.stock_on_hand += quantity
       variant.save!
+      warn_if_running_low(variant, before)
 
       StockMovement.create!(
         variant: variant,
@@ -48,6 +50,28 @@ class StockLedger
         note: note
       )
     end
+  end
+
+  # A push notification the moment stock CROSSES a line: from above the
+  # product's warning level to at or below it, or from something to nothing.
+  # Comparing before and after is what stops a notification on every sale
+  # once it is already low. (Push.notify waits for the transaction to
+  # commit, so a sale that is rolled back says nothing.)
+  def self.warn_if_running_low(variant, before)
+    after = variant.stock_on_hand
+    return unless after < before && variant.active? && variant.product.active?
+
+    level = variant.product.low_stock_at
+    sold_out = before.positive? && after <= 0
+    gone_low = before > level && after <= level
+    return unless sold_out || gone_low
+
+    Push.notify("low_stock",
+      title: sold_out ? "Sold out" : "Running low",
+      body: sold_out ? "#{variant.full_name} has sold out." : "#{variant.full_name}: #{after} left.",
+      path: "/stock/#{variant.id}")
+    # No `except:` here. Unlike a sale, she wants to know stock ran out even
+    # when it was her own sale that did it.
   end
 
   # Variants that need attention, most urgent first: out of stock, then low.
