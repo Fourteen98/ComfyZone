@@ -4,7 +4,7 @@ class ProductsController < InertiaController
   require_permission "products.view", only: %i[ index show ]
   require_permission "products.manage", except: %i[ index show ]
 
-  before_action :set_product, only: %i[ show edit update archive restore ]
+  before_action :set_product, only: %i[ show edit update archive restore listing ]
 
   # GET /products?q=dress&status=archived
   def index
@@ -72,6 +72,13 @@ class ProductsController < InertiaController
     end
   end
 
+  # PATCH /products/:id/listing   { listed: true | false }
+  # The quick switch on the product's page: put it on the shop or take it off.
+  def listing
+    @product.update!(listed: ActiveModel::Type::Boolean.new.cast(params[:listed]) || false)
+    redirect_to product_path(@product), notice: @product.listed? ? "#{@product.name} is now on the shop." : "#{@product.name} is off the shop."
+  end
+
   # PATCH /products/:id/archive
   def archive
     @product.archived!
@@ -90,7 +97,7 @@ class ProductsController < InertiaController
     end
 
     def product_params
-      params.expect(product: [ :name, :description, :price, :category_id, :low_stock_at ])
+      params.expect(product: [ :name, :description, :price, :category_id, :low_stock_at, :listed ])
     end
 
     # Options arrive as a list of { name, values: [{ label, swatch }] }.
@@ -115,6 +122,7 @@ class ProductsController < InertiaController
         id: product.id,
         name: product.name,
         status: product.status,
+        listed: product.listed,
         category: product.category&.name,
         cover_url: product.photos.first && photo_url(product.photos.first, :card),
         variants_count: product.variants.size,
@@ -131,6 +139,8 @@ class ProductsController < InertiaController
         name: product.name,
         description: product.description,
         status: product.status,
+        listed: product.listed,
+        shop_path: shop_product_path(product.shop_param),
         category: product.category&.name,
         price_pesewas: product.price_pesewas,
         options: product.options.map { |option| { name: option.name, values: option.values } },
@@ -172,6 +182,7 @@ class ProductsController < InertiaController
         price: product.price,
         category_id: product.category_id,
         low_stock_at: product.low_stock_at,
+        listed: product.listed,
         options: product.options.map { |option| { name: option.name, values: option.values } }
       }
     end

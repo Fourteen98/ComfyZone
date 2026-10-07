@@ -33,7 +33,7 @@ end
 
 module ActionDispatch
   class IntegrationTest
-    # After `get root_path`: the number on one dashboard tile, or nil if that
+    # After `get admin_root_path`: the number on one dashboard tile, or nil if that
     # tile isn't on this person's dashboard.
     def dashboard_tile(key)
       inertia.props[:tiles].find { |tile| tile[:key] == key.to_s }&.fetch(:value)

@@ -92,7 +92,7 @@ class LiveSessionsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:two))
 
     get live_index_path
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
 
     roles(:assistant).update!(permissions: [ "orders.view" ])
     assert_no_difference "LiveSession.count" do

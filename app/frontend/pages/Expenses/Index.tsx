@@ -43,7 +43,7 @@ export default function ExpensesIndex({ period, presets, total_pesewas, by_categ
         description="What the business spends that isn't stock: packaging, data, riders, adverts, rent."
         actions={
           can_manage && (
-            <ButtonLink href="/expenses/new">
+            <ButtonLink href="/admin/expenses/new">
               <Plus className="size-5" aria-hidden="true" />
               Add an expense
             </ButtonLink>
@@ -55,7 +55,7 @@ export default function ExpensesIndex({ period, presets, total_pesewas, by_categ
         {presets.map((preset) => (
           <Link
             key={preset.key}
-            href="/expenses"
+            href="/admin/expenses"
             data={{ range: preset.key }}
             aria-current={period.key === preset.key ? 'page' : undefined}
             className={tab(period.key === preset.key)}
@@ -107,7 +107,7 @@ export default function ExpensesIndex({ period, presets, total_pesewas, by_categ
                 return (
                   <li key={expense.id}>
                     {can_manage ? (
-                      <Link href={`/expenses/${expense.id}/edit`} className="flex items-baseline gap-3 px-5 py-3 hover:bg-taupe-50">
+                      <Link href={`/admin/expenses/${expense.id}/edit`} className="flex items-baseline gap-3 px-5 py-3 hover:bg-taupe-50">
                         {body}
                       </Link>
                     ) : (

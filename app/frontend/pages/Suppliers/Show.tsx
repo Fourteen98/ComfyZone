@@ -40,12 +40,12 @@ export default function SupplierShow({ supplier }: Props) {
         actions={
           manage && (
             <>
-              <ButtonLink href={`/suppliers/${supplier.id}/edit`} variant="secondary">
+              <ButtonLink href={`/admin/suppliers/${supplier.id}/edit`} variant="secondary">
                 <Pencil className="size-5" aria-hidden="true" />
                 Edit
               </ButtonLink>
               {/* The purchase form reads ?supplier_id= and picks them for her. */}
-              <ButtonLink href={`/purchases/new?supplier_id=${supplier.id}`}>
+              <ButtonLink href={`/admin/purchases/new?supplier_id=${supplier.id}`}>
                 <Plus className="size-5" aria-hidden="true" />
                 Record a purchase
               </ButtonLink>
@@ -95,7 +95,7 @@ export default function SupplierShow({ supplier }: Props) {
             <ul className="-mx-5 -my-5 divide-y divide-taupe-200">
               {supplier.products.map((product) => (
                 <li key={product.id}>
-                  <Link href={`/products/${product.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-taupe-50">
+                  <Link href={`/admin/products/${product.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-taupe-50">
                     <span className="flex aspect-[4/5] w-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-taupe-200 text-taupe-500">
                       {product.thumb_url ? (
                         <img src={product.thumb_url} alt="" className="size-full object-cover" />
@@ -132,7 +132,7 @@ export default function SupplierShow({ supplier }: Props) {
             <ul className="-mx-5 -my-5 divide-y divide-taupe-200">
               {supplier.purchases.map((purchase) => (
                 <li key={purchase.id}>
-                  <Link href={`/purchases/${purchase.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 hover:bg-taupe-50">
+                  <Link href={`/admin/purchases/${purchase.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 hover:bg-taupe-50">
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium">{purchase.purchased_on}</span>
                       <span className="block text-sm text-taupe-700">

@@ -8,8 +8,8 @@ import { createInertiaApp } from '@inertiajs/react'
 // createInertiaApp reads that, finds app/frontend/pages/Dashboard.tsx,
 // and renders it.
 //
-// Classic ERB pages (the password reset screens) have no #app element,
-// so there is nothing for React to do on them.
+// The check for #app is a safety net: Rails' own error pages have no such
+// element, and there is nothing for React to do on them.
 if (document.getElementById('app')) {
   void createInertiaApp({
     // Where page components live. "Sessions/New" -> pages/Sessions/New.tsx

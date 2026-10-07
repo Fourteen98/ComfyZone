@@ -14,10 +14,10 @@ class Sessions::PasskeysControllerTest < ActionDispatch::IntegrationTest
     login_with_passkey
 
     assert_response :success
-    assert_equal root_url, response.parsed_body["redirect_to"]
+    assert_equal admin_root_url, response.parsed_body["redirect_to"]
     assert cookies[:session_id].present?
 
-    get root_path
+    get admin_root_path
     assert_inertia_component "Dashboard"
     assert_equal @user.name, inertia.props[:auth][:user][:name]
   end

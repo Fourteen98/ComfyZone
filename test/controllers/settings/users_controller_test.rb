@@ -6,7 +6,7 @@ class Settings::UsersControllerTest < ActionDispatch::IntegrationTest
 
     get settings_users_path
 
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     assert_equal "You don't have access to that. Ask an Owner if you need it.", flash[:alert]
   end
 
@@ -17,7 +17,7 @@ class Settings::UsersControllerTest < ActionDispatch::IntegrationTest
       post settings_users_path, params: { user: { name: "Sneaky", email_address: "s@example.com",
         role_id: roles(:owner).id, password: "password123" } }
     end
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
   end
 
   test "an Owner sees the team" do

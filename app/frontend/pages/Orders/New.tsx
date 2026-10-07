@@ -15,7 +15,7 @@ export default function OrderNew({ products, buyers, channels, locations }: Prop
     <AppLayout>
       <Head title="Record a sale" />
 
-      <Link href="/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
+      <Link href="/admin/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Orders
       </Link>

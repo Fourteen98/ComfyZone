@@ -218,3 +218,49 @@ sudo -u postgres dropdb comfyzone_restore_test
   `app_storage` volume, which is every product photo.
 - `bin/rails db:reset`, `db:drop` or `db:schema:load` in production: they
   empty the database. Rails refuses unless you force it; don't force it.
+
+
+## Email (so "forgot password" works)
+
+Optional. Without it the app runs fine; the forgot-password page just tells
+people to ask the owner for a new password.
+
+1. Open an account with any SMTP service (Brevo, Mailgun, Zoho; Gmail works
+   with an "app password"). Verify `comfyzone.shop` as a sending domain
+   there, or the emails will land in spam.
+2. On the server, add to `deploy/.env`:
+
+   ```
+   SMTP_ADDRESS=smtp-relay.brevo.com
+   SMTP_PORT=587
+   SMTP_USERNAME=...
+   SMTP_PASSWORD=...
+   MAIL_FROM="The Comfy Zone <hello@comfyzone.shop>"
+   ```
+3. `cd deploy && docker compose up -d` to restart with the new settings.
+4. Test: log out, "Forgot your password?", enter your email.
+   If nothing arrives: `docker compose logs web | grep -i -A5 smtp`.
+
+## Push notifications
+
+Optional. Until the keys are set, the Notifications panel doesn't appear.
+
+1. Make the key pair ONCE:
+
+   ```
+   cd deploy && docker compose run --rm web ./bin/rails push:keys
+   ```
+2. Paste the two lines it prints into `deploy/.env`
+   (`VAPID_PUBLIC_KEY=...`, `VAPID_PRIVATE_KEY=...`).
+3. `docker compose up -d`.
+4. On the phone: My account -> Notifications -> "Turn on notifications
+   here", then "Send a test". (iPhone: add the app to the home screen first
+   and open it from there.)
+
+Keep the keys. A new pair silently disconnects every phone.
+
+## Deploys wait for CI
+
+`deploy.yml` runs only after the CI workflow passes on `main`. A red CI run
+means no deploy; the site stays on the last good version. The "Run
+workflow" button on the Deploy action still deploys straight away.

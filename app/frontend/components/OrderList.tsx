@@ -22,7 +22,7 @@ export default function OrderList({ orders, removable = false, showStatus = true
   async function remove(order: OrderSummary, item: OrderSummary['items'][number]) {
     if (!(await confirmAction(`Remove ${item.name} from ${order.customer}'s order? It goes back into stock.`, { confirm: 'Remove', danger: true }))) return
     // -> Orders::ItemsController#destroy
-    router.delete(`/orders/${order.id}/items/${item.id}`, { preserveScroll: true })
+    router.delete(`/admin/orders/${order.id}/items/${item.id}`, { preserveScroll: true })
   }
 
   return (
@@ -32,7 +32,7 @@ export default function OrderList({ orders, removable = false, showStatus = true
           {/* Name and amount share the first line; badges get their own,
               so a long badge can never squeeze the name out on a phone. */}
           <div className="flex items-baseline gap-3">
-            <Link href={`/orders/${order.id}`} className="min-w-0 flex-1 truncate font-medium hover:text-wine-800 hover:underline">
+            <Link href={`/admin/orders/${order.id}`} className="min-w-0 flex-1 truncate font-medium hover:text-wine-800 hover:underline">
               {order.customer}
             </Link>
             {/* What the buyer pays, delivery included. A cancelled order

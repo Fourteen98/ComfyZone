@@ -67,7 +67,7 @@ class Orders::EditingTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:two))
 
     get edit_order_path(@order)
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
     patch order_path(@order), params: { order: { note: "x" } }
     assert_nil @order.reload.note
   end

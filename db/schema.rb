@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -142,7 +142,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
   create_table "orders", force: :cascade do |t|
     t.bigint "customer_id", null: false
     t.bigint "live_session_id"
-    t.bigint "user_id", null: false
+    t.bigint "user_id"
     t.string "status", default: "claimed", null: false
     t.integer "total_pesewas", default: 0, null: false
     t.datetime "cancelled_at"
@@ -159,10 +159,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
     t.datetime "returned_at"
     t.bigint "sales_channel_id"
     t.bigint "delivery_area_id"
+    t.string "public_token"
     t.index ["created_at"], name: "index_orders_on_created_at"
     t.index ["customer_id"], name: "index_orders_on_customer_id"
     t.index ["delivery_area_id"], name: "index_orders_on_delivery_area_id"
     t.index ["live_session_id"], name: "index_orders_on_live_session_id"
+    t.index ["public_token"], name: "index_orders_on_public_token", unique: true
     t.index ["sales_channel_id"], name: "index_orders_on_sales_channel_id"
     t.index ["status"], name: "index_orders_on_status"
     t.index ["user_id"], name: "index_orders_on_user_id"
@@ -250,8 +252,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
     t.datetime "updated_at", null: false
     t.bigint "category_id"
     t.integer "low_stock_at", default: 2, null: false
+    t.boolean "listed", default: false, null: false
     t.index "lower((name)::text)", name: "index_products_on_lower_name", unique: true
     t.index ["category_id"], name: "index_products_on_category_id"
+    t.index ["listed"], name: "index_products_on_listed", where: "listed"
     t.index ["status"], name: "index_products_on_status"
     t.check_constraint "low_stock_at >= 0", name: "products_low_stock_at_not_negative"
   end
@@ -264,6 +268,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
     t.integer "landed_total_pesewas"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "foreign_unit_cost_minor"
     t.index ["purchase_id", "variant_id"], name: "index_purchase_items_on_purchase_id_and_variant_id", unique: true
     t.index ["purchase_id"], name: "index_purchase_items_on_purchase_id"
     t.index ["variant_id"], name: "index_purchase_items_on_variant_id"
@@ -283,11 +288,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
     t.datetime "updated_at", null: false
     t.string "delivery_method", null: false
     t.integer "transport_cost_pesewas", default: 0, null: false
+    t.string "currency", default: "GHS", null: false
+    t.decimal "exchange_rate", precision: 12, scale: 4
     t.index ["purchased_on"], name: "index_purchases_on_purchased_on"
     t.index ["status"], name: "index_purchases_on_status"
     t.index ["supplier_id"], name: "index_purchases_on_supplier_id"
     t.index ["user_id"], name: "index_purchases_on_user_id"
+    t.check_constraint "currency::text = 'GHS'::text AND exchange_rate IS NULL OR currency::text <> 'GHS'::text AND exchange_rate > 0::numeric", name: "purchases_rate_matches_currency"
     t.check_constraint "delivery_method::text = ANY (ARRAY['pickup'::character varying, 'delivery'::character varying]::text[])", name: "purchases_delivery_method_known"
+  end
+
+  create_table "push_subscriptions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "endpoint", null: false
+    t.string "p256dh", null: false
+    t.string "auth", null: false
+    t.string "topics", default: [], null: false, array: true
+    t.string "device"
+    t.datetime "last_sent_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["endpoint"], name: "index_push_subscriptions_on_endpoint", unique: true
+    t.index ["user_id"], name: "index_push_subscriptions_on_user_id"
   end
 
   create_table "roles", force: :cascade do |t|
@@ -308,7 +330,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "system_key"
     t.index "lower((name)::text)", name: "index_sales_channels_on_lower_name", unique: true
+    t.index ["system_key"], name: "index_sales_channels_on_system_key", unique: true
     t.check_constraint "kind::text = ANY (ARRAY['social'::character varying, 'direct'::character varying]::text[])", name: "sales_channels_kind_known"
   end
 
@@ -411,6 +435,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_080001) do
   add_foreign_key "purchase_items", "variants"
   add_foreign_key "purchases", "suppliers", on_delete: :nullify
   add_foreign_key "purchases", "users"
+  add_foreign_key "push_subscriptions", "users", on_delete: :cascade
   add_foreign_key "sessions", "users"
   add_foreign_key "stock_movements", "users"
   add_foreign_key "stock_movements", "variants"

@@ -24,26 +24,26 @@ export default function DashboardEdit({ tiles, panels, max_tiles, customised, ro
     // Rails only needs the keys that are switched on, in order.
     const keys = (items: Pick[]) => items.filter((item) => item.on).map((item) => item.key)
     form.transform((data) => ({ dashboard: { tiles: keys(data.tiles), panels: keys(data.panels) } }))
-    form.patch('/dashboard') // -> DashboardController#update
+    form.patch('/admin/dashboard') // -> DashboardController#update
   }
 
   // Save what is ticked here as the dashboard a whole role starts with.
   // Her own dashboard is not changed by this.
   function saveForRole() {
     const keys = (items: Pick[]) => items.filter((item) => item.on).map((item) => item.key)
-    router.patch('/dashboard', { role_id: roleId, dashboard: { tiles: keys(form.data.tiles), panels: keys(form.data.panels) } })
+    router.patch('/admin/dashboard', { role_id: roleId, dashboard: { tiles: keys(form.data.tiles), panels: keys(form.data.panels) } })
   }
 
   async function reset() {
     if (!(await confirmAction('Go back to the standard dashboard?', { confirm: 'Reset it' }))) return
-    router.patch('/dashboard', { reset: true })
+    router.patch('/admin/dashboard', { reset: true })
   }
 
   return (
     <AppLayout>
       <Head title="Customise your dashboard" />
 
-      <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
+      <Link href="/admin" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Dashboard
       </Link>
@@ -75,7 +75,7 @@ export default function DashboardEdit({ tiles, panels, max_tiles, customised, ro
           <Button type="submit" disabled={form.processing}>
             Save dashboard
           </Button>
-          <ButtonLink href="/" variant="secondary">
+          <ButtonLink href="/admin" variant="secondary">
             Cancel
           </ButtonLink>
           {customised && (

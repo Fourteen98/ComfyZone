@@ -1,4 +1,8 @@
-You can reset your password on
+Hello <%= @user.name %>,
+
+Someone asked to reset the password for your Comfy Zone account. If that was you, choose a new one here:
+
 <%= edit_password_url(@user.password_reset_token) %>
 
-This link will expire in <%= distance_of_time_in_words(0, @user.password_reset_token_expires_in) %>.
+The link works for <%= distance_of_time_in_words(0, @user.password_reset_token_expires_in) %>, and only once.
+If you didn't ask for this, ignore this email: your password stays as it is.

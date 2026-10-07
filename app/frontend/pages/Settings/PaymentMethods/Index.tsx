@@ -15,7 +15,7 @@ export default function PaymentMethodsIndex({ methods }: { methods: MethodRow[] 
 
   // -> Settings::PaymentMethodsController#move
   const move = (method: MethodRow, direction: 'up' | 'down') =>
-    router.patch(`/settings/payments/${method.id}/move`, { direction }, { preserveScroll: true })
+    router.patch(`/admin/settings/payments/${method.id}/move`, { direction }, { preserveScroll: true })
 
   return (
     <SettingsLayout>
@@ -26,7 +26,7 @@ export default function PaymentMethodsIndex({ methods }: { methods: MethodRow[] 
           The ways money moves, offered whenever you record a payment, a refund or an expense. They show in this
           order.
         </p>
-        <ButtonLink href="/settings/payments/new">
+        <ButtonLink href="/admin/settings/payments/new">
           <Plus className="size-5" aria-hidden="true" />
           Add a method
         </ButtonLink>
@@ -36,7 +36,7 @@ export default function PaymentMethodsIndex({ methods }: { methods: MethodRow[] 
         {methods.map((method, index) => (
           <li key={method.id} className="flex items-center gap-1 pr-2">
             <Link
-              href={`/settings/payments/${method.id}/edit`}
+              href={`/admin/settings/payments/${method.id}/edit`}
               className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
             >
               <span className={`font-medium ${method.active ? '' : 'text-taupe-600'}`}>{method.name}</span>

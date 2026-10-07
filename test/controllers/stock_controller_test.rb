@@ -11,10 +11,10 @@ class StockControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:two))
 
     get stock_index_path
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
 
     get stock_path(variants(:dress_m_black))
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
   end
 
   test "lists stock grouped by product, with counts and totals" do
@@ -27,7 +27,7 @@ class StockControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Ankara wrap dress", group[:name]
     assert_equal [ [ "M / Black", 10, "ok" ], [ "M / Red", 0, "out" ], [ "L / Black", 0, "out" ], [ "L / Red", 2, "low" ] ],
       group[:variants].map { |v| v.values_at(:name, :stock, :level).map(&:to_s).then { |n, s, l| [ n, s.to_i, l ] } }
-    assert_equal({ all: 4, low: 1, out: 2 }.stringify_keys, inertia.props[:counts].to_h.stringify_keys)
+    assert_equal({ all: 4, low: 1, out: 2, uncosted: 0 }.stringify_keys, inertia.props[:counts].to_h.stringify_keys)
     assert_equal 12, inertia.props[:totals][:units]
     assert_equal 76_000, inertia.props[:totals][:value_pesewas]
     assert_nil inertia.props[:groups].find { |g| g[:name] == "Old tote bag" }, "archived products are left out"
@@ -83,7 +83,7 @@ class StockControllerTest < ActionDispatch::IntegrationTest
   test "the dashboard counts what needs attention and lists the most urgent" do
     sign_in_as(users(:one))
 
-    get root_path
+    get admin_root_path
 
     assert_equal 3, dashboard_tile(:low_stock)
     assert_equal [ 0, 0, 2 ], dashboard_panel(:low_stock).map { |v| v[:stock] }
@@ -92,7 +92,7 @@ class StockControllerTest < ActionDispatch::IntegrationTest
   test "the dashboard says nothing about stock to people who may not see it" do
     sign_in_as(users(:two))
 
-    get root_path
+    get admin_root_path
 
     assert_nil dashboard_tile(:low_stock)
     assert_nil dashboard_panel(:low_stock)

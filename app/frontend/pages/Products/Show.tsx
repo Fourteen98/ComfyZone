@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react'
-import { Archive, Pencil, RotateCcw } from 'lucide-react'
+import { Archive, Pencil, RotateCcw, Store } from 'lucide-react'
 import type { FormEvent } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import Badge from '@/components/ui/Badge'
@@ -35,6 +35,8 @@ type Props = {
     name: string
     description: string | null
     status: 'active' | 'archived'
+    listed: boolean // on the public shop
+    shop_path: string
     category: string | null
     price_pesewas: number
     options: { name: string; values: OptionValue[] }[]
@@ -63,12 +65,12 @@ export default function ProductShow({ product }: Props) {
       variants: product.variants.map((v) => ({ id: v.id, price: data.prices[v.id] ?? '' })),
     }))
     // -> Products::VariantPricesController#update
-    form.patch(`/products/${product.id}/variant_prices`, { preserveScroll: true })
+    form.patch(`/admin/products/${product.id}/variant_prices`, { preserveScroll: true })
   }
 
   async function archive() {
     if (!(await confirmAction(`Archive ${product.name}? It leaves your product list but keeps its history.`, { confirm: 'Archive' }))) return
-    router.patch(`/products/${product.id}/archive`)
+    router.patch(`/admin/products/${product.id}/archive`)
   }
 
   return (
@@ -81,16 +83,25 @@ export default function ProductShow({ product }: Props) {
         actions={
           manage &&
           (archived ? (
-            <Button type="button" variant="secondary" onClick={() => router.patch(`/products/${product.id}/restore`)}>
+            <Button type="button" variant="secondary" onClick={() => router.patch(`/admin/products/${product.id}/restore`)}>
               <RotateCcw className="size-5" aria-hidden="true" />
               Make active again
             </Button>
           ) : (
             <>
-              <ButtonLink href={`/products/${product.id}/edit`} variant="secondary">
+              <ButtonLink href={`/admin/products/${product.id}/edit`} variant="secondary">
                 <Pencil className="size-5" aria-hidden="true" />
                 Edit
               </ButtonLink>
+              {/* The quick switch: on the shop, or off it. -> ProductsController#listing */}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.patch(`/admin/products/${product.id}/listing`, { listed: !product.listed }, { preserveScroll: true })}
+              >
+                <Store className="size-5" aria-hidden="true" />
+                {product.listed ? 'Take off the shop' : 'Put on the shop'}
+              </Button>
               <Button type="button" variant="secondary" onClick={archive}>
                 <Archive className="size-5" aria-hidden="true" />
                 Archive
@@ -117,6 +128,14 @@ export default function ProductShow({ product }: Props) {
         <div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             {archived && <Badge tone="muted">Archived</Badge>}
+            {!archived && product.listed && (
+              // A plain <a>: the shop is a different layout, and a new tab
+              // keeps her place in the back office.
+              <a href={product.shop_path} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:underline">
+                <Badge tone="success">On the shop</Badge>
+                <span className="text-sm text-wine-800 underline underline-offset-4">See it there</span>
+              </a>
+            )}
             {product.category && <Badge>{product.category}</Badge>}
             <p>
               <span className="text-taupe-700">Selling price </span>
@@ -145,7 +164,7 @@ export default function ProductShow({ product }: Props) {
                 product.suppliers.map((supplier, index) => (
                   <span key={supplier.id}>
                     <Link
-                      href={`/suppliers/${supplier.id}`}
+                      href={`/admin/suppliers/${supplier.id}`}
                       className="font-medium text-wine-800 underline decoration-taupe-400 underline-offset-4 hover:decoration-wine-800"
                     >
                       {supplier.name}
@@ -200,7 +219,7 @@ export default function ProductShow({ product }: Props) {
                 {variant.stock !== null && (
                   // Links to the item's stock history, where the count can be corrected.
                   <Link
-                    href={`/stock/${variant.id}`}
+                    href={`/admin/stock/${variant.id}`}
                     className="flex w-32 items-center justify-end gap-2 rounded-md py-1 tabular-nums hover:underline"
                   >
                     <StockLevelBadge level={variant.level} />

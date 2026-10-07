@@ -61,7 +61,7 @@ export default function ReportsShow(props: Props) {
 
   function applyDates(event: FormEvent) {
     event.preventDefault()
-    router.get('/reports', { range: 'custom', from, to }, { preserveScroll: true })
+    router.get('/admin/reports', { range: 'custom', from, to }, { preserveScroll: true })
   }
 
   // The same period, as a query string, for the download links.
@@ -77,7 +77,7 @@ export default function ReportsShow(props: Props) {
     { label: 'Orders', value: String(totals.orders), hint: totals.units === 1 ? '1 item' : `${totals.units} items` },
     { label: 'Average order', value: formatMoney(totals.orders === 0 ? 0 : Math.round(totals.sales_pesewas / totals.orders)) },
     // Expenses, and what is really left, for those allowed to see them.
-    ...(expenses ? [{ label: 'Expenses', value: formatMoney(expenses.total_pesewas), href: '/expenses' }] : []),
+    ...(expenses ? [{ label: 'Expenses', value: formatMoney(expenses.total_pesewas), href: '/admin/expenses' }] : []),
     ...(expenses && totals.profit_pesewas !== undefined
       ? [{ label: 'Net profit', value: formatMoney(totals.profit_pesewas - expenses.total_pesewas), hint: 'Profit less expenses' }]
       : []),
@@ -93,7 +93,7 @@ export default function ReportsShow(props: Props) {
         {presets.map((preset) => (
           <Link
             key={preset.key}
-            href="/reports"
+            href="/admin/reports"
             data={{ range: preset.key }}
             preserveScroll
             aria-current={period.key === preset.key ? 'page' : undefined}
@@ -160,7 +160,7 @@ export default function ReportsShow(props: Props) {
               label: row.name,
               note: `${row.units} sold${sees_costs && row.profit_pesewas !== undefined ? `, ${formatMoney(row.profit_pesewas)} profit` : ''}`,
               value: row.sales_pesewas,
-              href: `/products/${row.id}`,
+              href: `/admin/products/${row.id}`,
             }))}
           />
         </Panel>
@@ -193,7 +193,7 @@ export default function ReportsShow(props: Props) {
           <BarList
             empty="No sales from a live in this period."
             format={formatMoney}
-            rows={lives.map((row) => ({ key: row.id, label: row.name, note: orders(row.orders), value: row.sales_pesewas, href: `/live/${row.id}` }))}
+            rows={lives.map((row) => ({ key: row.id, label: row.name, note: orders(row.orders), value: row.sales_pesewas, href: `/admin/live/${row.id}` }))}
           />
         </Panel>
 
@@ -245,7 +245,7 @@ export default function ReportsShow(props: Props) {
           ].map((file) => (
             <a
               key={file.kind}
-              href={`/reports/export/${file.kind}.csv?${query}`}
+              href={`/admin/reports/export/${file.kind}.csv?${query}`}
               className="inline-flex min-h-12 items-center gap-2 rounded-md border border-taupe-300 bg-white px-5 font-medium text-wine-800 hover:bg-taupe-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-700"
             >
               <Download className="size-5" aria-hidden="true" />

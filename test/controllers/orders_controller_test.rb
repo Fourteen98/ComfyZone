@@ -125,14 +125,14 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_no_difference "Order.count" do
       post orders_path, params: claim_params
     end
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
   end
 
   test "the dashboard shows today's sales, money owed and recent orders" do
     sign_in_as(users(:one))
     post orders_path, params: claim_params(quantity: 2)
 
-    get root_path
+    get admin_root_path
 
     assert_equal [ 24_000, 0, 24_000 ], [ dashboard_tile(:sales_today), dashboard_tile(:orders_to_pack), dashboard_tile(:money_owed) ]
     assert_equal [ "Ama Koranteng" ], dashboard_panel(:recent_orders).map { |o| o[:customer] }
@@ -143,7 +143,7 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     roles(:assistant).update!(permissions: [ "products.view" ])
     sign_in_as(users(:two))
 
-    get root_path
+    get admin_root_path
 
     assert_nil dashboard_tile(:sales_today)
     assert_nil dashboard_panel(:recent_orders)

@@ -28,8 +28,8 @@ type Props = {
 export default function PurchasesIndex({ purchases, filters, counts }: Props) {
   const can = useCan()
   const tabs = [
-    { key: 'all', label: 'All', count: counts.all, href: '/purchases' },
-    { key: 'ordered', label: 'On the way', count: counts.ordered, href: '/purchases?status=ordered' },
+    { key: 'all', label: 'All', count: counts.all, href: '/admin/purchases' },
+    { key: 'ordered', label: 'On the way', count: counts.ordered, href: '/admin/purchases?status=ordered' },
   ]
 
   return (
@@ -41,7 +41,7 @@ export default function PurchasesIndex({ purchases, filters, counts }: Props) {
         description="Every restock. Stock goes up when a purchase arrives."
         actions={
           can('purchases.manage') && (
-            <ButtonLink href="/purchases/new">
+            <ButtonLink href="/admin/purchases/new">
               <Plus className="size-5" aria-hidden="true" />
               Record a purchase
             </ButtonLink>
@@ -86,7 +86,7 @@ export default function PurchasesIndex({ purchases, filters, counts }: Props) {
               {purchases.map((purchase) => (
                 <li key={purchase.id}>
                   <Link
-                    href={`/purchases/${purchase.id}`}
+                    href={`/admin/purchases/${purchase.id}`}
                     className="flex flex-wrap items-center gap-x-6 gap-y-1 px-5 py-4 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
                   >
                     <div className="min-w-0 flex-1">

@@ -60,3 +60,4 @@ gem "webauthn", "~> 3.4"
 # CSV files for the report exports. Part of Ruby itself up to 3.3; a separate
 # gem from 3.4, so it is named here to keep working after an upgrade.
 gem "csv"
+gem "web-push", "~> 3.0" # sends push notifications to phones (see app/models/push.rb)

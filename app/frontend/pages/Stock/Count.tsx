@@ -32,14 +32,14 @@ export default function StockCount({ products }: { products: Product[] }) {
     event.preventDefault()
     setSaving(true)
     // Only what she typed is sent. -> Stock::CountsController#create
-    router.post('/stock/count', { counts: Object.fromEntries(counted.map((variant) => [variant.id, counts[variant.id]])) }, { onFinish: () => setSaving(false) })
+    router.post('/admin/stock/count', { counts: Object.fromEntries(counted.map((variant) => [variant.id, counts[variant.id]])) }, { onFinish: () => setSaving(false) })
   }
 
   return (
     <AppLayout>
       <Head title="Stock take" />
 
-      <Link href="/stock" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
+      <Link href="/admin/stock" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Stock
       </Link>
@@ -123,7 +123,7 @@ export default function StockCount({ products }: { products: Product[] }) {
                 ? 'Nothing counted yet.'
                 : `${counted.length} counted, ${different.length} ${different.length === 1 ? 'differs' : 'differ'}.`}
             </p>
-            <ButtonLink href="/stock" variant="secondary" className="max-sm:hidden">
+            <ButtonLink href="/admin/stock" variant="secondary" className="max-sm:hidden">
               Cancel
             </ButtonLink>
             <Button type="submit" disabled={saving || counted.length === 0}>

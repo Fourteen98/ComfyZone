@@ -12,6 +12,7 @@ type ProductRow = {
   id: number
   name: string
   status: 'active' | 'archived'
+  listed: boolean
   category: string | null
   cover_url: string | null
   variants_count: number
@@ -43,7 +44,7 @@ export default function ProductsIndex({ products, filters, counts, categories }:
 
     const timer = setTimeout(() => {
       router.get(
-        '/products',
+        '/admin/products',
         { ...params(filters.category), q: query || undefined },
         { preserveState: true, replace: true },
       )
@@ -63,8 +64,8 @@ export default function ProductsIndex({ products, filters, counts, categories }:
   }
 
   const tabs = [
-    { key: 'active', label: 'Active', count: counts.active, href: '/products' },
-    { key: 'archived', label: 'Archived', count: counts.archived, href: '/products?status=archived' },
+    { key: 'active', label: 'Active', count: counts.active, href: '/admin/products' },
+    { key: 'archived', label: 'Archived', count: counts.archived, href: '/admin/products?status=archived' },
   ]
   const nothingAtAll = counts.active + counts.archived === 0
 
@@ -76,7 +77,7 @@ export default function ProductsIndex({ products, filters, counts, categories }:
         title="Products"
         actions={
           can('products.manage') && (
-            <ButtonLink href="/products/new">
+            <ButtonLink href="/admin/products/new">
               <Plus className="size-5" aria-hidden="true" />
               Add a product
             </ButtonLink>
@@ -134,7 +135,7 @@ export default function ProductsIndex({ products, filters, counts, categories }:
                 return (
                   <Link
                     key={category.slug || 'all'}
-                    href="/products"
+                    href="/admin/products"
                     data={params(category.slug)}
                     preserveState
                     aria-current={on ? 'true' : undefined}
@@ -169,7 +170,7 @@ export default function ProductsIndex({ products, filters, counts, categories }:
               {products.map((product) => (
                 <li key={product.id}>
                   <Link
-                    href={`/products/${product.id}`}
+                    href={`/admin/products/${product.id}`}
                     className="group block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-wine-700"
                   >
                     <div className="aspect-[4/5] overflow-hidden rounded-lg bg-taupe-200">
@@ -187,8 +188,12 @@ export default function ProductsIndex({ products, filters, counts, categories }:
                         </div>
                       )}
                     </div>
-                    {product.category && <p className="mt-2.5 text-sm text-taupe-600">{product.category}</p>}
-                    <p className={`line-clamp-2 leading-snug font-medium group-hover:text-wine-800 ${product.category ? '' : 'mt-2.5'}`}>
+                    {(product.category || product.listed) && (
+                      <p className="mt-2.5 text-sm text-taupe-600">
+                        {[product.category, product.listed ? 'On the shop' : null].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    <p className={`line-clamp-2 leading-snug font-medium group-hover:text-wine-800 ${product.category || product.listed ? '' : 'mt-2.5'}`}>
                       {product.name}
                     </p>
                     <p className="mt-0.5 font-semibold text-wine-800 tabular-nums">

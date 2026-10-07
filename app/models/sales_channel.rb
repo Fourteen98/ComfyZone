@@ -17,6 +17,13 @@ class SalesChannel < ApplicationRecord
   scope :ordered, -> { order(:position, :name) }
   scope :active, -> { where(active: true) }
 
+  # The channel web orders are filed under. Found by its key, never by its
+  # name, so renaming it in Settings is safe; made again if it was deleted.
+  def self.web
+    find_by(system_key: "web") || create!(name: exists?([ "lower(name) = 'website'" ]) ? "Online shop" : "Website", kind: "direct",
+      system_key: "web", position: maximum(:position).to_i + 1)
+  end
+
   # The channel a new live starts on: the one the last live used, otherwise
   # the first social one.
   def self.default_for_live

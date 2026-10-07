@@ -2,7 +2,7 @@ require "test_helper"
 
 class DashboardControllerTest < ActionDispatch::IntegrationTest
   test "sends visitors who are not logged in to the login page" do
-    get root_path
+    get admin_root_path
 
     assert_redirected_to new_session_path
   end
@@ -11,7 +11,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     user = users(:one)
     sign_in_as(user)
 
-    get root_path
+    get admin_root_path
 
     assert_response :success
     # Which React component did the controller ask for?
@@ -31,7 +31,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   test "a helper only receives the permissions their role holds" do
     sign_in_as(users(:two))
 
-    get root_path
+    get admin_root_path
 
     assert_equal roles(:assistant).permissions, inertia.props[:auth][:permissions]
   end
@@ -56,9 +56,9 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:one))
 
     patch dashboard_path, params: { dashboard: { tiles: %w[ stock_value sales_week ], panels: %w[ channels week_sales ] } }
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
 
-    get root_path
+    get admin_root_path
     assert_equal %w[ stock_value sales_week ], inertia.props[:tiles].pluck(:key)
     assert_equal %w[ channels week_sales ], inertia.props[:panels].pluck(:key)
     assert_equal 7, dashboard_panel(:week_sales).size
@@ -76,7 +76,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     users(:two).update!(dashboard_layout: { "tiles" => %w[ sales_today low_stock ], "panels" => [] })
     sign_in_as(users(:two))
 
-    get root_path
+    get admin_root_path
 
     assert_equal %w[ sales_today ], inertia.props[:tiles].pluck(:key)
   end
@@ -85,12 +85,12 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:one))
 
     patch dashboard_path, params: { dashboard: { tiles: [], panels: [] } }
-    get root_path
+    get admin_root_path
     assert_empty inertia.props[:tiles]
 
     patch dashboard_path, params: { reset: true }
     assert_nil users(:one).reload.dashboard_layout
-    get root_path
+    get admin_root_path
     assert_equal 4, inertia.props[:tiles].size
   end
 
@@ -106,7 +106,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     users(:two).update!(dashboard_layout: { "tiles" => %w[ sales_week ], "panels" => [] })
     sign_in_as(users(:two))
 
-    get root_path
+    get admin_root_path
 
     assert_nil inertia.props[:tiles].first[:href]
   end

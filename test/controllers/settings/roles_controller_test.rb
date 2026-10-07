@@ -6,7 +6,7 @@ class Settings::RolesControllerTest < ActionDispatch::IntegrationTest
 
     get settings_roles_path
 
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
   end
 
   test "an Owner sees every role with its head count" do

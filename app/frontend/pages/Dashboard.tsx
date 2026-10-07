@@ -68,7 +68,7 @@ function panelParts(panel: DashboardPanel, canSeeReports: boolean): { action?: R
     case 'recent_orders':
       return {
         action: panel.data.length > 0 && (
-          <Link href="/orders" className={seeAll}>
+          <Link href="/admin/orders" className={seeAll}>
             See all
           </Link>
         ),
@@ -87,7 +87,7 @@ function panelParts(panel: DashboardPanel, canSeeReports: boolean): { action?: R
     case 'low_stock':
       return {
         action: (
-          <Link href="/stock?show=low" className={seeAll}>
+          <Link href="/admin/stock?show=low" className={seeAll}>
             See all
           </Link>
         ),
@@ -100,7 +100,7 @@ function panelParts(panel: DashboardPanel, canSeeReports: boolean): { action?: R
             <ul className="-mx-5 -my-5 divide-y divide-taupe-200">
               {panel.data.map((item) => (
                 <li key={item.id}>
-                  <Link href={`/stock/${item.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-taupe-50">
+                  <Link href={`/admin/stock/${item.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-taupe-50">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{item.product}</span>
                       <span className="mt-1 flex flex-wrap gap-1.5">
@@ -121,7 +121,7 @@ function panelParts(panel: DashboardPanel, canSeeReports: boolean): { action?: R
     case 'week_sales':
       return {
         action: canSeeReports && (
-          <Link href="/reports" className={seeAll}>
+          <Link href="/admin/reports" className={seeAll}>
             Reports
           </Link>
         ),
@@ -151,7 +151,7 @@ function panelParts(panel: DashboardPanel, canSeeReports: boolean): { action?: R
               label: row.name,
               note: `${row.units} sold`,
               value: row.sales_pesewas,
-              href: `/products/${row.id}`,
+              href: `/admin/products/${row.id}`,
             }))}
           />
         ),
@@ -187,7 +187,7 @@ export default function Dashboard({ today, tiles, panels, live_now }: Props) {
         title={greeting()}
         description={today}
         actions={
-          <ButtonLink href="/dashboard/edit" variant="secondary">
+          <ButtonLink href="/admin/dashboard/edit" variant="secondary">
             <SlidersHorizontal className="size-5" aria-hidden="true" />
             Customise
           </ButtonLink>
@@ -196,7 +196,7 @@ export default function Dashboard({ today, tiles, panels, live_now }: Props) {
 
       {live_now && (
         <Link
-          href={`/live/${live_now.id}`}
+          href={`/admin/live/${live_now.id}`}
           className="mt-5 flex items-center gap-3 rounded-lg bg-wine-800 px-5 py-4 text-taupe-50 hover:bg-wine-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-700"
         >
           <Radio className="size-6 shrink-0" aria-hidden="true" />
@@ -256,7 +256,7 @@ export default function Dashboard({ today, tiles, panels, live_now }: Props) {
       {tiles.length === 0 && panels.length === 0 && (
         <p className="mt-10 text-center text-taupe-700">
           Your dashboard is empty.{' '}
-          <Link href="/dashboard/edit" className="font-medium text-wine-800 underline underline-offset-4">
+          <Link href="/admin/dashboard/edit" className="font-medium text-wine-800 underline underline-offset-4">
             Choose what to show
           </Link>
         </p>

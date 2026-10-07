@@ -15,7 +15,7 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
   test "needs purchases.view to look and purchases.manage to change" do
     sign_in_as(users(:two))
     get purchases_path
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
 
     roles(:assistant).update!(permissions: [ "purchases.view" ])
     get purchases_path

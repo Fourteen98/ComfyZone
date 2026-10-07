@@ -58,7 +58,7 @@ export default function LiveShow({ live, stats, orders, can_sell, adding, produc
 
   async function finish() {
     if (!(await confirmAction('End this live? You can still record sales afterwards, but they will not count towards it.', { confirm: 'End the live' }))) return
-    router.patch(`/live/${live.id}/finish`) // -> LiveSessionsController#finish
+    router.patch(`/admin/live/${live.id}/finish`) // -> LiveSessionsController#finish
   }
 
   const strip = [
@@ -73,7 +73,7 @@ export default function LiveShow({ live, stats, orders, can_sell, adding, produc
       <Head title={live.title} />
 
       {!live.running && (
-        <Link href="/live" className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
+        <Link href="/admin/live" className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
           <ArrowLeft className="size-4" aria-hidden="true" />
           Live sales
         </Link>
@@ -89,7 +89,7 @@ export default function LiveShow({ live, stats, orders, can_sell, adding, produc
         actions={
           can_sell && (
             <>
-              <ButtonLink href={`/live/${live.id}/edit`} variant="secondary">
+              <ButtonLink href={`/admin/live/${live.id}/edit`} variant="secondary">
                 <Pencil className="size-5" aria-hidden="true" />
                 Edit
               </ButtonLink>
@@ -112,7 +112,7 @@ export default function LiveShow({ live, stats, orders, can_sell, adding, produc
           products and buyers the claim screen needs. */}
       {!live.running && can_sell && !adding && (
         <div className="mt-5">
-          <ButtonLink href={`/live/${live.id}`} data={{ add: 1 }} variant="secondary" preserveScroll>
+          <ButtonLink href={`/admin/live/${live.id}`} data={{ add: 1 }} variant="secondary" preserveScroll>
             <Plus className="size-5" aria-hidden="true" />
             Add a missed order
           </ButtonLink>
@@ -121,7 +121,7 @@ export default function LiveShow({ live, stats, orders, can_sell, adding, produc
       {adding && (
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-wine-200 bg-wine-50 px-5 py-3">
           <p className="text-taupe-800">Adding to a live that has ended. Orders are dated {live.started}.</p>
-          <ButtonLink href={`/live/${live.id}`} variant="secondary">
+          <ButtonLink href={`/admin/live/${live.id}`} variant="secondary">
             Done
           </ButtonLink>
         </div>

@@ -29,7 +29,7 @@ export default function DeliveryAreaForm({ area, countries, home, regions, other
       `Merge ${other.label} into ${area.name}? Its customers and orders move to ${area.name}, and ${other.label} is removed. This can't be undone.`,
       { confirm: 'Merge them' },
     )
-    if (sure) router.post(`/settings/areas/${area.id}/merge`, { other_id: other.value })
+    if (sure) router.post(`/admin/settings/areas/${area.id}/merge`, { other_id: other.value })
   }
 
   const editing = area !== null
@@ -48,9 +48,9 @@ export default function DeliveryAreaForm({ area, countries, home, regions, other
     form.transform((data) => ({ delivery_area: data }))
 
     if (editing) {
-      form.patch(`/settings/areas/${area.id}`)
+      form.patch(`/admin/settings/areas/${area.id}`)
     } else {
-      form.post('/settings/areas')
+      form.post('/admin/settings/areas')
     }
   }
 
@@ -58,7 +58,7 @@ export default function DeliveryAreaForm({ area, countries, home, regions, other
     if (!editing) return
     const kept = area.orders_count === 0 ? '' : ' Orders sent there keep their fee, and customers there keep their region.'
     if (!(await confirmAction(`Delete "${area.name}"?${kept}`, { confirm: 'Delete', danger: true }))) return
-    router.delete(`/settings/areas/${area.id}`)
+    router.delete(`/admin/settings/areas/${area.id}`)
   }
 
   return (
@@ -136,7 +136,7 @@ export default function DeliveryAreaForm({ area, countries, home, regions, other
           <Button type="submit" disabled={form.processing}>
             {editing ? 'Save changes' : 'Add place'}
           </Button>
-          <ButtonLink href="/settings/areas" variant="secondary">
+          <ButtonLink href="/admin/settings/areas" variant="secondary">
             Cancel
           </ButtonLink>
           {editing && (

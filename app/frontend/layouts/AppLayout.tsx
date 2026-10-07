@@ -26,8 +26,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const can = useCan()
   const items = navigation.filter((item) => !item.permissions || item.permissions.some(can))
 
-  const isActive = (item: NavItem) => (item.href === '/' ? url === '/' : url.startsWith(item.href))
-  const onAccount = url.startsWith('/account')
+  const isActive = (item: NavItem) => (item.href === '/admin' ? url === '/admin' || url.startsWith('/admin?') : url.startsWith(item.href))
+  const onAccount = url.startsWith('/admin/account')
 
   // Phone: four in the bar, the rest under "More".
   const barItems = items.filter((item) => item.mobile).slice(0, 4)
@@ -43,7 +43,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <div className="min-h-dvh">
       {/* ---------- Desktop sidebar ---------- */}
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-wine-800 text-taupe-200 lg:flex">
-        <Link href="/" className="flex items-center gap-3 px-5 py-6">
+        <Link href="/admin" className="flex items-center gap-3 px-5 py-6">
           <img src="/icon.png" alt="" className="size-11 rounded-md" />
           <span className="font-display text-2xl leading-none font-semibold text-taupe-50">
             The Comfy Zone
@@ -61,7 +61,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <div className="border-t border-wine-700 p-3">
             {/* Your name links to "My account" (passkeys live there). */}
             <Link
-              href="/account"
+              href="/admin/account"
               aria-current={onAccount ? 'page' : undefined}
               className={`mb-1 flex min-h-11 items-center gap-3 rounded-md px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-taupe-200 ${
                 onAccount ? 'bg-taupe-50 text-wine-800' : 'hover:bg-wine-700'
@@ -76,7 +76,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             {/* A Link with method="delete" sends DELETE /session, which
                 Rails routes to SessionsController#destroy. */}
             <Link
-              href="/session"
+              href="/admin/session"
               method="delete"
               as="button"
               className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-left text-taupe-200 hover:bg-wine-700 hover:text-taupe-50 focus-visible:outline-2 focus-visible:outline-taupe-200"
@@ -90,7 +90,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
       {/* ---------- Phone top bar ---------- */}
       <header className="sticky top-0 z-10 flex items-center border-b border-taupe-200 bg-taupe-50/95 px-4 py-2.5 backdrop-blur lg:hidden">
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/admin" className="flex items-center gap-2.5">
           <img src="/icon.png" alt="" className="size-9 rounded-md" />
           <span className="font-display text-xl font-semibold text-wine-800">The Comfy Zone</span>
         </Link>
@@ -145,7 +145,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             {user && (
               <div className="mx-3 mt-2 border-t border-taupe-200 pt-2">
                 <Link
-                  href="/account"
+                  href="/admin/account"
                   aria-current={onAccount ? 'page' : undefined}
                   className={`flex min-h-14 items-center gap-3.5 rounded-md px-3 ${onAccount ? 'bg-taupe-100 text-wine-800' : ''}`}
                 >
@@ -155,7 +155,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     <span className="block truncate text-sm text-taupe-700">{user.role}, my account</span>
                   </span>
                 </Link>
-                <Link href="/session" method="delete" as="button" className="flex min-h-14 w-full items-center gap-3.5 rounded-md px-3 text-left">
+                <Link href="/admin/session" method="delete" as="button" className="flex min-h-14 w-full items-center gap-3.5 rounded-md px-3 text-left">
                   <LogOut className="size-6 text-wine-800" aria-hidden="true" />
                   Log out
                 </Link>

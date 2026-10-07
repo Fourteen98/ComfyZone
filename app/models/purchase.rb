@@ -27,6 +27,16 @@ class Purchase < ApplicationRecord
   money :transport_cost, blank_as_zero: true # the trip to collect, or the delivery fee
   money :extra_costs, blank_as_zero: true    # anything else: duty, loading, handling
 
+  # --- currency ---
+  # Most purchases are in cedis. One from abroad records the currency she
+  # paid in and the rate she got; the lines keep both the foreign cost and
+  # its cedi value (see save_with_items).
+  validates :currency, inclusion: { in: Currency::CODES, message: "isn't one this app knows" }
+  validates :exchange_rate,
+    numericality: { greater_than: 0, less_than: 100_000, message: "is needed. How many cedis did one of that currency cost you?" },
+    if: :foreign?
+  before_validation { self.exchange_rate = nil unless foreign? }
+
   validates :purchased_on, presence: true
   validates :supplier, presence: { message: "is needed. Choose who you bought from" }
   validates :reference, length: { maximum: 60 }
@@ -37,6 +47,21 @@ class Purchase < ApplicationRecord
   before_destroy :only_while_ordered
 
   scope :newest_first, -> { order(purchased_on: :desc, id: :desc) }
+
+  def foreign?
+    currency != Currency::HOME
+  end
+
+  # The rate as she typed it, without trailing zeros: 15.5, not 15.5000.
+  def exchange_rate_text
+    exchange_rate && exchange_rate.to_s("F").sub(/\.?0+\z/, "")
+  end
+
+  # What the supplier was paid in their own currency (smallest units), or
+  # nil for a cedi purchase.
+  def foreign_goods_total_minor
+    live_items.sum { |item| item.quantity.to_i * item.foreign_unit_cost_minor.to_i } if foreign?
+  end
 
   # --- totals (all in pesewas) ---
 
@@ -61,6 +86,9 @@ class Purchase < ApplicationRecord
   # Saves the purchase and replaces its lines. All or nothing.
   #
   #   purchase.save_with_items([{ variant_id: 3, quantity: 12, unit_cost: "60" }, ...])
+  #
+  # unit_cost is in the PURCHASE'S currency. For a dollar purchase "60" means
+  # $60; the line keeps that and works out the cedi cost from the rate.
   def save_with_items(lines)
     saved = false
 
@@ -70,7 +98,12 @@ class Purchase < ApplicationRecord
         line = line.to_h.symbolize_keys
         next if line[:quantity].to_i.zero? # a row left at 0 means "none of these"
 
-        items.build(variant_id: line[:variant_id], quantity: line[:quantity], unit_cost: line[:unit_cost])
+        item = items.build(variant_id: line[:variant_id], quantity: line[:quantity])
+        if foreign?
+          item.price_in_foreign(line[:unit_cost], rate: exchange_rate)
+        else
+          item.unit_cost = line[:unit_cost]
+        end
       end
 
       if save
@@ -160,7 +193,7 @@ class Purchase < ApplicationRecord
         next if item.valid?
 
         name = item.variant ? "#{item.variant.product.name}, #{item.variant.name}" : "An item"
-        problems = item.errors.map { |error| error.attribute == :unit_cost ? "cost #{error.message}" : error.full_message.downcase }
+        problems = item.errors.map { |error| error.attribute.in?(%i[ unit_cost foreign_unit_cost ]) ? "cost #{error.message}" : error.full_message.downcase }
         errors.add(:items, "#{name}: #{problems.to_sentence}")
       end
 

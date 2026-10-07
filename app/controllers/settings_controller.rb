@@ -9,7 +9,7 @@ class SettingsController < InertiaController
     elsif can?("roles.manage")
       redirect_to settings_roles_path
     else
-      redirect_to root_path, alert: "You don't have access to Settings."
+      redirect_to admin_root_path, alert: "You don't have access to Settings."
     end
   end
 end

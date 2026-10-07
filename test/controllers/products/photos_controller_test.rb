@@ -105,6 +105,6 @@ class Products::PhotosControllerTest < ActionDispatch::IntegrationTest
     assert_no_difference "ProductPhoto.count" do
       post product_photos_path(products(:dress)), params: { photos: [ photo ] }
     end
-    assert_redirected_to root_path
+    assert_redirected_to admin_root_path
   end
 end

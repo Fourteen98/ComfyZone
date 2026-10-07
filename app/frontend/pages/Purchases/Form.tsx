@@ -16,7 +16,7 @@ import TextField from '@/components/ui/TextField'
 import type { OptionValue } from '@/components/OptionValuesEditor'
 import LocationFields, { nowhere } from '@/components/LocationFields'
 import type { Locations } from '@/components/LocationFields'
-import { formatMoney, toPesewas } from '@/lib/format'
+import { formatForeign, formatMoney, toPesewas } from '@/lib/format'
 
 type PickableVariant = { id: number; name: string; option_values: (OptionValue & { name: string })[]; stock: number }
 type PickableProduct = {
@@ -38,8 +38,13 @@ type Props = {
     transport_cost: string
     extra_costs: string
     note: string
+    currency: string
+    exchange_rate: string
+    // In the purchase's own currency.
     items: { variant_id: number; quantity: number; unit_cost: string }[]
   } | null
+  // What a purchase can be paid in. The first one is cedis.
+  currencies: { code: string; name: string; symbol: string }[]
   today: string
   locations: Locations
   suppliers: { id: number; name: string; phone: string | null; product_ids: number[] }[]
@@ -48,11 +53,13 @@ type Props = {
   products: PickableProduct[]
 }
 
+const HOME_CURRENCY = 'GHS' // Currency::HOME in Ruby
+
 // One product on the purchase, as edited on screen: a cost for each unit,
 // and how many of each variant.
 type Block = { productId: number; cost: string; quantities: Record<number, string> }
 
-export default function PurchaseForm({ purchase, today, suppliers, preselected_supplier_id, products, locations }: Props) {
+export default function PurchaseForm({ purchase, today, suppliers, preselected_supplier_id, products, locations, currencies }: Props) {
   const editing = purchase !== null
   const byId = new Map(products.map((product) => [product.id, product]))
 
@@ -69,6 +76,8 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
     transport_cost: purchase?.transport_cost ?? '',
     extra_costs: purchase?.extra_costs ?? '',
     note: purchase?.note ?? '',
+    currency: purchase?.currency ?? HOME_CURRENCY,
+    exchange_rate: purchase?.exchange_rate ?? '',
     blocks: blocksFrom(purchase?.items ?? [], products),
   })
   const errors = form.errors as Record<string, string[] | undefined>
@@ -77,7 +86,7 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
   // Change a simple field and clear its error, so a red message doesn't
   // linger after she has fixed the problem.
   function set(
-    field: 'purchased_on' | 'new_supplier_name' | 'new_supplier_phone' | 'reference' | 'transport_cost' | 'extra_costs' | 'note',
+    field: 'purchased_on' | 'new_supplier_name' | 'new_supplier_phone' | 'reference' | 'transport_cost' | 'extra_costs' | 'note' | 'exchange_rate',
     value: string,
   ) {
     form.setData(field, value)
@@ -92,16 +101,29 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
   const patchBlock = (productId: number, patch: Partial<Block>) =>
     setBlocks(blocks.map((block) => (block.productId === productId ? { ...block, ...patch } : block)))
 
+  // ----- currency -----
+  // Goods bought abroad: the cost boxes are in the supplier's currency, and
+  // the rate turns them into cedis. `rate` here is only for the running
+  // totals on screen; Rails does the exact sum on save (PurchaseItem#price_in_foreign).
+  const currency = currencies.find((entry) => entry.code === form.data.currency) ?? currencies[0]
+  const foreign = currency.code !== HOME_CURRENCY
+  const rate = foreign ? Number.parseFloat(form.data.exchange_rate) || 0 : 1
+  const inCedis = (minor: number) => Math.round(minor * rate)
+
   function addProduct(product: PickableProduct) {
-    setBlocks([...blocks, { productId: product.id, cost: product.last_cost, quantities: {} }])
+    // "Last time" is a cedi figure, so it only pre-fills a cedi purchase.
+    setBlocks([...blocks, { productId: product.id, cost: foreign ? '' : product.last_cost, quantities: {} }])
     setSearch('')
   }
 
   // ----- live totals, worked out as she types (all in pesewas) -----
   const unitsOf = (block: Block) => Object.values(block.quantities).reduce((sum, q) => sum + (Number.parseInt(q, 10) || 0), 0)
-  const goodsOf = (block: Block) => unitsOf(block) * toPesewas(block.cost)
+  // toPesewas reads "12.50" as 1250 whatever the currency: cents work the same way.
+  const paidOf = (block: Block) => unitsOf(block) * toPesewas(block.cost) // in the purchase's currency
+  const goodsOf = (block: Block) => unitsOf(block) * inCedis(toPesewas(block.cost)) // in cedis
   const units = blocks.reduce((sum, block) => sum + unitsOf(block), 0)
   const goods = blocks.reduce((sum, block) => sum + goodsOf(block), 0)
+  const paid = blocks.reduce((sum, block) => sum + paidOf(block), 0)
   const transport = toPesewas(form.data.transport_cost)
   const fees = toPesewas(form.data.extra_costs)
   const extra = transport + fees // everything paid on top of the goods
@@ -135,6 +157,8 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
         transport_cost: data.transport_cost,
         extra_costs: data.extra_costs,
         note: data.note,
+        currency: data.currency,
+        exchange_rate: data.currency === HOME_CURRENCY ? '' : data.exchange_rate,
         items: data.blocks.flatMap((block) =>
           Object.entries(block.quantities)
             .filter(([, quantity]) => (Number.parseInt(quantity, 10) || 0) > 0)
@@ -144,9 +168,9 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
     }))
 
     if (editing) {
-      form.patch(`/purchases/${purchase.id}`) // -> PurchasesController#update
+      form.patch(`/admin/purchases/${purchase.id}`) // -> PurchasesController#update
     } else {
-      form.post('/purchases') // -> PurchasesController#create
+      form.post('/admin/purchases') // -> PurchasesController#create
     }
   }
 
@@ -204,6 +228,39 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
               />
             </div>
 
+            {/* Most purchases are in cedis, so this is one quiet select until
+                another currency is chosen; then the rate box appears. */}
+            <div className="mt-5 grid gap-5 sm:grid-cols-2">
+              <SelectField
+                id="currency"
+                label="Paid the supplier in"
+                options={currencies.map((entry) => ({ value: entry.code, label: `${entry.name} (${entry.symbol})` }))}
+                value={form.data.currency}
+                onChange={(e) => {
+                  form.setData('currency', e.target.value)
+                  form.clearErrors('currency', 'exchange_rate')
+                }}
+                error={errors.currency}
+              />
+              {foreign && (
+                <MoneyField
+                  id="exchange_rate"
+                  label={`What 1 ${currency.name} cost you`}
+                  placeholder="0.00"
+                  required
+                  value={form.data.exchange_rate}
+                  onChange={(e) => set('exchange_rate', e.target.value)}
+                  hint="The rate you got, in cedis. Up to 4 decimal places, like 15.5 or 0.0092."
+                  error={errors.exchange_rate}
+                />
+              )}
+            </div>
+            {foreign && (
+              <p className="mt-3 max-w-xl text-sm text-taupe-700">
+                Type each cost below in {currency.symbol} ({currency.name}). Transport and other fees stay in cedis.
+              </p>
+            )}
+
             {/* Shown only when "+ Add a new supplier" is chosen. The supplier
                 is saved together with the purchase. */}
             {addingSupplier && (
@@ -246,7 +303,7 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
             {products.length === 0 ? (
               <p className="text-taupe-700">
                 You have no products yet.{' '}
-                <Link href="/products/new" className="font-medium text-wine-800 underline underline-offset-4">
+                <Link href="/admin/products/new" className="font-medium text-wine-800 underline underline-offset-4">
                   Add a product
                 </Link>{' '}
                 first, then come back to record buying it.
@@ -287,6 +344,7 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                             id={`cost_${product.id}`}
                             label="What each one cost you"
                             placeholder="0.00"
+                            symbol={currency.symbol}
                             value={block.cost}
                             onChange={(e) => patchBlock(product.id, { cost: e.target.value })}
                             hint={product.last_cost ? `Last time: ${formatMoney(toPesewas(product.last_cost))}` : undefined}
@@ -319,7 +377,11 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                         </ul>
 
                         <p className="mt-4 border-t border-taupe-200 pt-3 text-sm text-taupe-700 tabular-nums">
-                          {unitsOf(block)} {unitsOf(block) === 1 ? 'item' : 'items'}, {formatMoney(goodsOf(block))}.
+                          {unitsOf(block)} {unitsOf(block) === 1 ? 'item' : 'items'},{' '}
+                          {foreign
+                            ? `${formatForeign(paidOf(block), currency.symbol)}${rate > 0 ? `, which is ${formatMoney(goodsOf(block))}` : ''}`
+                            : formatMoney(goodsOf(block))}
+                          .
                           {landed !== null && (
                             <span className="text-ink">
                               {' '}
@@ -460,6 +522,12 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
           <Panel title="Summary">
             <dl className="space-y-2 tabular-nums">
               <Row label={units === 1 ? '1 item' : `${units} items`} value={formatMoney(goods)} />
+              {foreign && (
+                <p className="-mt-1 text-sm text-taupe-700">
+                  {formatForeign(paid, currency.symbol)}
+                  {rate > 0 ? ` at ${form.data.exchange_rate} cedis each` : '. Add the rate to see it in cedis'}
+                </p>
+              )}
               <Row label={pickup ? 'Pick-up trip' : 'Delivery'} value={formatMoney(transport)} />
               {fees > 0 && <Row label="Other fees" value={formatMoney(fees)} />}
               <div className="flex items-baseline justify-between border-t border-taupe-200 pt-3">
@@ -480,7 +548,7 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
               Adding to stock is final. If the goods have not arrived, save them as on the way and mark them arrived
               later.
             </p>
-            <ButtonLink href={editing ? `/purchases/${purchase.id}` : '/purchases'} variant="secondary" block>
+            <ButtonLink href={editing ? `/admin/purchases/${purchase.id}` : '/admin/purchases'} variant="secondary" block>
               Cancel
             </ButtonLink>
           </div>

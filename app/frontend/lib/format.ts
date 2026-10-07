@@ -8,6 +8,14 @@ export function formatMoney(pesewas: number): string {
   return `GH₵ ${cedis}`
 }
 
+// An amount in another currency, kept the same way (whole cents, fen,
+// kobo): formatForeign(24000, '$') -> "$ 240.00". Used on purchases paid
+// abroad; everything else in the app is cedis.
+export function formatForeign(minor: number, symbol: string): string {
+  const amount = (minor / 100).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return `${symbol} ${amount}`
+}
+
 // What she typed ("120.50") -> pesewas, for live totals on screen only.
 // Anything unreadable counts as 0. Rails does the real parsing on save
 // (app/models/pesewas.rb); never send a number worked out here as the truth.

@@ -104,7 +104,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   function claim() {
     setSending(true)
     router.post(
-      '/orders', // -> OrdersController#create
+      '/admin/orders', // -> OrdersController#create
       {
         order: {
           // A live sends the typed username; a recorded sale sends an object.

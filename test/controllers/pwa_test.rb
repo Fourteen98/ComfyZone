@@ -7,7 +7,7 @@ class PwaTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     manifest = JSON.parse(response.body)
-    assert_equal [ "The Comfy Zone", "standalone", "/" ], manifest.values_at("name", "display", "start_url")
+    assert_equal [ "The Comfy Zone", "standalone", "/admin" ], manifest.values_at("name", "display", "start_url")
     manifest["icons"].each { |icon| assert Rails.public_path.join(icon["src"].delete_prefix("/")).exist?, "#{icon['src']} is missing" }
     assert manifest["icons"].any? { |icon| icon["purpose"] == "maskable" }
   end

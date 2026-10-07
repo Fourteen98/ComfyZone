@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react'
 import type { FormEvent } from 'react'
 import AppLayout from '@/layouts/AppLayout'
+import Checkbox from '@/components/ui/Checkbox'
 import Alert from '@/components/ui/Alert'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import MoneyField from '@/components/ui/MoneyField'
@@ -24,6 +25,7 @@ type Props = {
     price: string
     category_id: number | null
     low_stock_at: number
+    listed: boolean
     options: { name: string; values: OptionValue[] }[]
   } | null
   presets: Preset[]
@@ -42,6 +44,8 @@ export default function ProductForm({ product, presets, categories }: Props) {
     price: product?.price ?? '',
     category_id: product?.category_id ? String(product.category_id) : '',
     low_stock_at: String(product?.low_stock_at ?? 2),
+    // Off for a new product: nothing goes public until she says so.
+    listed: product?.listed ?? false,
     // When editing, everything saved starts out ticked.
     options: (product?.options ?? []).map<DraftOption>((option) => ({
       name: option.name,
@@ -71,14 +75,15 @@ export default function ProductForm({ product, presets, categories }: Props) {
         price: data.price,
         category_id: data.category_id, // '' clears it
         low_stock_at: data.low_stock_at,
+        listed: data.listed,
         options: data.options.map((option) => ({ name: option.name, values: chosenValues(option) })),
       },
     }))
 
     if (editing) {
-      form.patch(`/products/${product.id}`) // -> ProductsController#update
+      form.patch(`/admin/products/${product.id}`) // -> ProductsController#update
     } else {
-      form.post('/products') // -> ProductsController#create
+      form.post('/admin/products') // -> ProductsController#create
     }
   }
 
@@ -153,6 +158,12 @@ export default function ProductForm({ product, presets, categories }: Props) {
                 onChange={(e) => set('description', e.target.value)}
                 error={errors.description}
               />
+              <Checkbox
+                label="Show on the shop"
+                description="Anyone can see it and order it at comfyzone.shop. Add a photo first: it is what people see."
+                checked={form.data.listed}
+                onChange={(e) => form.setData('listed', e.target.checked)}
+              />
             </div>
           </Panel>
 
@@ -209,7 +220,7 @@ export default function ProductForm({ product, presets, categories }: Props) {
             <Button type="submit" disabled={form.processing}>
               {editing ? 'Save changes' : 'Add product'}
             </Button>
-            <ButtonLink href={editing ? `/products/${product.id}` : '/products'} variant="secondary">
+            <ButtonLink href={editing ? `/admin/products/${product.id}` : '/admin/products'} variant="secondary">
               Cancel
             </ButtonLink>
           </div>

@@ -22,7 +22,7 @@ export default function LiveIndex({ lives, channels, default_channel_id, can_sta
   function start(event: FormEvent) {
     event.preventDefault()
     form.transform((data) => ({ live: data }))
-    form.post('/live') // -> LiveSessionsController#create
+    form.post('/admin/live') // -> LiveSessionsController#create
   }
 
   return (
@@ -65,7 +65,7 @@ export default function LiveIndex({ lives, channels, default_channel_id, can_sta
             </Button>
             <p className="mt-4 text-sm text-taupe-200">
               Selling without a live?{' '}
-              <Link href="/orders/new" className="font-medium text-taupe-50 underline underline-offset-4">
+              <Link href="/admin/orders/new" className="font-medium text-taupe-50 underline underline-offset-4">
                 Record a sale
               </Link>
             </p>
@@ -79,7 +79,7 @@ export default function LiveIndex({ lives, channels, default_channel_id, can_sta
             <ul className="-mx-5 -my-5 divide-y divide-taupe-200">
               {lives.map((live) => (
                 <li key={live.id}>
-                  <Link href={`/live/${live.id}`} className="flex flex-wrap items-center gap-x-6 gap-y-1 px-5 py-3.5 hover:bg-taupe-50">
+                  <Link href={`/admin/live/${live.id}`} className="flex flex-wrap items-center gap-x-6 gap-y-1 px-5 py-3.5 hover:bg-taupe-50">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{live.title}</span>
                       <span className="block text-sm text-taupe-700">

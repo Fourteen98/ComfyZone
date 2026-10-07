@@ -34,8 +34,10 @@ class StockLedger
         variant.average_cost_pesewas = blended_cost(variant, quantity, total_cost_pesewas)
       end
 
+      before = variant.stock_on_hand
       variant.stock_on_hand += quantity
       variant.save!
+      warn_if_running_low(variant, before)
 
       StockMovement.create!(
         variant: variant,
@@ -50,6 +52,28 @@ class StockLedger
     end
   end
 
+  # A push notification the moment stock CROSSES a line: from above the
+  # product's warning level to at or below it, or from something to nothing.
+  # Comparing before and after is what stops a notification on every sale
+  # once it is already low. (Push.notify waits for the transaction to
+  # commit, so a sale that is rolled back says nothing.)
+  def self.warn_if_running_low(variant, before)
+    after = variant.stock_on_hand
+    return unless after < before && variant.active? && variant.product.active?
+
+    level = variant.product.low_stock_at
+    sold_out = before.positive? && after <= 0
+    gone_low = before > level && after <= level
+    return unless sold_out || gone_low
+
+    Push.notify("low_stock",
+      title: sold_out ? "Sold out" : "Running low",
+      body: sold_out ? "#{variant.full_name} has sold out." : "#{variant.full_name}: #{after} left.",
+      path: "/admin/stock/#{variant.id}")
+    # No `except:` here. Unlike a sale, she wants to know stock ran out even
+    # when it was her own sale that did it.
+  end
+
   # Variants that need attention, most urgent first: out of stock, then low.
   # Only what she is selling now (active variants of active products).
   # The comparison with the product's own warning level happens in SQL, so
@@ -60,6 +84,23 @@ class StockLedger
       .order("variants.stock_on_hand ASC, lower(products.name), variants.position")
   end
 
+  # What everything on the shelf cost her. The same items the Stock page
+  # lists (active variants of active products), so the dashboard tile and
+  # the Stock page always agree. Negative counts are treated as none.
+  def self.sellable
+    Variant.active.joins(:product).merge(Product.active)
+  end
+
+  def self.value_pesewas
+    sellable.sum("GREATEST(variants.stock_on_hand, 0) * variants.average_cost_pesewas")
+  end
+
+  # In stock but with no cost recorded: these count as GH₵ 0 in the value
+  # above until she says what they cost (CostCorrection).
+  def self.uncosted
+    sellable.where("variants.stock_on_hand > 0 AND variants.average_cost_pesewas = 0")
+  end
+
   # Moving average: (value of what is on the shelf + value arriving) / new count.
   #
   #   10 on hand at GH₵ 50  +  10 arriving for GH₵ 700  ->  20 at GH₵ 60
@@ -67,6 +108,11 @@ class StockLedger
   # Rational arithmetic (to_r) keeps the division exact until the final round.
   def self.blended_cost(variant, quantity, total_cost_pesewas)
     on_hand = [ variant.stock_on_hand, 0 ].max # ignore negative stock
+    # A cost of 0 means "never told", not "free" (stock counted in by hand
+    # has no cost). Blending real money with those zeros would halve the
+    # answer, so units of unknown cost are simply valued at the new price.
+    return (total_cost_pesewas.to_r / quantity).round if variant.average_cost_pesewas.zero?
+
     value_on_hand = on_hand * variant.average_cost_pesewas
 
     ((value_on_hand + total_cost_pesewas).to_r / (on_hand + quantity)).round

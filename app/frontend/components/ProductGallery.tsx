@@ -53,7 +53,7 @@ export default function ProductGallery({ productId, productName, photos, maxPhot
     // Files can't travel as JSON, so Inertia sends this as a multipart form,
     // the same encoding as an HTML <form enctype="multipart/form-data">.
     router.post(
-      `/products/${productId}/photos`, // -> Products::PhotosController#create
+      `/admin/products/${productId}/photos`, // -> Products::PhotosController#create
       { photos: small },
       {
         forceFormData: true,
@@ -69,12 +69,12 @@ export default function ProductGallery({ productId, productName, photos, maxPhot
 
   function makeCover(photo: Photo) {
     const ids = [photo.id, ...photos.filter((p) => p.id !== photo.id).map((p) => p.id)]
-    router.patch(`/products/${productId}/photos/order`, { ids }, { preserveScroll: true, onSuccess: () => setChosen(0) })
+    router.patch(`/admin/products/${productId}/photos/order`, { ids }, { preserveScroll: true, onSuccess: () => setChosen(0) })
   }
 
   async function remove(photo: Photo) {
     if (!(await confirmAction('Remove this photo?', { confirm: 'Remove', danger: true }))) return
-    router.delete(`/products/${productId}/photos/${photo.id}`, { preserveScroll: true })
+    router.delete(`/admin/products/${productId}/photos/${photo.id}`, { preserveScroll: true })
   }
 
   function onDrop(event: DragEvent) {

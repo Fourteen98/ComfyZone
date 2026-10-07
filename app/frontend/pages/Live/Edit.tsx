@@ -22,19 +22,19 @@ export default function LiveEdit({ live, channels }: Props) {
   function submit(event: FormEvent) {
     event.preventDefault()
     form.transform((data) => ({ live: data }))
-    form.patch(`/live/${live.id}`) // -> LiveSessionsController#update
+    form.patch(`/admin/live/${live.id}`) // -> LiveSessionsController#update
   }
 
   async function destroy() {
     if (!(await confirmAction(`Delete "${live.title}"? Nothing was sold on it, so nothing else changes.`, { confirm: 'Delete', danger: true }))) return
-    router.delete(`/live/${live.id}`)
+    router.delete(`/admin/live/${live.id}`)
   }
 
   return (
     <AppLayout>
       <Head title={`Edit ${live.title}`} />
 
-      <Link href={`/live/${live.id}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
+      <Link href={`/admin/live/${live.id}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Back to the live
       </Link>
@@ -45,7 +45,7 @@ export default function LiveEdit({ live, channels }: Props) {
       {/* The live is over, but an order that was missed can still go on it. */}
       {!live.running && (
         <div className="mt-5">
-          <ButtonLink href={`/live/${live.id}`} data={{ add: 1 }} variant="secondary">
+          <ButtonLink href={`/admin/live/${live.id}`} data={{ add: 1 }} variant="secondary">
             <Plus className="size-5" aria-hidden="true" />
             Add a missed order
           </ButtonLink>
@@ -89,7 +89,7 @@ export default function LiveEdit({ live, channels }: Props) {
           <Button type="submit" disabled={form.processing}>
             Save changes
           </Button>
-          <ButtonLink href={`/live/${live.id}`} variant="secondary">
+          <ButtonLink href={`/admin/live/${live.id}`} variant="secondary">
             Cancel
           </ButtonLink>
           {/* Only a live nothing was sold on can go. */}

@@ -86,7 +86,7 @@ class PurchasesController < InertiaController
     end
 
     def purchase_params
-      params.expect(purchase: [ :purchased_on, :reference, :delivery_method, :transport_cost, :extra_costs, :note ])
+      params.expect(purchase: [ :purchased_on, :reference, :delivery_method, :transport_cost, :extra_costs, :note, :currency, :exchange_rate ])
     end
 
     # The form either picks an existing supplier (supplier_id) or fills in a
@@ -160,7 +160,8 @@ class PurchasesController < InertiaController
         reference: purchase.reference,
         status: purchase.status,
         units: purchase.units,
-        total_pesewas: purchase.total_pesewas
+        total_pesewas: purchase.total_pesewas,
+        currency: purchase.currency
       }
     end
 
@@ -174,6 +175,13 @@ class PurchasesController < InertiaController
         goods_total_pesewas: purchase.goods_total_pesewas,
         transport_cost_pesewas: purchase.transport_cost_pesewas,
         extra_costs_pesewas: purchase.extra_costs_pesewas,
+        # Only for a purchase paid in another currency.
+        foreign: purchase.foreign? ? {
+          code: purchase.currency,
+          symbol: Currency.symbol(purchase.currency),
+          rate: purchase.exchange_rate_text,
+          goods_total_minor: purchase.foreign_goods_total_minor
+        } : nil,
         items: items.map { |item|
           {
             id: item.id,
@@ -183,6 +191,7 @@ class PurchasesController < InertiaController
             option_values: item.variant.option_values,
             quantity: item.quantity,
             unit_cost_pesewas: item.unit_cost_pesewas,
+            foreign_unit_cost_minor: item.foreign_unit_cost_minor,
             landed_unit_cost_pesewas: item.landed_unit_cost_pesewas,
             line_total_pesewas: item.goods_total_pesewas
           }
@@ -201,10 +210,15 @@ class PurchasesController < InertiaController
           transport_cost: purchase.transport_cost_pesewas.zero? ? "" : purchase.transport_cost,
           extra_costs: purchase.extra_costs_pesewas.zero? ? "" : purchase.extra_costs,
           note: purchase.note.to_s,
+          currency: purchase.currency,
+          exchange_rate: purchase.exchange_rate_text.to_s,
+          # In the purchase's own currency, as she typed them.
           items: purchase.items.map { |item|
-            { variant_id: item.variant_id, quantity: item.quantity, unit_cost: item.unit_cost }
+            { variant_id: item.variant_id, quantity: item.quantity,
+              unit_cost: purchase.foreign? ? item.foreign_unit_cost : item.unit_cost }
           }
         },
+        currencies: Currency.options,
         today: Date.current.iso8601,
         # product_ids lets the form offer a supplier's own products first.
         suppliers: Supplier.ordered.includes(:product_suppliers).map { |supplier|

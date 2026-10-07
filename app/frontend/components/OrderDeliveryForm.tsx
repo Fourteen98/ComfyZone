@@ -45,7 +45,7 @@ export default function OrderDeliveryForm({ orderId, delivery, locations, known,
     event.preventDefault()
     form.transform((data) => ({ delivery: data }))
     // -> Orders::DeliveriesController#update
-    form.patch(`/orders/${orderId}/delivery`, { preserveScroll: true, onSuccess: onDone })
+    form.patch(`/admin/orders/${orderId}/delivery`, { preserveScroll: true, onSuccess: onDone })
   }
 
   return (

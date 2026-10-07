@@ -31,7 +31,7 @@ export default function SuppliersIndex({ suppliers, filters, total }: Props) {
   useEffect(() => {
     if (query === filters.q) return
     const timer = setTimeout(() => {
-      router.get('/suppliers', { q: query || undefined }, { preserveState: true, replace: true })
+      router.get('/admin/suppliers', { q: query || undefined }, { preserveState: true, replace: true })
     }, 300)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,7 +46,7 @@ export default function SuppliersIndex({ suppliers, filters, total }: Props) {
         description="Who you buy from, what each of them sells, and how to reach them."
         actions={
           manage && (
-            <ButtonLink href="/suppliers/new">
+            <ButtonLink href="/admin/suppliers/new">
               <Plus className="size-5" aria-hidden="true" />
               Add a supplier
             </ButtonLink>
@@ -81,7 +81,7 @@ export default function SuppliersIndex({ suppliers, filters, total }: Props) {
               {suppliers.map((supplier) => (
                 <li key={supplier.id}>
                   <Link
-                    href={`/suppliers/${supplier.id}`}
+                    href={`/admin/suppliers/${supplier.id}`}
                     className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
                   >
                     <div className="min-w-0 flex-1 basis-64">

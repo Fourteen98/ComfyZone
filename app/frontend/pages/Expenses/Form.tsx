@@ -34,23 +34,23 @@ export default function ExpenseForm({ expense, today, categories, ways_to_pay }:
     form.transform((data) => ({ expense: data }))
 
     if (editing) {
-      form.patch(`/expenses/${expense.id}`)
+      form.patch(`/admin/expenses/${expense.id}`)
     } else {
-      form.post('/expenses')
+      form.post('/admin/expenses')
     }
   }
 
   async function destroy() {
     if (!editing) return
     if (!(await confirmAction('Delete this expense? It comes off your totals.', { confirm: 'Delete', danger: true }))) return
-    router.delete(`/expenses/${expense.id}`)
+    router.delete(`/admin/expenses/${expense.id}`)
   }
 
   return (
     <AppLayout>
       <Head title={editing ? 'Edit expense' : 'Add an expense'} />
 
-      <Link href="/expenses" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
+      <Link href="/admin/expenses" className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
         <ArrowLeft className="size-4" aria-hidden="true" />
         Expenses
       </Link>
@@ -135,7 +135,7 @@ export default function ExpenseForm({ expense, today, categories, ways_to_pay }:
           <Button type="submit" disabled={form.processing}>
             {editing ? 'Save changes' : 'Record expense'}
           </Button>
-          <ButtonLink href="/expenses" variant="secondary">
+          <ButtonLink href="/admin/expenses" variant="secondary">
             Cancel
           </ButtonLink>
           {editing && (

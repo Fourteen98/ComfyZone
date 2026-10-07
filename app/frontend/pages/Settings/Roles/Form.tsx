@@ -55,16 +55,16 @@ export default function RoleForm({ role, permission_groups }: Props) {
     }))
 
     if (editing) {
-      form.patch(`/settings/roles/${role.id}`)
+      form.patch(`/admin/settings/roles/${role.id}`)
     } else {
-      form.post('/settings/roles')
+      form.post('/admin/settings/roles')
     }
   }
 
   async function destroy() {
     if (!editing) return
     if (!(await confirmAction(`Delete the ${role.name} role? This can't be undone.`, { confirm: 'Delete', danger: true }))) return
-    router.delete(`/settings/roles/${role.id}`) // -> Settings::RolesController#destroy
+    router.delete(`/admin/settings/roles/${role.id}`) // -> Settings::RolesController#destroy
   }
 
   return (
@@ -144,7 +144,7 @@ export default function RoleForm({ role, permission_groups }: Props) {
           <Button type="submit" disabled={form.processing}>
             {editing ? 'Save changes' : 'Add role'}
           </Button>
-          <ButtonLink href="/settings/roles" variant="secondary">
+          <ButtonLink href="/admin/settings/roles" variant="secondary">
             Cancel
           </ButtonLink>
           {editing && (

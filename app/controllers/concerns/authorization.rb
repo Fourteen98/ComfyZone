@@ -29,6 +29,6 @@ module Authorization
     def authorize!(key)
       return if can?(key)
 
-      redirect_to root_path, alert: "You don't have access to that. Ask an Owner if you need it."
+      redirect_to admin_root_path, alert: "You don't have access to that. Ask an Owner if you need it."
     end
 end

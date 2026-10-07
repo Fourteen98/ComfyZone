@@ -15,7 +15,7 @@ export default function SalesChannelsIndex({ channels }: { channels: ChannelRow[
 
   // -> Settings::SalesChannelsController#move
   const move = (channel: ChannelRow, direction: 'up' | 'down') =>
-    router.patch(`/settings/channels/${channel.id}/move`, { direction }, { preserveScroll: true })
+    router.patch(`/admin/settings/channels/${channel.id}/move`, { direction }, { preserveScroll: true })
 
   return (
     <SettingsLayout>
@@ -26,7 +26,7 @@ export default function SalesChannelsIndex({ channels }: { channels: ChannelRow[
           Where your sales come from. You pick one each time you record a sale, so you can see which ones bring in the
           most. They show in this order.
         </p>
-        <ButtonLink href="/settings/channels/new">
+        <ButtonLink href="/admin/settings/channels/new">
           <Plus className="size-5" aria-hidden="true" />
           Add a channel
         </ButtonLink>
@@ -36,7 +36,7 @@ export default function SalesChannelsIndex({ channels }: { channels: ChannelRow[
         {channels.map((channel, index) => (
           <li key={channel.id} className="flex items-center gap-1 pr-2">
             <Link
-              href={`/settings/channels/${channel.id}/edit`}
+              href={`/admin/settings/channels/${channel.id}/edit`}
               className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
             >
               <span className={`font-medium ${channel.active ? '' : 'text-taupe-600'}`}>{channel.name}</span>

@@ -26,16 +26,16 @@ export default function PaymentMethodForm({ method }: Props) {
     form.transform((data) => ({ payment_method: data }))
 
     if (editing) {
-      form.patch(`/settings/payments/${method.id}`)
+      form.patch(`/admin/settings/payments/${method.id}`)
     } else {
-      form.post('/settings/payments')
+      form.post('/admin/settings/payments')
     }
   }
 
   async function destroy() {
     if (!editing) return
     if (!(await confirmAction(`Delete "${method.name}"? It has never been used, so nothing else changes.`, { confirm: 'Delete', danger: true }))) return
-    router.delete(`/settings/payments/${method.id}`)
+    router.delete(`/admin/settings/payments/${method.id}`)
   }
 
   return (
@@ -80,7 +80,7 @@ export default function PaymentMethodForm({ method }: Props) {
           <Button type="submit" disabled={form.processing}>
             {editing ? 'Save changes' : 'Add method'}
           </Button>
-          <ButtonLink href="/settings/payments" variant="secondary">
+          <ButtonLink href="/admin/settings/payments" variant="secondary">
             Cancel
           </ButtonLink>
           {/* One that has been used can only be hidden: its payments must
