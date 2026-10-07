@@ -1,8 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react'
-import { ArrowLeft, Phone, X } from 'lucide-react'
+import { ArrowLeft, Pencil, Phone, X } from 'lucide-react'
 import { useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
-import Button from '@/components/ui/Button'
+import Button, { ButtonLink } from '@/components/ui/Button'
 import ChoiceCards from '@/components/ui/ChoiceCards'
 import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
@@ -35,6 +35,7 @@ type Props = {
     customer_location: string | null
     live: { id: number; title: string } | null
     recorded_by: string
+    note: string | null
     profit_pesewas: number | null // null = may not see costs
     delivery: Delivery
     timeline: {
@@ -51,6 +52,7 @@ type Props = {
   // What this person may do to this order right now (OrdersController#show).
   can: {
     change: boolean
+    edit: boolean
     remove_items: boolean
     fulfil: boolean
     refund: boolean
@@ -123,7 +125,19 @@ export default function OrderShow({ order, delivery_areas, ways_to_pay, can }: P
       </Link>
 
       <div className="mt-2">
-        <PageHeader title={order.customer} description={`Order ${order.id}. Claimed ${order.at}. Recorded by ${order.recorded_by}.`} />
+        <PageHeader
+          title={order.customer}
+          description={`Order ${order.id}. Claimed ${order.at}. Recorded by ${order.recorded_by}.`}
+          actions={
+            can.edit && (
+              <ButtonLink href={`/orders/${order.id}/edit`} variant="secondary">
+                <Pencil className="size-5" aria-hidden="true" />
+                Edit
+              </ButtonLink>
+            )
+          }
+        />
+        {order.note && <p className="mt-3 max-w-3xl border-l-2 border-taupe-300 pl-3 whitespace-pre-line text-taupe-800">{order.note}</p>}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">

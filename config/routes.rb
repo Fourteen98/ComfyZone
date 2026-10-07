@@ -71,12 +71,12 @@ Rails.application.routes.draw do
   end
 
   # Lives. The URLs say /live, the controller is LiveSessionsController.
-  resources :live, controller: "live_sessions", only: %i[ index create show ] do
+  resources :live, controller: "live_sessions", except: :new do
     patch :finish, on: :member
   end
 
   # Orders. Claims from the live screen and one-off sales both POST /orders.
-  resources :orders, only: %i[ index show new create ] do
+  resources :orders, except: :destroy do
     patch :cancel, on: :member
     # `module: :orders` looks for these controllers in app/controllers/orders/.
     scope module: :orders do

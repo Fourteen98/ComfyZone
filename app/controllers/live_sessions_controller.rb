@@ -3,8 +3,8 @@ class LiveSessionsController < InertiaController
   include SaleCapture
 
   require_permission "orders.view", only: %i[ index show ]
-  require_permission "orders.create", only: %i[ create finish ]
-  before_action :set_live, only: %i[ show finish ]
+  require_permission "orders.create", only: %i[ create finish edit update destroy ]
+  before_action :set_live, only: %i[ show finish edit update destroy ]
 
   # GET /live
   # If a live is running, go straight to it: one tap from the menu to selling.
@@ -90,6 +90,45 @@ class LiveSessionsController < InertiaController
   def finish
     @live.finish!
     redirect_to live_path(@live), notice: "Live ended. Here is how it went."
+  end
+
+  # GET /live/:id/edit
+  def edit
+    render inertia: "Live/Edit", props: {
+      live: { id: @live.id, title: @live.title, sales_channel_id: @live.sales_channel_id.to_s, orders: @live.orders.count },
+      channels: sales_channels(SalesChannel.active.social.or(SalesChannel.where(id: @live.sales_channel_id)))
+    }
+  end
+
+  # PATCH /live/:id
+  def update
+    channel = SalesChannel.social.find_by(id: params.dig(:live, :sales_channel_id))
+
+    saved = LiveSession.transaction do
+      next false unless @live.update(title: params.dig(:live, :title), sales_channel: channel || @live.sales_channel)
+
+      # The live's orders say where they came from too. Keep them in step.
+      @live.orders.update_all(sales_channel_id: @live.sales_channel_id) if @live.saved_change_to_sales_channel_id?
+      true
+    end
+
+    if saved
+      redirect_to live_path(@live), notice: "Saved."
+    else
+      redirect_to edit_live_path(@live), inertia: { errors: @live.errors }
+    end
+  end
+
+  # DELETE /live/:id
+  # Only a live nothing was sold on (one started by mistake). A live with
+  # orders is part of the record; rename it instead.
+  def destroy
+    if @live.orders.exists?
+      redirect_to live_path(@live), alert: "This live has orders, so it can't be deleted. You can rename it.", status: :see_other
+    else
+      @live.destroy!
+      redirect_to live_index_path, notice: "Deleted #{@live.title}.", status: :see_other
+    end
   end
 
   private

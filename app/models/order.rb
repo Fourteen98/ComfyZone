@@ -83,6 +83,14 @@ class Order < ApplicationRecord
     update!(total_pesewas: items.reload.sum(&:total_pesewas))
   end
 
+  # After the lines have been changed (by OrderEditor): bring the total and
+  # the claimed/paid stage back in line with them. Call inside a lock.
+  def resettle!
+    self.total_pesewas = items.reload.sum(&:total_pesewas)
+    settle
+    save!
+  end
+
   # ---- Money -----------------------------------------------------------
 
   # Money in. Raises ActiveRecord::RecordInvalid (carrying the payment and
