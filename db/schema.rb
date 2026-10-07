@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_060001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -62,19 +62,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_000003) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "delivery_area_id"
+    t.string "region"
     t.index ["delivery_area_id"], name: "index_customers_on_delivery_area_id"
     t.index ["handle"], name: "index_customers_on_handle", unique: true, where: "(handle IS NOT NULL)"
     t.index ["phone"], name: "index_customers_on_phone"
+    t.index ["region"], name: "index_customers_on_region"
   end
 
   create_table "delivery_areas", force: :cascade do |t|
     t.string "name", null: false
     t.integer "fee_pesewas", default: 0, null: false
-    t.integer "position", default: 0, null: false
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index "lower((name)::text)", name: "index_delivery_areas_on_lower_name", unique: true
+    t.string "region"
+    t.index "region, lower((name)::text)", name: "index_delivery_areas_on_region_and_lower_name", unique: true
+    t.index ["region"], name: "index_delivery_areas_on_region"
     t.check_constraint "fee_pesewas >= 0", name: "delivery_areas_fee_not_negative"
   end
 

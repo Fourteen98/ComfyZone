@@ -1,4 +1,6 @@
 class CustomersController < InertiaController
+  include SaleCapture # for location_options
+
   require_permission "customers.view", only: :index
   require_permission "customers.manage", except: :index
   before_action :set_customer, only: %i[ edit update ]
@@ -28,7 +30,7 @@ class CustomersController < InertiaController
           handle: customer.handle,
           phone: customer.phone,
           # "East Legon, near the Shell station"
-          location: [ customer.delivery_area&.name, customer.location ].compact.join(", ").presence,
+          location: [ customer.delivery_area&.name, customer.region, customer.location ].compact.join(", ").presence,
           orders_count: counts.fetch(customer.id, 0),
           spent_pesewas: spent.fetch(customer.id, 0)
         }
@@ -40,11 +42,12 @@ class CustomersController < InertiaController
   end
 
   def new
-    render inertia: "Customers/Form", props: { customer: nil, delivery_areas: areas }
+    render inertia: "Customers/Form", props: { customer: nil, locations: location_options }
   end
 
   def create
     customer = Customer.new(customer_params)
+    place(customer)
 
     if customer.save
       redirect_to customers_path, notice: "Added #{customer.display_name}."
@@ -58,14 +61,17 @@ class CustomersController < InertiaController
       customer: {
         id: @customer.id, handle: @customer.handle.to_s, name: @customer.name.to_s, phone: @customer.phone.to_s,
         location: @customer.location.to_s, note: @customer.note.to_s,
-        delivery_area_id: @customer.delivery_area_id.to_s
+        region: @customer.region.to_s, place: @customer.delivery_area&.name.to_s
       },
-      delivery_areas: areas
+      locations: location_options
     }
   end
 
   def update
-    if @customer.update(customer_params)
+    @customer.assign_attributes(customer_params)
+    place(@customer)
+
+    if @customer.save
       redirect_to customers_path, notice: "Saved #{@customer.display_name}."
     else
       redirect_to edit_customer_path(@customer), inertia: { errors: @customer.errors }
@@ -78,10 +84,19 @@ class CustomersController < InertiaController
     end
 
     def customer_params
-      params.expect(customer: [ :handle, :name, :phone, :location, :note, :delivery_area_id ])
+      params.expect(customer: [ :handle, :name, :phone, :location, :note ])
     end
 
-    def areas
-      DeliveryArea.active.ordered.map { |area| { value: area.id.to_s, label: area.name } }
+    # Region and place arrive as text. An empty region clears both.
+    def place(customer)
+      where = params.fetch(:customer, {}).permit(:region, :place)
+      return unless where.key?(:region)
+
+      if where[:region].blank?
+        customer.region = customer.delivery_area = nil
+      else
+        customer.delivery_area = nil # so a blank place clears the old one
+        customer.locate(region: where[:region], place: where[:place])
+      end
     end
 end

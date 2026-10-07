@@ -4,19 +4,22 @@ import SettingsLayout from '@/layouts/SettingsLayout'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import Checkbox from '@/components/ui/Checkbox'
 import MoneyField from '@/components/ui/MoneyField'
+import SelectField from '@/components/ui/SelectField'
 import TextField from '@/components/ui/TextField'
 import { confirmAction } from '@/lib/confirm'
 
 type Props = {
   // null when adding; the area when editing.
-  area: { id: number; name: string; fee: string; active: boolean; orders_count: number } | null
+  area: { id: number; name: string; region: string; fee: string; active: boolean; orders_count: number } | null
+  regions: string[]
 }
 
-export default function DeliveryAreaForm({ area }: Props) {
+export default function DeliveryAreaForm({ area, regions }: Props) {
   const editing = area !== null
 
   const form = useForm({
     name: area?.name ?? '',
+    region: area?.region ?? '',
     fee: area && area.fee !== '0' ? area.fee : '',
     active: area?.active ?? true,
   })
@@ -35,17 +38,31 @@ export default function DeliveryAreaForm({ area }: Props) {
 
   async function destroy() {
     if (!editing) return
-    const kept = area.orders_count === 0 ? '' : ' Orders already sent there are kept, with their fee.'
+    const kept = area.orders_count === 0 ? '' : ' Orders sent there keep their fee, and customers there keep their region.'
     if (!(await confirmAction(`Delete "${area.name}"?${kept}`, { confirm: 'Delete', danger: true }))) return
     router.delete(`/settings/areas/${area.id}`)
   }
 
   return (
     <SettingsLayout>
-      <Head title={editing ? `Edit ${area.name}` : 'Add an area'} />
+      <Head title={editing ? `Edit ${area.name}` : 'Add a place'} />
 
       <form onSubmit={submit} className="max-w-xl space-y-5">
-        <h2 className="font-display text-3xl font-semibold text-wine-800">{editing ? `Edit ${area.name}` : 'Add an area'}</h2>
+        <h2 className="font-display text-3xl font-semibold text-wine-800">{editing ? `Edit ${area.name}` : 'Add a place'}</h2>
+
+        <SelectField
+          id="region"
+          label="Region"
+          required
+          placeholder="Choose one"
+          options={regions.map((region) => ({ value: region, label: region }))}
+          value={form.data.region}
+          onChange={(e) => {
+            form.setData('region', e.target.value)
+            form.clearErrors('region')
+          }}
+          error={errors.region}
+        />
 
         <TextField
           id="name"
@@ -53,8 +70,7 @@ export default function DeliveryAreaForm({ area }: Props) {
           required
           maxLength={40}
           placeholder="e.g. East Legon"
-          autoFocus={!editing}
-          value={form.data.name}
+                    value={form.data.name}
           onChange={(e) => {
             form.setData('name', e.target.value)
             form.clearErrors('name')
@@ -85,14 +101,14 @@ export default function DeliveryAreaForm({ area }: Props) {
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Button type="submit" disabled={form.processing}>
-            {editing ? 'Save changes' : 'Add area'}
+            {editing ? 'Save changes' : 'Add place'}
           </Button>
           <ButtonLink href="/settings/areas" variant="secondary">
             Cancel
           </ButtonLink>
           {editing && (
             <Button type="button" variant="danger" className="sm:ml-auto" onClick={destroy}>
-              Delete area
+              Delete place
             </Button>
           )}
         </div>

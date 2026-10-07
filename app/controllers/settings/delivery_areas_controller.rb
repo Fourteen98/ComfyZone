@@ -1,7 +1,7 @@
-# Settings > Delivery areas: where she delivers, and the usual fee.
+# Settings > Locations: the places within each region, and the usual delivery fee.
 class Settings::DeliveryAreasController < InertiaController
   require_permission "settings.manage"
-  before_action :set_area, only: %i[ edit update destroy move ]
+  before_action :set_area, only: %i[ edit update destroy ]
 
   # GET /settings/areas
   def index
@@ -9,7 +9,7 @@ class Settings::DeliveryAreasController < InertiaController
 
     render inertia: "Settings/DeliveryAreas/Index", props: {
       areas: DeliveryArea.ordered.map { |area|
-        { id: area.id, name: area.name, fee: area.fee, fee_pesewas: area.fee_pesewas, active: area.active,
+        { id: area.id, name: area.name, region: area.region, fee: area.fee, fee_pesewas: area.fee_pesewas, active: area.active,
           orders_count: counts.fetch(area.id, 0) }
       }
     }
@@ -17,7 +17,7 @@ class Settings::DeliveryAreasController < InertiaController
 
   # GET /settings/areas/new
   def new
-    render inertia: "Settings/DeliveryAreas/Form", props: { area: nil }
+    render inertia: "Settings/DeliveryAreas/Form", props: { area: nil, regions: Region::ALL }
   end
 
   # POST /settings/areas
@@ -34,8 +34,9 @@ class Settings::DeliveryAreasController < InertiaController
   # GET /settings/areas/:id/edit
   def edit
     render inertia: "Settings/DeliveryAreas/Form", props: {
-      area: { id: @area.id, name: @area.name, fee: @area.fee, active: @area.active,
-                 orders_count: @area.orders.count }
+      area: { id: @area.id, name: @area.name, region: @area.region.to_s, fee: @area.fee, active: @area.active,
+                 orders_count: @area.orders.count },
+      regions: Region::ALL
     }
   end
 
@@ -54,18 +55,12 @@ class Settings::DeliveryAreasController < InertiaController
     redirect_to settings_delivery_areas_path, notice: "Deleted #{@area.name}. Its orders were kept.", status: :see_other
   end
 
-  # PATCH /settings/areas/:id/move?direction=up
-  def move
-    @area.move(params[:direction] == "up" ? :up : :down)
-    redirect_to settings_delivery_areas_path
-  end
-
   private
     def set_area
       @area = DeliveryArea.find(params.expect(:id))
     end
 
     def area_params
-      params.expect(delivery_area: [ :name, :fee, :active ])
+      params.expect(delivery_area: [ :name, :region, :fee, :active ])
     end
 end

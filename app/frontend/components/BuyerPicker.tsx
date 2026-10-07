@@ -9,7 +9,8 @@ export type Buyer = {
   name: string | null
   phone: string | null
   location: string | null // street or landmark
-  delivery_area_id: number | null // where they usually are
+  region: string | null // where they usually are
+  place: string | null
 }
 
 // Who is buying, as sent to Rails (OrdersController#buyer):

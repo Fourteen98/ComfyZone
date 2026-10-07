@@ -75,6 +75,26 @@ class SalesReport
       .map { |name, count, sales| { name: name || "Not recorded", orders: count, sales_pesewas: sales } }
   end
 
+  # Where the buyers are, by region. An order counts under its customer's
+  # region whether it was delivered or collected.
+  def by_region
+    orders.joins(:customer)
+      .group("customers.region")
+      .order(Arel.sql("SUM(orders.total_pesewas) DESC"))
+      .pluck("customers.region", Arel.sql("COUNT(*)"), Arel.sql("SUM(orders.total_pesewas)"))
+      .map { |region, count, sales| { name: region || "Not recorded", orders: count, sales_pesewas: sales } }
+  end
+
+  # ...and by exact place, for the customers whose place is known.
+  def by_place(limit = 10)
+    orders.joins(customer: :delivery_area)
+      .group("delivery_areas.id", "delivery_areas.name", "delivery_areas.region")
+      .order(Arel.sql("SUM(orders.total_pesewas) DESC"))
+      .limit(limit)
+      .pluck("delivery_areas.id", "delivery_areas.name", "delivery_areas.region", Arel.sql("COUNT(*)"), Arel.sql("SUM(orders.total_pesewas)"))
+      .map { |id, name, region, count, sales| { id: id, name: name, region: region, orders: count, sales_pesewas: sales } }
+  end
+
   def lives(limit = 8)
     orders.joins(:live_session)
       .group("live_sessions.id", "live_sessions.title")

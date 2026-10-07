@@ -8,7 +8,9 @@ import ChoicePills from '@/components/ui/ChoicePills'
 import ProductPicker from '@/components/ProductPicker'
 import type { SellableProduct, SellableVariant } from '@/components/ProductPicker'
 import DeliveryFields, { noDelivery } from '@/components/DeliveryFields'
-import type { DeliveryArea, DeliveryChoice } from '@/components/DeliveryFields'
+import type { DeliveryChoice } from '@/components/DeliveryFields'
+import LocationFields, { nowhere } from '@/components/LocationFields'
+import type { Locations, Where } from '@/components/LocationFields'
 import QuantityStepper from '@/components/ui/QuantityStepper'
 import { formatMoney, toPesewas } from '@/lib/format'
 import type { SalesChannel } from '@/lib/orders'
@@ -25,8 +27,8 @@ type Props = {
   liveChannel?: string | null
   /** Outside a live: the places a sale can come from, for her to pick one. */
   channels?: SalesChannel[]
-  /** Outside a live: the places she delivers to. */
-  deliveryAreas?: DeliveryArea[]
+  /** Outside a live: Ghana's regions and the places known in each. */
+  locations?: Locations
 }
 
 // The "who wants what" screen. It has two ways of asking WHO:
@@ -41,7 +43,7 @@ type Props = {
 //
 // Stock shown here was correct when the page loaded. Rails checks it again
 // at the moment of the claim, and refuses if something has just sold out.
-export default function SaleCapture({ products, buyers, liveId, liveChannel, channels = [], deliveryAreas = [] }: Props) {
+export default function SaleCapture({ products, buyers, liveId, liveChannel, channels = [], locations }: Props) {
   const errors = usePage().props.errors as Record<string, string[] | undefined>
   const buyerInput = useRef<HTMLInputElement>(null)
   const inLive = liveId !== undefined
@@ -53,6 +55,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   const [choice, setChoice] = useState<{ buyer: BuyerChoice; label: string } | null>(null)
   const [sales, setSales] = useState(0) // counts sales made, to reset BuyerPicker
   const [delivery, setDelivery] = useState<DeliveryChoice>(noDelivery)
+  const [where, setWhere] = useState<Where>(nowhere) // the buyer's region and place
   const [basket, setBasket] = useState<Record<number, number>>({}) // variant id -> quantity
   const [sending, setSending] = useState(false)
 
@@ -96,6 +99,8 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           sales_channel_id: inLive ? undefined : channelId || undefined,
           // Pick-up or delivery, if she chose. During a live it is sorted out afterwards.
           delivery: inLive || delivery.delivery_method === '' ? undefined : delivery,
+          // Where the buyer is. Saved on the customer, delivered or not.
+          location: inLive || where.region === '' ? undefined : where,
           items: lines.map((line) => ({ variant_id: line.variant.id, quantity: line.quantity })),
         },
       },
@@ -108,6 +113,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           setBuyer('')
           setChoice(null)
           setDelivery(noDelivery)
+          setWhere(nowhere)
           setSales(sales + 1)
           buyerInput.current?.focus()
         },
@@ -202,20 +208,30 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
               usernameFirst={channel?.kind === 'social'}
               onChange={(buyer, label, known) => {
                 setChoice(buyer ? { buyer, label } : null)
-                // A customer we know: start delivery from where they were
-                // last time. She only has to tap "It is sent to them".
+                // A customer we know: start from where they were last
+                // time, with that place's usual delivery fee.
                 if (known) {
-                  const area = deliveryAreas.find((a) => a.id === known.delivery_area_id)
-                  setDelivery({
-                    ...delivery,
-                    area_id: area ? String(area.id) : '',
-                    fee: area && area.fee_pesewas > 0 ? area.fee : '',
-                    address: known.location ?? '',
-                  })
+                  const place = locations?.places.find((p) => p.region === known.region && p.name === known.place)
+                  setWhere({ region: known.region ?? '', place: known.place ?? '' })
+                  setDelivery({ ...delivery, fee: place && place.fee_pesewas > 0 ? place.fee : '', address: known.location ?? '' })
                 }
               }}
             />
-            <DeliveryFields value={delivery} onChange={setDelivery} areas={deliveryAreas} errors={errors} />
+            {locations && (
+              <fieldset>
+                <legend className="mb-1.5 text-sm font-medium text-taupe-800">Where are they? (optional)</legend>
+                <LocationFields
+                  value={where}
+                  locations={locations}
+                  onChange={(next, place) => {
+                    setWhere(next)
+                    // Landing on a known place fills in its usual fee.
+                    if (place && place.fee_pesewas > 0) setDelivery({ ...delivery, fee: place.fee })
+                  }}
+                />
+              </fieldset>
+            )}
+            <DeliveryFields value={delivery} onChange={setDelivery} errors={errors} />
           </>
         )}
       </section>

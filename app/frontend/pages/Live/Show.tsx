@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import Button, { ButtonLink } from '@/components/ui/Button'
@@ -27,7 +27,9 @@ type Props = {
   stats: { orders: number; units: number; total_pesewas: number; profit_pesewas: number | null }
   orders: OrderSummary[]
   can_sell: boolean
-  // Only sent while the live is running, to people who can sell.
+  // After the live: is the claim screen open again for a missed order?
+  adding: boolean
+  // Only sent while claims can be recorded, to people who can sell.
   products?: SellableProduct[]
   buyers?: Buyer[]
 }
@@ -48,7 +50,7 @@ function useMinutesSince(iso: string, running: boolean) {
 }
 
 // Props from LiveSessionsController#show
-export default function LiveShow({ live, stats, orders, can_sell, products, buyers }: Props) {
+export default function LiveShow({ live, stats, orders, can_sell, adding, products, buyers }: Props) {
   const minutes = useMinutesSince(live.started_at, live.running)
   const duration = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`)
 
@@ -103,14 +105,34 @@ export default function LiveShow({ live, stats, orders, can_sell, products, buye
         <StatStrip stats={strip} />
       </div>
 
-      {live.running && can_sell && products && buyers && (
+      {/* A live that has ended can still be given an order that was missed.
+          The link reloads this page with ?add=1, and Rails then sends the
+          products and buyers the claim screen needs. */}
+      {!live.running && can_sell && !adding && (
+        <div className="mt-5">
+          <ButtonLink href={`/live/${live.id}`} data={{ add: 1 }} variant="secondary" preserveScroll>
+            <Plus className="size-5" aria-hidden="true" />
+            Add a missed order
+          </ButtonLink>
+        </div>
+      )}
+      {adding && (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-wine-200 bg-wine-50 px-5 py-3">
+          <p className="text-taupe-800">Adding to a live that has ended. Orders are dated {live.started}.</p>
+          <ButtonLink href={`/live/${live.id}`} variant="secondary">
+            Done
+          </ButtonLink>
+        </div>
+      )}
+
+      {(live.running || adding) && can_sell && products && buyers && (
         <div className="mt-6">
           <SaleCapture products={products} buyers={buyers} liveId={live.id} liveChannel={live.channel} />
         </div>
       )}
 
       <div className="mt-6">
-        <Panel title={live.running ? 'Claims so far' : 'What was sold'}>
+        <Panel title={live.running || adding ? 'Claims so far' : 'What was sold'}>
           {orders.length === 0 ? (
             <p className="text-taupe-700">{live.running ? 'Nothing claimed yet.' : 'Nothing was sold in this live.'}</p>
           ) : (

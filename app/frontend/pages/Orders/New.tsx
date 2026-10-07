@@ -5,12 +5,12 @@ import PageHeader from '@/components/ui/PageHeader'
 import SaleCapture from '@/components/SaleCapture'
 import type { Buyer, SellableProduct } from '@/components/SaleCapture'
 import type { SalesChannel } from '@/lib/orders'
-import type { DeliveryArea } from '@/components/DeliveryFields'
+import type { Locations } from '@/components/LocationFields'
 
 // A sale made outside a live. The same capture screen, with no live attached.
-type Props = { products: SellableProduct[]; buyers: Buyer[]; channels: SalesChannel[]; delivery_areas: DeliveryArea[] }
+type Props = { products: SellableProduct[]; buyers: Buyer[]; channels: SalesChannel[]; locations: Locations }
 
-export default function OrderNew({ products, buyers, channels, delivery_areas }: Props) {
+export default function OrderNew({ products, buyers, channels, locations }: Props) {
   return (
     <AppLayout>
       <Head title="Record a sale" />
@@ -24,7 +24,7 @@ export default function OrderNew({ products, buyers, channels, delivery_areas }:
       </div>
 
       <div className="mt-6">
-        <SaleCapture products={products} buyers={buyers} channels={channels} deliveryAreas={delivery_areas} />
+        <SaleCapture products={products} buyers={buyers} channels={channels} locations={locations} />
       </div>
     </AppLayout>
   )

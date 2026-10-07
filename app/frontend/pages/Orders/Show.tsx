@@ -9,7 +9,7 @@ import Panel from '@/components/ui/Panel'
 import Steps from '@/components/ui/Steps'
 import OrderDeliveryForm from '@/components/OrderDeliveryForm'
 import type { Delivery } from '@/components/OrderDeliveryForm'
-import type { DeliveryArea } from '@/components/DeliveryFields'
+import type { Locations } from '@/components/LocationFields'
 import OrderPaymentForm from '@/components/OrderPaymentForm'
 import OrderStatusBadge from '@/components/OrderStatusBadge'
 import { formatMoney } from '@/lib/format'
@@ -33,6 +33,8 @@ type Props = {
     customer_id: number
     customer_phone: string | null
     customer_location: string | null
+    customer_region: string | null
+    customer_place: string | null
     live: { id: number; title: string } | null
     recorded_by: string
     note: string | null
@@ -47,7 +49,7 @@ type Props = {
     }
     payments: Payment[]
   }
-  delivery_areas: DeliveryArea[]
+  locations: Locations
   ways_to_pay: { value: string; label: string }[]
   // What this person may do to this order right now (OrdersController#show).
   can: {
@@ -61,7 +63,7 @@ type Props = {
 }
 
 // Props from OrdersController#show
-export default function OrderShow({ order, delivery_areas, ways_to_pay, can }: Props) {
+export default function OrderShow({ order, locations, ways_to_pay, can }: Props) {
   // Which of the small forms is open. Only ever one at a time.
   const [open, setOpen] = useState<'delivery' | 'refund' | 'return' | null>(null)
   const [restock, setRestock] = useState<'yes' | 'no' | ''>('')
@@ -310,8 +312,8 @@ export default function OrderShow({ order, delivery_areas, ways_to_pay, can }: P
               <OrderDeliveryForm
                 orderId={order.id}
                 delivery={delivery}
-                areas={delivery_areas}
-                knownLocation={order.customer_location}
+                locations={locations}
+                known={{ region: order.customer_region, place: order.customer_place, address: order.customer_location }}
                 onDone={() => setOpen(null)}
               />
             ) : delivery.method === null ? (
@@ -327,7 +329,7 @@ export default function OrderShow({ order, delivery_areas, ways_to_pay, can }: P
               <p>They will collect it.</p>
             ) : (
               <div className="space-y-1">
-                <p>Being sent to them{delivery.area ? ` in ${delivery.area}` : ''}, {delivery.fee_pesewas > 0 ? `${formatMoney(delivery.fee_pesewas)} delivery` : 'free delivery'}.</p>
+                <p>Being sent to them{delivery.place ? ` in ${delivery.place}, ${delivery.region}` : ''}, {delivery.fee_pesewas > 0 ? `${formatMoney(delivery.fee_pesewas)} delivery` : 'free delivery'}.</p>
                 {/* whitespace-pre-line keeps the line breaks she typed. */}
                 {delivery.address ? (
                   <p className="whitespace-pre-line text-taupe-800">{delivery.address}</p>

@@ -102,11 +102,20 @@ end
   SalesChannel.find_or_create_by!(name: name) { |channel| channel.kind = kind }
 end
 
-# ---------- Delivery areas (development only) ----------
-# Examples to try the app with. The real list belongs to the business and is
-# typed into Settings > Delivery areas, so production starts empty.
+# ---------- Places (development only) ----------
+# Examples to try the app with. The real list grows as she records sales
+# (and can be tidied in Settings > Locations), so production starts empty.
 if Rails.env.development?
-  { "Osu" => "20", "East Legon" => "25", "Madina" => "30", "Tema" => "45", "Kasoa" => "50" }.each do |name, fee|
-    DeliveryArea.find_or_create_by!(name: name) { |area| area.fee = fee }
+  {
+    "Greater Accra" => { "Osu" => "20", "East Legon" => "25", "Madina" => "30", "Tema" => "45" },
+    "Central" => { "Kasoa" => "50" },
+    "Ashanti" => { "Adum" => "70" }
+  }.each do |region, places|
+    places.each do |name, fee|
+      area = DeliveryArea.find_or_initialize_by(name: name)
+      area.region ||= region
+      area.fee = fee if area.new_record?
+      area.save!
+    end
   end
 end

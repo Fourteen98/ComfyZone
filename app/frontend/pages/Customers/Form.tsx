@@ -4,16 +4,17 @@ import AppLayout from '@/layouts/AppLayout'
 import Alert from '@/components/ui/Alert'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import PageHeader from '@/components/ui/PageHeader'
-import SelectField from '@/components/ui/SelectField'
+import LocationFields from '@/components/LocationFields'
+import type { Locations } from '@/components/LocationFields'
 import TextAreaField from '@/components/ui/TextAreaField'
 import TextField from '@/components/ui/TextField'
 
 type Props = {
-  customer: { id: number; handle: string; name: string; phone: string; location: string; note: string; delivery_area_id: string } | null
-  delivery_areas: { value: string; label: string }[]
+  customer: { id: number; handle: string; name: string; phone: string; location: string; note: string; region: string; place: string } | null
+  locations: Locations
 }
 
-export default function CustomerForm({ customer, delivery_areas }: Props) {
+export default function CustomerForm({ customer, locations }: Props) {
   const editing = customer !== null
 
   const form = useForm({
@@ -21,7 +22,8 @@ export default function CustomerForm({ customer, delivery_areas }: Props) {
     name: customer?.name ?? '',
     phone: customer?.phone ?? '',
     location: customer?.location ?? '',
-    delivery_area_id: customer?.delivery_area_id ?? '',
+    region: customer?.region ?? '',
+    place: customer?.place ?? '',
     note: customer?.note ?? '',
   })
   const errors = form.errors as Record<string, string[] | undefined>
@@ -70,16 +72,7 @@ export default function CustomerForm({ customer, delivery_areas }: Props) {
           onChange={(e) => form.setData('handle', e.target.value)}
           error={errors.handle}
         />
-        {delivery_areas.length > 0 && (
-          <SelectField
-            id="delivery_area_id"
-            label="Delivery area"
-            placeholder="Not set"
-            options={delivery_areas}
-            value={form.data.delivery_area_id}
-            onChange={(e) => form.setData('delivery_area_id', e.target.value)}
-          />
-        )}
+        <LocationFields value={form.data} locations={locations} onChange={(where) => form.setData({ ...form.data, ...where })} errors={errors} />
         <TextField
           id="location"
           label="Address or landmark"

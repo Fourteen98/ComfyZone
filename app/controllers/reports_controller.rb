@@ -27,6 +27,8 @@ class ReportsController < InertiaController
       over_time: report.over_time.map(&hide_costs),
       top_products: report.top_products.map(&hide_costs),
       channels: report.by_channel,
+      regions: report.by_region,
+      places: report.by_place,
       lives: report.lives,
       customers: can?("customers.view") ? report.top_customers : nil,
       money_in: report.money_in,
@@ -52,19 +54,19 @@ class ReportsController < InertiaController
   private
     def orders_csv(period)
       sees_costs = can?("costs.view")
-      headings = [ "Order", "Date", "Customer", "Phone", "Came from", "Live", "Status", "Items", "Units",
+      headings = [ "Order", "Date", "Customer", "Phone", "Came from", "Region", "Place", "Live", "Status", "Items", "Units",
                    "Goods", "Delivery", "Paid", "Balance" ]
       headings += %w[ Cost Profit ] if sees_costs
 
       orders = Order.where(created_at: period.range).order(:created_at)
-                    .includes(:customer, :sales_channel, :live_session, items: { variant: :product })
+                    .includes(:sales_channel, :live_session, customer: :delivery_area, items: { variant: :product })
 
       CSV.generate do |csv|
         csv << headings
         orders.each do |order|
           row = [
             order.id, order.created_at.strftime("%Y-%m-%d %H:%M"), safe(order.customer.display_name), safe(order.customer.phone),
-            order.sales_channel&.name, safe(order.live_session&.title), order.status,
+            order.sales_channel&.name, order.customer.region, safe(order.customer.delivery_area&.name), safe(order.live_session&.title), order.status,
             safe(order.items.map { |item| "#{item.quantity} x #{item.variant.full_name}" }.join("; ")), order.units,
             cedis(order.total_pesewas), cedis(order.delivery_fee_pesewas), cedis(order.paid_pesewas), cedis(order.balance_pesewas)
           ]
