@@ -75,24 +75,33 @@ class SalesReport
       .map { |name, count, sales| { name: name || "Not recorded", orders: count, sales_pesewas: sales } }
   end
 
-  # Where the buyers are, by region. An order counts under its customer's
-  # region whether it was delivered or collected.
+  # Where the buyers are: by region within Ghana, by country abroad. An
+  # order counts under its customer's location whether it was delivered or
+  # collected.
   def by_region
+    home = Country::HOME
+    # One label per customer, worked out in SQL: the region at home, the
+    # country abroad, and NULL when nothing is recorded.
+    label = "CASE WHEN customers.country IS NOT NULL AND customers.country <> '#{home}' THEN customers.country ELSE customers.region END"
+
     orders.joins(:customer)
-      .group("customers.region")
+      .group(Arel.sql(label))
       .order(Arel.sql("SUM(orders.total_pesewas) DESC"))
-      .pluck("customers.region", Arel.sql("COUNT(*)"), Arel.sql("SUM(orders.total_pesewas)"))
-      .map { |region, count, sales| { name: region || "Not recorded", orders: count, sales_pesewas: sales } }
+      .pluck(Arel.sql(label), Arel.sql("COUNT(*)"), Arel.sql("SUM(orders.total_pesewas)"))
+      .map { |name, count, sales| { name: name || "Not recorded", orders: count, sales_pesewas: sales } }
   end
 
   # ...and by exact place, for the customers whose place is known.
   def by_place(limit = 10)
     orders.joins(customer: :delivery_area)
-      .group("delivery_areas.id", "delivery_areas.name", "delivery_areas.region")
+      .group("delivery_areas.id")
       .order(Arel.sql("SUM(orders.total_pesewas) DESC"))
       .limit(limit)
-      .pluck("delivery_areas.id", "delivery_areas.name", "delivery_areas.region", Arel.sql("COUNT(*)"), Arel.sql("SUM(orders.total_pesewas)"))
-      .map { |id, name, region, count, sales| { id: id, name: name, region: region, orders: count, sales_pesewas: sales } }
+      .pluck("delivery_areas.id", Arel.sql("COUNT(*)"), Arel.sql("SUM(orders.total_pesewas)"))
+      .then { |rows|
+        places = DeliveryArea.where(id: rows.map(&:first)).index_by(&:id)
+        rows.map { |id, count, sales| { id: id, name: places[id].name, region: places[id].group_name, orders: count, sales_pesewas: sales } }
+      }
   end
 
   def lives(limit = 8)

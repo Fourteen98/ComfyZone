@@ -6,22 +6,39 @@ import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
 import TextAreaField from '@/components/ui/TextAreaField'
 import TextField from '@/components/ui/TextField'
+import LocationFields from '@/components/LocationFields'
+import type { Locations } from '@/components/LocationFields'
 import ProductMultiPicker from '@/components/ProductMultiPicker'
 import type { PickableProduct } from '@/components/ProductMultiPicker'
 
 type Props = {
   // null when adding; the supplier when editing.
-  supplier: { id: number; name: string; phone: string; note: string; product_ids: number[] } | null
+  supplier: {
+    id: number
+    name: string
+    phone: string
+    note: string
+    location: string // market, street, shop number
+    country: string
+    region: string
+    place: string
+    product_ids: number[]
+  } | null
   products: PickableProduct[]
+  locations: Locations
 }
 
-export default function SupplierForm({ supplier, products }: Props) {
+export default function SupplierForm({ supplier, products, locations }: Props) {
   const editing = supplier !== null
 
   const form = useForm({
     name: supplier?.name ?? '',
     phone: supplier?.phone ?? '',
     note: supplier?.note ?? '',
+    location: supplier?.location ?? '',
+    country: supplier?.country ?? locations.home,
+    region: supplier?.region ?? '',
+    place: supplier?.place ?? '',
     product_ids: supplier?.product_ids ?? ([] as number[]),
   })
   const errors = form.errors as Record<string, string[] | undefined>
@@ -73,6 +90,18 @@ export default function SupplierForm({ supplier, products }: Props) {
                 error={errors.phone}
               />
             </div>
+            {/* Where they are. A supplier abroad has a country and a city;
+                one at home has a region and a place. */}
+            <LocationFields value={form.data} locations={locations} onChange={(where) => form.setData({ ...form.data, ...where })} errors={errors} />
+            <TextField
+              id="location"
+              label="Address (optional)"
+              maxLength={80}
+              placeholder="Market, street or shop number"
+              value={form.data.location}
+              onChange={(e) => form.setData('location', e.target.value)}
+              error={errors.location}
+            />
             <TextAreaField
               id="note"
               label="Notes (optional)"

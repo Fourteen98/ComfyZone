@@ -36,6 +36,7 @@ class OrdersController < InertiaController
         customer_id: @order.customer_id,
         customer_phone: @order.customer.phone,
         customer_location: @order.customer.location,
+        customer_country: @order.customer.country,
         customer_region: @order.customer.region,
         customer_place: @order.customer.delivery_area&.name,
         live: @order.live_session && { id: @order.live_session.id, title: @order.live_session.title },
@@ -47,6 +48,7 @@ class OrdersController < InertiaController
           fee: @order.delivery_fee, # "25" or "25.50", ready for the form
           fee_pesewas: @order.delivery_fee_pesewas,
           address: @order.delivery_address,
+          country: @order.delivery_area&.country,
           region: @order.delivery_area&.region,
           place: @order.delivery_area&.name
         },
@@ -99,8 +101,8 @@ class OrdersController < InertiaController
     customer = buyer
     # Where they are, if she said: a region, and a place within it. A place
     # typed for the first time joins the list.
-    where = params.dig(:order, :location)
-    customer.locate(region: where[:region], place: where[:place]) if where.is_a?(ActionController::Parameters)
+    where = where_from(params.dig(:order, :location))
+    customer.locate(**where) if where
 
     taker = OrderTaker.new(
       customer: customer,

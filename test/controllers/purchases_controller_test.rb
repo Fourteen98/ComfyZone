@@ -145,6 +145,18 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     assert inertia.props[:errors][:delivery_method].present?
   end
 
+  test "a new supplier abroad is saved with their country and city" do
+    sign_in_as(users(:one))
+
+    post purchases_path, params: params.deep_merge(purchase: { supplier_id: "",
+      new_supplier: { name: "Guangzhou Fabrics", phone: "+86 20 1234 5678", country: "China", region: "", place: "Guangzhou" } })
+
+    supplier = Purchase.newest_first.first.supplier
+    assert_equal [ "China", "Guangzhou, China", true ], [ supplier.country, supplier.where_text, supplier.abroad? ]
+    get purchase_path(Purchase.newest_first.first)
+    assert_equal "Guangzhou, China", inertia.props[:purchase][:supplier_where]
+  end
+
   test "a new supplier can be added while recording the purchase" do
     sign_in_as(users(:one))
 

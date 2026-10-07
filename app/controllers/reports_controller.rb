@@ -54,7 +54,7 @@ class ReportsController < InertiaController
   private
     def orders_csv(period)
       sees_costs = can?("costs.view")
-      headings = [ "Order", "Date", "Customer", "Phone", "Came from", "Region", "Place", "Live", "Status", "Items", "Units",
+      headings = [ "Order", "Date", "Customer", "Phone", "Came from", "Country", "Region", "Place", "Live", "Status", "Items", "Units",
                    "Goods", "Delivery", "Paid", "Balance" ]
       headings += %w[ Cost Profit ] if sees_costs
 
@@ -66,7 +66,7 @@ class ReportsController < InertiaController
         orders.each do |order|
           row = [
             order.id, order.created_at.strftime("%Y-%m-%d %H:%M"), safe(order.customer.display_name), safe(order.customer.phone),
-            order.sales_channel&.name, order.customer.region, safe(order.customer.delivery_area&.name), safe(order.live_session&.title), order.status,
+            order.sales_channel&.name, order.customer.country, order.customer.region, safe(order.customer.delivery_area&.name), safe(order.live_session&.title), order.status,
             safe(order.items.map { |item| "#{item.quantity} x #{item.variant.full_name}" }.join("; ")), order.units,
             cedis(order.total_pesewas), cedis(order.delivery_fee_pesewas), cedis(order.paid_pesewas), cedis(order.balance_pesewas)
           ]

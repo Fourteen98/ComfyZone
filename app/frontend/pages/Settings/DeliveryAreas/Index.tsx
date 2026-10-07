@@ -5,7 +5,8 @@ import Badge from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
 import { formatMoney } from '@/lib/format'
 
-type AreaRow = { id: number; name: string; region: string | null; fee_pesewas: number; active: boolean; orders_count: number }
+// group: the region at home, the country abroad; null if not set yet.
+type AreaRow = { id: number; name: string; group: string | null; fee_pesewas: number; active: boolean; orders_count: number }
 
 // Props from Settings::DeliveryAreasController#index. The places arrive
 // sorted by region then name; this groups them under a heading per region.
@@ -14,7 +15,7 @@ export default function DeliveryAreasIndex({ areas }: { areas: AreaRow[] }) {
 
   const groups = new Map<string, AreaRow[]>()
   for (const area of areas) {
-    const region = area.region ?? 'No region yet'
+    const region = area.group ?? 'No region yet'
     groups.set(region, [...(groups.get(region) ?? []), area])
   }
 
@@ -24,7 +25,7 @@ export default function DeliveryAreasIndex({ areas }: { areas: AreaRow[] }) {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-taupe-700">
-          The exact places within each region. New ones are added by themselves when you type them on a sale or a
+          The exact places within each region, and cities abroad. New ones are added by themselves when you type them on a sale or a
           customer. Come here to set the usual delivery fee for a place, fix a spelling, or hide one.
         </p>
         <ButtonLink href="/settings/areas/new">

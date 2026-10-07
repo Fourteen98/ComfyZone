@@ -15,7 +15,7 @@ import TextAreaField from '@/components/ui/TextAreaField'
 import TextField from '@/components/ui/TextField'
 
 type Props = {
-  customer: { id: number; handle: string; name: string; phone: string; location: string; note: string; region: string; place: string } | null
+  customer: { id: number; handle: string; name: string; phone: string; location: string; note: string; country: string; region: string; place: string } | null
   locations: Locations
   // Editing only: everyone else, and how many orders this customer has.
   others?: Buyer[]
@@ -41,6 +41,7 @@ export default function CustomerForm({ customer, locations, others = [] }: Props
     name: customer?.name ?? '',
     phone: customer?.phone ?? '',
     location: customer?.location ?? '',
+    country: customer?.country ?? locations.home,
     region: customer?.region ?? '',
     place: customer?.place ?? '',
     note: customer?.note ?? '',

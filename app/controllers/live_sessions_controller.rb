@@ -85,6 +85,7 @@ class LiveSessionsController < InertiaController
     if (@live.running? || props[:adding]) && can?("orders.create")
       props[:products] = sellable_products
       props[:buyers] = known_buyers
+      props[:locations] = location_options # to note where a buyer is
     end
 
     render inertia: "Live/Show", props: props

@@ -5,10 +5,10 @@ class Orders::DeliveriesController < InertiaController
   # PATCH /orders/:order_id/delivery
   def update
     order = Order.find(params.expect(:order_id))
-    details = params.expect(delivery: [ :delivery_method, :fee, :address, :region, :place ])
+    details = params.expect(delivery: [ :delivery_method, :fee, :address, :country, :region, :place ])
 
     order.set_delivery!(delivery_method: details[:delivery_method], fee: details[:fee], address: details[:address],
-                        area: DeliveryArea.locate(region: details[:region], name: details[:place]))
+                        area: DeliveryArea.locate(country: details[:country].presence || Country::HOME, region: details[:region], name: details[:place]))
     redirect_to order_path(order), notice: "Delivery details saved."
   rescue ActiveRecord::RecordInvalid => problem
     redirect_to order_path(order), inertia: { errors: problem.record.errors }

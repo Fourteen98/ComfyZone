@@ -1,21 +1,6 @@
 class Customer < ApplicationRecord
   has_many :orders, dependent: :restrict_with_error
-  belongs_to :delivery_area, optional: true # the exact place, if known
-
-  # Region + place. The region can be known without the place; when the
-  # place is known, the region always follows it.
-  before_validation { self.region = delivery_area.region if delivery_area&.region }
-  validates :region, inclusion: { in: Region::ALL }, allow_nil: true
-  normalizes :region, with: ->(region) { region.presence }
-
-  # Set both from what a form sent. A place typed for the first time is
-  # added to the list. Blank region = leave the customer as they are.
-  def locate(region:, place:)
-    return unless Region.known?(region)
-
-    self.region = region
-    self.delivery_area = DeliveryArea.locate(region: region, name: place)
-  end
+  include Located # country, region, exact place; locate(...), where_text
 
   # "@Ama_K " -> "ama_k". nil if nothing is left.
   normalizes :handle, with: ->(handle) { handle.to_s.strip.delete_prefix("@").gsub(/\s+/, "").downcase.presence }
@@ -41,7 +26,7 @@ class Customer < ApplicationRecord
 
     transaction do
       other.orders.update_all(customer_id: id)
-      gained = other.slice(:handle, :name, :phone, :location, :region, :delivery_area_id, :note).compact
+      gained = other.slice(:handle, :name, :phone, :location, :country, :region, :delivery_area_id, :note).compact
       # Delete first: two customers can't hold the same username at once.
       other.reload.destroy!
       gained.each { |attribute, value| self[attribute] = value if self[attribute].blank? }

@@ -1,4 +1,5 @@
 import { router, usePage } from '@inertiajs/react'
+import { MapPin } from 'lucide-react'
 import { useRef, useState } from 'react'
 import Alert from '@/components/ui/Alert'
 import BuyerPicker from '@/components/BuyerPicker'
@@ -9,7 +10,7 @@ import ProductPicker from '@/components/ProductPicker'
 import type { SellableProduct, SellableVariant } from '@/components/ProductPicker'
 import DeliveryFields, { noDelivery } from '@/components/DeliveryFields'
 import type { DeliveryChoice } from '@/components/DeliveryFields'
-import LocationFields, { nowhere } from '@/components/LocationFields'
+import LocationFields, { findPlace, nowhere, said } from '@/components/LocationFields'
 import type { Locations, Where } from '@/components/LocationFields'
 import QuantityStepper from '@/components/ui/QuantityStepper'
 import { formatMoney, toPesewas } from '@/lib/format'
@@ -55,7 +56,9 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   const [choice, setChoice] = useState<{ buyer: BuyerChoice; label: string } | null>(null)
   const [sales, setSales] = useState(0) // counts sales made, to reset BuyerPicker
   const [delivery, setDelivery] = useState<DeliveryChoice>(noDelivery)
-  const [where, setWhere] = useState<Where>(nowhere) // the buyer's region and place
+  // Where the buyer is: country, region, place. Starts at "Ghana, not known".
+  const home = locations?.home ?? ''
+  const [where, setWhere] = useState<Where>(nowhere(home))
   const [basket, setBasket] = useState<Record<number, number>>({}) // variant id -> quantity
   const [sending, setSending] = useState(false)
 
@@ -77,6 +80,17 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   // ----- the buyer box -----
   const typed = buyer.trim().replace(/^@/, '').toLowerCase()
   const known = buyers.find((b) => b.handle === typed)
+
+  // ----- during a live: where the buyer is -----
+  // `liveWhere` is only what SHE has entered for this claim (null = she
+  // hasn't touched it). What is shown falls back to where a known buyer
+  // already is. Only a location she actually entered is sent, so a claim
+  // never rewrites where a known customer lives by accident.
+  const [liveWhere, setLiveWhere] = useState<Where | null>(null)
+  const [whereOpen, setWhereOpen] = useState(false)
+  const knownWhere: Where | null = known?.country || known?.region ? { country: known.country ?? home, region: known.region ?? '', place: known.place ?? '' } : null
+  const shownWhere = liveWhere ?? knownWhere ?? nowhere(home)
+  const whereSummary = [shownWhere.place, shownWhere.region, shownWhere.country !== home ? shownWhere.country : ''].filter(Boolean).join(', ')
   const suggestions =
     typed && !known
       ? buyers.filter((b) => b.handle?.includes(typed) || b.name?.toLowerCase().includes(typed)).slice(0, 5)
@@ -100,7 +114,15 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           // Pick-up or delivery, if she chose. During a live it is sorted out afterwards.
           delivery: inLive || delivery.delivery_method === '' ? undefined : delivery,
           // Where the buyer is. Saved on the customer, delivered or not.
-          location: inLive || where.region === '' ? undefined : where,
+          location: !locations
+            ? undefined
+            : inLive
+              ? liveWhere && said(locations, liveWhere)
+                ? liveWhere
+                : undefined
+              : said(locations, where)
+                ? where
+                : undefined,
           items: lines.map((line) => ({ variant_id: line.variant.id, quantity: line.quantity })),
         },
       },
@@ -113,7 +135,9 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           setBuyer('')
           setChoice(null)
           setDelivery(noDelivery)
-          setWhere(nowhere)
+          setWhere(nowhere(home))
+          setLiveWhere(null)
+          setWhereOpen(false)
           setSales(sales + 1)
           buyerInput.current?.focus()
         },
@@ -189,6 +213,36 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
                 ))}
               </ul>
             )}
+
+            {/* Where they are. Folded away so a claim stays one box and one
+                tap; opened when she wants to note it. Pick-up or delivery is
+                chosen later, on the order. */}
+            {locations && typed && (
+              <div className="mt-3">
+                {whereOpen ? (
+                  <div className="rounded-lg border border-taupe-200 bg-white p-4">
+                    <LocationFields name="live_where" value={shownWhere} locations={locations} onChange={setLiveWhere} />
+                    <button
+                      type="button"
+                      onClick={() => setWhereOpen(false)}
+                      className="mt-3 min-h-11 font-medium text-wine-800 underline underline-offset-4"
+                    >
+                      Done
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setWhereOpen(true)}
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md border border-dashed border-taupe-300 px-3 text-left text-taupe-800 hover:border-wine-700"
+                  >
+                    <MapPin className="size-5 shrink-0 text-wine-800" aria-hidden="true" />
+                    <span className="min-w-0 flex-1 truncate">{whereSummary || 'Add where they are'}</span>
+                    <span className="text-sm font-medium text-wine-800">{whereSummary ? 'Change' : 'Add'}</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -211,8 +265,9 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
                 // A customer we know: start from where they were last
                 // time, with that place's usual delivery fee.
                 if (known) {
-                  const place = locations?.places.find((p) => p.region === known.region && p.name === known.place)
-                  setWhere({ region: known.region ?? '', place: known.place ?? '' })
+                  const there = { country: known.country ?? home, region: known.region ?? '', place: known.place ?? '' }
+                  const place = locations && findPlace(locations, there)
+                  setWhere(there)
                   setDelivery({ ...delivery, fee: place && place.fee_pesewas > 0 ? place.fee : '', address: known.location ?? '' })
                 }
               }}

@@ -1,19 +1,27 @@
 import SelectField from '@/components/ui/SelectField'
 import TextField from '@/components/ui/TextField'
 
-// An exact place within a region, with its usual delivery fee.
-export type Place = { id: number; region: string; name: string; fee: string; fee_pesewas: number }
-// What the picker needs (location_options in the sale_capture concern).
-export type Locations = { regions: string[]; places: Place[] }
-// What it produces. Both are plain text: Rails finds the place, or adds it.
-export type Where = { region: string; place: string }
+// An exact place, with its usual delivery fee. region is null abroad.
+export type Place = { id: number; country: string; region: string | null; name: string; fee: string; fee_pesewas: number }
+// What the picker needs (location_options in the location_picker concern).
+// `home` is the country that has regions here, and the default: Ghana.
+export type Locations = { countries: string[]; home: string; regions: string[]; places: Place[] }
+// What it produces. All plain text: Rails finds the place, or adds it.
+export type Where = { country: string; region: string; place: string }
 
-export const nowhere: Where = { region: '', place: '' }
+// "Nothing said yet": at home, region and place unknown.
+export const nowhere = (home: string): Where => ({ country: home, region: '', place: '' })
+
+// Has she actually told us anything? Home with no region hasn't.
+export const said = (locations: Locations, where: Where) => where.country !== locations.home || where.region !== ''
 
 // The known place matching what is typed, if there is one.
 export function findPlace(locations: Locations, where: Where): Place | undefined {
   const name = where.place.trim().toLowerCase()
-  return locations.places.find((place) => place.region === where.region && place.name.toLowerCase() === name)
+  const region = where.country === locations.home ? where.region : null
+  return locations.places.find(
+    (place) => place.country === where.country && (place.region ?? null) === (region || null) && place.name.toLowerCase() === name,
+  )
 }
 
 type Props = {
@@ -26,38 +34,56 @@ type Props = {
   errors?: Record<string, string[] | undefined>
 }
 
-// Where someone is: one of Ghana's regions, then the exact place.
+// Where someone is: the country, then (at home) one of Ghana's regions,
+// then the exact place.
 //
-// The region is a fixed list. The place is a text box that SUGGESTS the
-// places already known in that region (a <datalist>), but accepts anything:
-// a place typed for the first time is added when the form is saved. So the
+// Country and region are fixed lists. The place is a text box that SUGGESTS
+// the places already known there (a <datalist>), but accepts anything: a
+// place typed for the first time is added when the form is saved. So the
 // list grows as she works, and nobody has to set it up first.
+//
+// Abroad there is no region: just the country and a city.
 export default function LocationFields({ value, onChange, locations, name = 'where', errors = {} }: Props) {
-  const here = locations.places.filter((place) => place.region === value.region)
+  const atHome = value.country === locations.home
+  const here = locations.places.filter((place) => place.country === value.country && (!atHome || place.region === value.region))
   const typed = value.place.trim()
   const known = findPlace(locations, value)
+  // At home the place waits for a region; abroad it only needs the country.
+  const placeOpen = atHome ? value.region !== '' : true
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <SelectField
-        id={`${name}_region`}
-        label="Region"
-        placeholder="Not known"
-        options={locations.regions.map((region) => ({ value: region, label: region }))}
-        value={value.region}
-        // A place belongs to its region, so changing region clears it.
-        onChange={(e) => onChange({ region: e.target.value, place: '' })}
-        error={errors.region}
-      />
+      <div className={atHome ? 'sm:col-span-2' : ''}>
+        <SelectField
+          id={`${name}_country`}
+          label="Country"
+          options={locations.countries.map((country) => ({ value: country, label: country }))}
+          value={value.country}
+          // Region and place belong to the country, so changing it clears them.
+          onChange={(e) => onChange({ country: e.target.value || locations.home, region: '', place: '' })}
+          error={errors.country}
+        />
+      </div>
+      {atHome && (
+        <SelectField
+          id={`${name}_region`}
+          label="Region"
+          placeholder="Not known"
+          options={locations.regions.map((region) => ({ value: region, label: region }))}
+          value={value.region}
+          onChange={(e) => onChange({ ...value, region: e.target.value, place: '' })}
+          error={errors.region}
+        />
+      )}
       <div>
         <TextField
           id={`${name}_place`}
-          label="Exact place"
+          label={atHome ? 'Exact place' : 'City or area'}
           list={`${name}_places`}
           autoComplete="off"
           maxLength={40}
-          disabled={value.region === ''}
-          placeholder={value.region === '' ? 'Choose the region first' : 'e.g. East Legon'}
+          disabled={!placeOpen}
+          placeholder={!placeOpen ? 'Choose the region first' : atHome ? 'e.g. East Legon' : 'e.g. Guangzhou'}
           value={value.place}
           onChange={(e) => {
             const next = { ...value, place: e.target.value }
@@ -69,7 +95,9 @@ export default function LocationFields({ value, onChange, locations, name = 'whe
             <option key={place.id} value={place.name} />
           ))}
         </datalist>
-        {typed !== '' && !known && <p className="mt-1.5 text-sm text-taupe-700">New place. It will be added to {value.region}.</p>}
+        {typed !== '' && !known && (
+          <p className="mt-1.5 text-sm text-taupe-700">New place. It will be added to {atHome ? value.region : value.country}.</p>
+        )}
       </div>
     </div>
   )

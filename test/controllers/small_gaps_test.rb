@@ -150,7 +150,7 @@ class SmallGapsTest < ActionDispatch::IntegrationTest
   end
 
   test "merging a misspelt place moves its customers and orders" do
-    twin = DeliveryArea.create!(region: "Greater Accra", name: "Ossu")
+    twin = DeliveryArea.create!(country: "Ghana", region: "Greater Accra", name: "Ossu")
     customer = Customer.create!(name: "Efua", delivery_area: twin)
 
     post merge_settings_delivery_area_path(delivery_areas(:osu)), params: { other_id: twin.id }

@@ -16,6 +16,8 @@ type Props = {
     id: number
     name: string
     phone: string | null
+    where: string | null // place, region or country, and address
+    abroad: boolean
     note: string | null
     purchases_count: number
     spent_pesewas: number
@@ -64,6 +66,12 @@ export default function SupplierShow({ supplier }: Props) {
           </a>
         ) : (
           <p className="text-amber-800">No phone number yet. Edit this supplier to add one.</p>
+        )}
+        {supplier.where && (
+          <p className="mt-3 flex flex-wrap items-center gap-2 text-taupe-800">
+            {supplier.where}
+            {supplier.abroad && <Badge tone="brand">Abroad</Badge>}
+          </p>
         )}
       </div>
 

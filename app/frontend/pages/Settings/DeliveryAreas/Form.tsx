@@ -11,13 +11,15 @@ import { confirmAction } from '@/lib/confirm'
 
 type Props = {
   // null when adding; the area when editing.
-  area: { id: number; name: string; region: string; fee: string; active: boolean; orders_count: number } | null
+  area: { id: number; name: string; country: string; region: string; fee: string; active: boolean; orders_count: number } | null
+  countries: string[]
+  home: string // the country that has regions: Ghana
   regions: string[]
   // Editing only: the other places, to fold a misspelt twin into this one.
   others?: { value: number; label: string }[]
 }
 
-export default function DeliveryAreaForm({ area, regions, others = [] }: Props) {
+export default function DeliveryAreaForm({ area, countries, home, regions, others = [] }: Props) {
   const [twin, setTwin] = useState('')
 
   async function merge() {
@@ -34,6 +36,7 @@ export default function DeliveryAreaForm({ area, regions, others = [] }: Props) 
 
   const form = useForm({
     name: area?.name ?? '',
+    country: area?.country ?? home,
     region: area?.region ?? '',
     fee: area && area.fee !== '0' ? area.fee : '',
     active: area?.active ?? true,
@@ -66,6 +69,20 @@ export default function DeliveryAreaForm({ area, regions, others = [] }: Props) 
         <h2 className="font-display text-3xl font-semibold text-wine-800">{editing ? `Edit ${area.name}` : 'Add a place'}</h2>
 
         <SelectField
+          id="country"
+          label="Country"
+          options={countries.map((country) => ({ value: country, label: country }))}
+          value={form.data.country}
+          onChange={(e) => {
+            // A region only exists at home, so leaving home clears it.
+            form.setData({ ...form.data, country: e.target.value || home, region: '' })
+            form.clearErrors()
+          }}
+          error={errors.country}
+        />
+
+        {form.data.country === home && (
+        <SelectField
           id="region"
           label="Region"
           required
@@ -78,6 +95,7 @@ export default function DeliveryAreaForm({ area, regions, others = [] }: Props) 
           }}
           error={errors.region}
         />
+        )}
 
         <TextField
           id="name"

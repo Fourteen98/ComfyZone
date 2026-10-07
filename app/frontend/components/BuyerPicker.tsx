@@ -9,7 +9,8 @@ export type Buyer = {
   name: string | null
   phone: string | null
   location: string | null // street or landmark
-  region: string | null // where they usually are
+  country: string | null // where they usually are
+  region: string | null
   place: string | null
 }
 

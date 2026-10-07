@@ -30,7 +30,7 @@ class CustomersController < InertiaController
           handle: customer.handle,
           phone: customer.phone,
           # "East Legon, near the Shell station"
-          location: [ customer.delivery_area&.name, customer.region, customer.location ].compact.join(", ").presence,
+          location: [ customer.where_text, customer.location ].compact.join(", ").presence,
           orders_count: counts.fetch(customer.id, 0),
           spent_pesewas: spent.fetch(customer.id, 0)
         }
@@ -61,7 +61,7 @@ class CustomersController < InertiaController
       customer: {
         id: @customer.id, handle: @customer.handle.to_s, name: @customer.name.to_s, phone: @customer.phone.to_s,
         location: @customer.location.to_s, note: @customer.note.to_s,
-        region: @customer.region.to_s, place: @customer.delivery_area&.name.to_s
+        **where_now(@customer)
       },
       locations: location_options,
       # Everyone else, for "the same person was entered twice".
@@ -100,16 +100,10 @@ class CustomersController < InertiaController
       params.expect(customer: [ :handle, :name, :phone, :location, :note ])
     end
 
-    # Region and place arrive as text. An empty region clears both.
+    # An edit form: whatever it sent replaces where they were, and an
+    # emptied location clears it.
     def place(customer)
-      where = params.fetch(:customer, {}).permit(:region, :place)
-      return unless where.key?(:region)
-
-      if where[:region].blank?
-        customer.region = customer.delivery_area = nil
-      else
-        customer.delivery_area = nil # so a blank place clears the old one
-        customer.locate(region: where[:region], place: where[:place])
-      end
+      where = where_from(params.fetch(:customer, {}))
+      customer.relocate(**where) if where
     end
 end
