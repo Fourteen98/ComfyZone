@@ -9,6 +9,7 @@ class ExpensesController < InertiaController
     # The same period picker as Reports, starting on this month.
     period = ReportPeriod.from_params(params[:range].present? ? params : { range: "month" })
     expenses = Expense.during(period)
+    names = PaymentMethod.names
 
     render inertia: "Expenses/Index", props: {
       period: { key: period.key, label: period.label, from: period.from.iso8601, to: period.to.iso8601, today: Date.current.iso8601 },
@@ -22,7 +23,7 @@ class ExpensesController < InertiaController
           category: expense.category,
           amount_pesewas: expense.amount_pesewas,
           note: expense.note,
-          paid_via: expense.paid_via && Payment::WAYS[expense.paid_via],
+          paid_via: expense.paid_via && names[expense.paid_via],
           by: expense.user.name
         }
       },
@@ -85,7 +86,7 @@ class ExpensesController < InertiaController
         },
         today: Date.current.iso8601,
         categories: Expense.categories,
-        ways_to_pay: Payment::WAYS.map { |value, label| { value: value, label: label } }
+        ways_to_pay: PaymentMethod.options
       }
     end
 end

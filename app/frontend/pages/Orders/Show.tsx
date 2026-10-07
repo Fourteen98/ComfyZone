@@ -6,6 +6,7 @@ import Button, { ButtonLink } from '@/components/ui/Button'
 import ChoiceCards from '@/components/ui/ChoiceCards'
 import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
+import QuantityStepper from '@/components/ui/QuantityStepper'
 import Steps from '@/components/ui/Steps'
 import OrderDeliveryForm from '@/components/OrderDeliveryForm'
 import type { Delivery } from '@/components/OrderDeliveryForm'
@@ -50,7 +51,8 @@ type Props = {
     payments: Payment[]
   }
   locations: Locations
-  ways_to_pay: { value: string; label: string }[]
+  ways_to_pay: { value: string; label: string; reference?: boolean }[]
+  payment_names: Record<string, string> // every method, hidden ones too
   // What this person may do to this order right now (OrdersController#show).
   can: {
     change: boolean
@@ -63,7 +65,7 @@ type Props = {
 }
 
 // Props from OrdersController#show
-export default function OrderShow({ order, locations, ways_to_pay, can }: Props) {
+export default function OrderShow({ order, locations, ways_to_pay, payment_names, can }: Props) {
   // Which of the small forms is open. Only ever one at a time.
   const [open, setOpen] = useState<'delivery' | 'refund' | 'return' | null>(null)
   const [restock, setRestock] = useState<'yes' | 'no' | ''>('')
@@ -72,7 +74,17 @@ export default function OrderShow({ order, locations, ways_to_pay, can }: Props)
   const gone = status === 'cancelled' || status === 'returned'
   const owes = balance > 0 // the buyer owes her
   const toGiveBack = balance < 0 ? -balance : 0 // she owes the buyer
-  const wayLabel = (via: string) => ways_to_pay.find((way) => way.value === via)?.label ?? via
+  const wayLabel = (via: string) => payment_names[via] ?? via
+
+  // The return form: how many of each line are coming back. Starts at
+  // everything they still have, since a full return is the usual case.
+  const returnable = order.items.filter((item) => item.quantity - item.returned > 0)
+  const [coming, setComing] = useState<Record<number, string>>({})
+  const back = (item: OrderSummary['items'][number]) => {
+    const typed = coming[item.id]
+    return typed === undefined ? item.quantity - item.returned : Number.parseInt(typed, 10) || 0
+  }
+  const backCount = returnable.reduce((sum, item) => sum + back(item), 0)
 
   // -> Orders::StagesController#update
   function move(to: 'packed' | 'delivered' | 'back') {
@@ -94,7 +106,11 @@ export default function OrderShow({ order, locations, ways_to_pay, can }: Props)
 
   function recordReturn() {
     // -> Orders::ReturnsController#create
-    router.post(`/orders/${order.id}/return`, { restock: restock === 'yes' }, { onSuccess: () => setOpen(null) })
+    router.post(
+      `/orders/${order.id}/return`,
+      { restock: restock === 'yes', items: Object.fromEntries(returnable.map((item) => [item.id, back(item)])) },
+      { onSuccess: () => setOpen(null) },
+    )
   }
 
   // The one sentence that says where this order stands.
@@ -258,6 +274,22 @@ export default function OrderShow({ order, locations, ways_to_pay, can }: Props)
                 )}
                 {open === 'return' && (
                   <div className="space-y-4">
+                    <fieldset>
+                      <legend className="text-sm font-medium text-taupe-800">What came back?</legend>
+                      <ul className="mt-1.5 divide-y divide-taupe-200 rounded-lg border border-taupe-300 bg-white">
+                        {returnable.map((item) => (
+                          <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2">
+                            <span className="min-w-0 flex-1 basis-32">{item.name}</span>
+                            <QuantityStepper
+                              label={`${item.name} returned`}
+                              value={String(back(item) || '')}
+                              max={item.quantity - item.returned}
+                              onChange={(value) => setComing({ ...coming, [item.id]: value === '' ? '0' : value })}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    </fieldset>
                     <ChoiceCards
                       legend="What condition are the items in?"
                       name="restock"
@@ -277,7 +309,7 @@ export default function OrderShow({ order, locations, ways_to_pay, can }: Props)
                       onChange={setRestock}
                     />
                     <div className="flex flex-wrap gap-3">
-                      <Button type="button" variant="danger" disabled={restock === ''} onClick={recordReturn}>
+                      <Button type="button" variant="danger" disabled={restock === '' || backCount === 0} onClick={recordReturn}>
                         Record the return
                       </Button>
                       <Button type="button" variant="secondary" onClick={() => setOpen(null)}>
@@ -353,6 +385,11 @@ export default function OrderShow({ order, locations, ways_to_pay, can }: Props)
                     <span className="min-w-0 flex-1">
                       {item.quantity > 1 && <span className="font-semibold tabular-nums">{item.quantity} × </span>}
                       {item.name}
+                      {item.returned > 0 && (
+                        <span className="block text-sm text-taupe-600">
+                          {item.returned === item.quantity ? 'Returned' : `${item.returned} returned`}
+                        </span>
+                      )}
                     </span>
                     <span className="font-medium tabular-nums">{formatMoney(item.total_pesewas)}</span>
                     {can.remove_items && (

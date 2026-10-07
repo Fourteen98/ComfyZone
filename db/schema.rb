@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_060001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_070005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -128,10 +128,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_060001) do
     t.integer "unit_cost_pesewas", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "returned_quantity", default: 0, null: false
     t.index ["order_id", "variant_id"], name: "index_order_items_on_order_id_and_variant_id", unique: true
     t.index ["order_id"], name: "index_order_items_on_order_id"
     t.index ["variant_id"], name: "index_order_items_on_variant_id"
     t.check_constraint "quantity > 0", name: "order_items_quantity_positive"
+    t.check_constraint "returned_quantity >= 0 AND returned_quantity <= quantity", name: "order_items_returned_within_quantity"
   end
 
   create_table "orders", force: :cascade do |t|
@@ -178,6 +180,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_060001) do
     t.datetime "updated_at", null: false
     t.index ["external_id"], name: "index_passkeys_on_external_id", unique: true
     t.index ["user_id"], name: "index_passkeys_on_user_id"
+  end
+
+  create_table "payment_methods", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "name", null: false
+    t.boolean "wants_reference", default: false, null: false
+    t.integer "position", default: 0, null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((name)::text)", name: "index_payment_methods_on_lower_name", unique: true
+    t.index ["key"], name: "index_payment_methods_on_key", unique: true
   end
 
   create_table "payments", force: :cascade do |t|
@@ -280,6 +294,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_060001) do
     t.boolean "system", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "dashboard_layout"
     t.index "lower((name)::text)", name: "index_roles_on_lower_name", unique: true
   end
 

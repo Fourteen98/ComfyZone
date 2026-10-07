@@ -11,6 +11,7 @@ const tabs = [
   { label: 'Categories', href: '/settings/categories', permission: 'settings.manage' },
   { label: 'Sales channels', href: '/settings/channels', permission: 'settings.manage' },
   { label: 'Locations', href: '/settings/areas', permission: 'settings.manage' },
+  { label: 'Payment methods', href: '/settings/payments', permission: 'settings.manage' },
   { label: 'Team', href: '/settings/users', permission: 'users.manage' },
   { label: 'Roles', href: '/settings/roles', permission: 'roles.manage' },
 ]

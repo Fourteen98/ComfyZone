@@ -6,14 +6,6 @@
 class Payment < ApplicationRecord
   include HasMoney
 
-  # How money can move. The keys are stored; the labels are shown.
-  WAYS = {
-    "momo"  => "Mobile money",
-    "cash"  => "Cash",
-    "bank"  => "Bank transfer",
-    "other" => "Other"
-  }.freeze
-
   belongs_to :order
   belongs_to :user
 
@@ -21,7 +13,9 @@ class Payment < ApplicationRecord
 
   normalizes :reference, :note, with: ->(text) { text.to_s.squish.presence }
 
-  validates :via, inclusion: { in: WAYS.keys, message: "is needed. How did the money move?" }
+  # One of the methods in Settings > Payment methods (hidden ones included,
+  # so old payments stay valid).
+  validates :via, inclusion: { in: ->(_) { PaymentMethod.keys }, message: "is needed. How did the money move?" }
   # On :amount (what the form field is called), not :amount_pesewas, so the
   # message lands under the right box.
   validate { errors.add(:amount, "must be more than zero") if amount_pesewas == 0 }

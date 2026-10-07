@@ -28,7 +28,10 @@ class DashboardController < InertiaController
 
   # GET /dashboard/edit   the Customise page
   def edit
-    render inertia: "Dashboard/Edit", props: Dashboard.new(Current.user).choices
+    render inertia: "Dashboard/Edit", props: Dashboard.new(Current.user).choices.merge(
+      # For people who manage roles: set what a whole role starts with.
+      roles: can?("roles.manage") ? Role.ordered.map { |role| { value: role.id, label: role.name } } : []
+    )
   end
 
   # PATCH /dashboard
@@ -40,8 +43,17 @@ class DashboardController < InertiaController
       redirect_to root_path, notice: "Your dashboard is back to the standard layout."
     else
       chosen = params.fetch(:dashboard, {}).permit(tiles: [], panels: [])
-      dashboard.save(tiles: chosen[:tiles], panels: chosen[:panels])
-      redirect_to root_path, notice: "Dashboard saved."
+      role = can?("roles.manage") ? Role.find_by(id: params[:role_id]) : nil
+
+      if role
+        # Saved on the role, not on this person. It is filtered by what the
+        # ROLE may see, so a tile its people can't have is simply dropped.
+        Dashboard.new(role).save(tiles: chosen[:tiles], panels: chosen[:panels])
+        redirect_to edit_dashboard_path, notice: "Saved as the standard dashboard for #{role.name}. People who have customised their own keep theirs."
+      else
+        dashboard.save(tiles: chosen[:tiles], panels: chosen[:panels])
+        redirect_to root_path, notice: "Dashboard saved."
+      end
     end
   end
 

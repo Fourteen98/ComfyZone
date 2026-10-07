@@ -11,6 +11,7 @@ import Panel from '@/components/ui/Panel'
 import TextField from '@/components/ui/TextField'
 import { guessDeviceName, passkeysSupported, registerPasskey } from '@/lib/passkeys'
 import { confirmAction } from '@/lib/confirm'
+import InstallApp from '@/components/InstallApp'
 
 type Passkey = {
   id: number
@@ -57,6 +58,10 @@ export default function AccountShow({ passkeys }: { passkeys: Passkey[] }) {
       <PageHeader title="My account" description={`${user.name}, ${user.role}. ${user.email_address}`} />
 
       <div className="mt-6 max-w-3xl">
+        <div className="mb-6">
+          <InstallApp />
+        </div>
+
         <Panel title="Passkeys">
           <p className="text-taupe-700">
             Log in with Face ID, your fingerprint or your screen lock instead of typing a password. Set one up on

@@ -78,13 +78,14 @@ class ReportsController < InertiaController
 
     def payments_csv(period)
       payments = Payment.where(created_at: period.range).order(:created_at).includes(:user, order: :customer)
+      names = PaymentMethod.names
 
       CSV.generate do |csv|
         csv << [ "Date", "Order", "Customer", "Amount", "How", "Transaction ID", "Note", "Recorded by" ]
         payments.each do |payment|
           csv << [
             payment.created_at.strftime("%Y-%m-%d %H:%M"), payment.order_id, safe(payment.order.customer.display_name),
-            cedis(payment.amount_pesewas), Payment::WAYS.fetch(payment.via, payment.via),
+            cedis(payment.amount_pesewas), names.fetch(payment.via, payment.via),
             safe(payment.reference), safe(payment.note), payment.user.name
           ]
         end

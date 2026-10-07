@@ -32,6 +32,23 @@ class Customer < ApplicationRecord
 
   scope :ordered, -> { order(Arel.sql("lower(coalesce(name, handle, phone))")) }
 
+  # Fold a duplicate into this customer: their orders move here, anything
+  # we didn't know (a phone number, a username, where they are) is taken
+  # from them, and then they are removed. What this customer already has is
+  # never overwritten.
+  def absorb!(other)
+    raise ArgumentError, "A customer can't be merged with themselves" if other == self
+
+    transaction do
+      other.orders.update_all(customer_id: id)
+      gained = other.slice(:handle, :name, :phone, :location, :region, :delivery_area_id, :note).compact
+      # Delete first: two customers can't hold the same username at once.
+      other.reload.destroy!
+      gained.each { |attribute, value| self[attribute] = value if self[attribute].blank? }
+      save!
+    end
+  end
+
   # What to call them on screen: their name if known, otherwise @handle,
   # otherwise their phone number.
   def display_name

@@ -21,6 +21,18 @@ class DeliveryArea < ApplicationRecord
   scope :ordered, -> { order(Arel.sql("region NULLS LAST, lower(name)")) }
   scope :active, -> { where(active: true) }
 
+  # Fold a duplicate ("Medina") into this place ("Madina"): its customers
+  # and orders move here, then it is removed.
+  def absorb!(other)
+    raise ArgumentError, "A place can't be merged with itself" if other == self
+
+    transaction do
+      other.customers.update_all(delivery_area_id: id, region: region)
+      other.orders.update_all(delivery_area_id: id)
+      other.reload.destroy!
+    end
+  end
+
   # The place called `name` in `region`: the one already there (however it
   # was capitalised), or a new one. Returns nil if either part is missing
   # or the region isn't one of Ghana's.

@@ -1,9 +1,14 @@
-import { Head, useForm } from '@inertiajs/react'
+import { Head, router, useForm } from '@inertiajs/react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import Alert from '@/components/ui/Alert'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import PageHeader from '@/components/ui/PageHeader'
+import BuyerPicker from '@/components/BuyerPicker'
+import type { Buyer } from '@/components/BuyerPicker'
+import Panel from '@/components/ui/Panel'
+import { confirmAction } from '@/lib/confirm'
 import LocationFields from '@/components/LocationFields'
 import type { Locations } from '@/components/LocationFields'
 import TextAreaField from '@/components/ui/TextAreaField'
@@ -12,9 +17,23 @@ import TextField from '@/components/ui/TextField'
 type Props = {
   customer: { id: number; handle: string; name: string; phone: string; location: string; note: string; region: string; place: string } | null
   locations: Locations
+  // Editing only: everyone else, and how many orders this customer has.
+  others?: Buyer[]
+  orders_count?: number
 }
 
-export default function CustomerForm({ customer, locations }: Props) {
+export default function CustomerForm({ customer, locations, others = [] }: Props) {
+  const [twin, setTwin] = useState<{ id: number; label: string } | null>(null)
+
+  async function merge() {
+    if (!customer || !twin) return
+    const sure = await confirmAction(
+      `Merge ${twin.label} into this customer? Their orders move here, anything missing here is copied across, and ${twin.label} is removed. This can't be undone.`,
+      { confirm: 'Merge them' },
+    )
+    if (sure) router.post(`/customers/${customer.id}/merge`, { other_id: twin.id }) // -> CustomersController#merge
+  }
+
   const editing = customer !== null
 
   const form = useForm({
@@ -93,6 +112,29 @@ export default function CustomerForm({ customer, locations }: Props) {
           </ButtonLink>
         </div>
       </form>
+
+      {/* ---------- The same person, entered twice ---------- */}
+      {editing && others.length > 0 && (
+        <div className="mt-10 max-w-xl">
+          <Panel title="Entered twice?">
+            <p className="mb-4 text-taupe-700">
+              If this person is also in your customers under another name, find the other one here and merge them into
+              this one.
+            </p>
+            <BuyerPicker
+              buyers={others}
+              usernameFirst={false}
+              searchOnly
+              onChange={(choice, label) => setTwin(choice && 'id' in choice ? { id: choice.id, label } : null)}
+            />
+            {twin && (
+              <Button type="button" variant="secondary" className="mt-4" onClick={merge}>
+                Merge {twin.label} into this customer
+              </Button>
+            )}
+          </Panel>
+        </div>
+      )}
     </AppLayout>
   )
 }

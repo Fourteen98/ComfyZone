@@ -1,7 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react'
-import { Boxes, ChevronRight, Search, Shirt } from 'lucide-react'
+import { Boxes, ChevronRight, ClipboardList, Search, Shirt } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
+import { ButtonLink } from '@/components/ui/Button'
 import Chip from '@/components/ui/Chip'
 import EmptyState from '@/components/ui/EmptyState'
 import PageHeader from '@/components/ui/PageHeader'
@@ -9,6 +10,7 @@ import StatStrip from '@/components/ui/StatStrip'
 import StockLevelBadge from '@/components/StockLevelBadge'
 import type { OptionValue } from '@/components/OptionValuesEditor'
 import { formatMoney } from '@/lib/format'
+import { useCan } from '@/lib/permissions'
 import type { StockLevel } from '@/lib/stock'
 
 type VariantRow = {
@@ -31,6 +33,7 @@ type Props = {
 
 // Props from StockController#index
 export default function StockIndex({ groups, filters, counts, totals }: Props) {
+  const can = useCan()
   const [query, setQuery] = useState(filters.q)
 
   const params = (show: string, q = filters.q) => ({ show: show === 'all' ? undefined : show, q: q || undefined })
@@ -61,7 +64,19 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
   return (
     <AppLayout>
       <Head title="Stock" />
-      <PageHeader title="Stock" description="What you have on hand right now. Tap any item to see its history or correct its count." />
+      <PageHeader
+        title="Stock"
+        description="What you have on hand right now. Tap any item to see its history or correct its count."
+        actions={
+          can('stock.adjust') &&
+          counts.all > 0 && (
+            <ButtonLink href="/stock/count" variant="secondary">
+              <ClipboardList className="size-5" aria-hidden="true" />
+              Stock take
+            </ButtonLink>
+          )
+        }
+      />
 
       {counts.all === 0 && !filters.q ? (
         <div className="mt-6 rounded-lg border border-taupe-200 bg-white">

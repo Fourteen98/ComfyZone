@@ -22,6 +22,8 @@ type Props = {
   buyers: Buyer[]
   /** Ask for the username first (a social channel) or the name first. */
   usernameFirst: boolean
+  /** Only pick from the list; don't offer to add someone new. */
+  searchOnly?: boolean
   /** Tells the parent who is chosen (null = nobody yet), what to call them,
       and the known customer behind the choice, if there is one. */
   onChange: (choice: BuyerChoice | null, label: string, known?: Buyer) => void
@@ -41,7 +43,7 @@ export function buyerLabel(buyer: Buyer): string {
 //
 // The parent remounts this (with `key`) after each sale, which is how it
 // goes back to an empty search box.
-export default function BuyerPicker({ buyers, usernameFirst, onChange }: Props) {
+export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false, onChange }: Props) {
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<Buyer | null>(null)
   const [fresh, setFresh] = useState<{ name: string; phone: string; handle: string } | null>(null)
@@ -172,7 +174,7 @@ export default function BuyerPicker({ buyers, usernameFirst, onChange }: Props) 
   return (
     <div>
       <label htmlFor="buyer_search" className="block text-sm font-medium text-taupe-800">
-        Who is buying?
+        {searchOnly ? 'Find the other one' : 'Who is buying?'}
       </label>
       <div className="relative mt-1.5">
         <Search className="pointer-events-none absolute top-4 left-3.5 size-5 text-taupe-500" aria-hidden="true" />
@@ -209,10 +211,12 @@ export default function BuyerPicker({ buyers, usernameFirst, onChange }: Props) 
         </ul>
       )}
 
-      <Button type="button" variant="secondary" className="mt-3" onClick={addNew}>
-        <UserPlus className="size-5" aria-hidden="true" />
-        {term ? `Add "${search.trim()}" as a new buyer` : 'Add a new buyer'}
-      </Button>
+      {!searchOnly && (
+        <Button type="button" variant="secondary" className="mt-3" onClick={addNew}>
+          <UserPlus className="size-5" aria-hidden="true" />
+          {term ? `Add "${search.trim()}" as a new buyer` : 'Add a new buyer'}
+        </Button>
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 # Settings > Locations: the places within each region, and the usual delivery fee.
 class Settings::DeliveryAreasController < InertiaController
   require_permission "settings.manage"
-  before_action :set_area, only: %i[ edit update destroy ]
+  before_action :set_area, only: %i[ edit update destroy merge ]
 
   # GET /settings/areas
   def index
@@ -36,8 +36,22 @@ class Settings::DeliveryAreasController < InertiaController
     render inertia: "Settings/DeliveryAreas/Form", props: {
       area: { id: @area.id, name: @area.name, region: @area.region.to_s, fee: @area.fee, active: @area.active,
                  orders_count: @area.orders.count },
-      regions: Region::ALL
+      regions: Region::ALL,
+      # Other places, for folding a misspelt twin into this one.
+      others: DeliveryArea.where.not(id: @area.id).ordered.map { |area|
+        { value: area.id, label: [ area.name, area.region ].compact.join(", ") }
+      }
     }
+  end
+
+  # POST /settings/areas/:id/merge   { other_id: 9 }
+  def merge
+    other = DeliveryArea.find(params.expect(:other_id))
+    name = other.name
+    @area.absorb!(other)
+    redirect_to edit_settings_delivery_area_path(@area), notice: "Merged #{name} into #{@area.name}."
+  rescue ArgumentError => problem
+    redirect_to edit_settings_delivery_area_path(@area), alert: problem.message
   end
 
   # PATCH /settings/areas/:id

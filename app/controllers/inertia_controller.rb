@@ -21,6 +21,13 @@ class InertiaController < ApplicationController
         # items. That is a convenience only: the real check is always
         # `require_permission` in the controller.
         permissions: user ? user.effective_permissions : []
+      },
+      # Small counts shown as badges in the menu, on every page, so things
+      # that need doing are noticed without opening the dashboard. Two cheap
+      # COUNT queries per request; nil = this person may not see it.
+      alerts: {
+        low_stock: user&.can?("stock.view") ? StockLedger.needing_attention.count : nil,
+        to_pack: user&.can?("orders.view") ? Order.paid.count : nil
       }
     }
   end

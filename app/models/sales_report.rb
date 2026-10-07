@@ -24,7 +24,7 @@ class SalesReport
 
   def totals
     @totals ||= begin
-      lines = line_items.pick(Arel.sql("COALESCE(SUM(order_items.quantity), 0)"), Arel.sql("COALESCE(SUM(#{COST}), 0)"))
+      lines = line_items.pick(Arel.sql("COALESCE(SUM(#{KEPT}), 0)"), Arel.sql("COALESCE(SUM(#{COST}), 0)"))
       sales = orders.sum(:total_pesewas)
       { orders: orders.count, units: lines[0], sales_pesewas: sales, cost_pesewas: lines[1], profit_pesewas: sales - lines[1] }
     end
@@ -62,7 +62,7 @@ class SalesReport
       .group("products.id", "products.name")
       .order(Arel.sql("SUM(#{REVENUE}) DESC"))
       .limit(limit)
-      .pluck("products.id", "products.name", Arel.sql("SUM(order_items.quantity)"), Arel.sql("SUM(#{REVENUE})"), Arel.sql("SUM(#{COST})"))
+      .pluck("products.id", "products.name", Arel.sql("SUM(#{KEPT})"), Arel.sql("SUM(#{REVENUE})"), Arel.sql("SUM(#{COST})"))
       .map { |id, name, units, sales, cost| { id: id, name: name, units: units, sales_pesewas: sales, profit_pesewas: sales - cost } }
   end
 
@@ -121,8 +121,9 @@ class SalesReport
   # PAYMENT was recorded, so it won't equal sales (an order claimed on
   # Friday may be paid on Monday, and delivery fees are in here too).
   def money_in
+    names = PaymentMethod.names
     Payment.where(created_at: period.range).group(:via).sum(:amount_pesewas)
-      .map { |via, amount| { name: Payment::WAYS.fetch(via, via), amount_pesewas: amount } }
+      .map { |via, amount| { name: names.fetch(via, via), amount_pesewas: amount } }
       .sort_by { |row| -row[:amount_pesewas] }
   end
 
@@ -141,8 +142,10 @@ class SalesReport
     # on the wrong day for anyone not on UTC. (Accra happens to BE on UTC,
     # so you won't see a difference, but the code is right for anywhere.)
     LOCAL_TIME = "orders.created_at AT TIME ZONE 'UTC' AT TIME ZONE '#{Time.zone.tzinfo.name}'".freeze
-    REVENUE = "order_items.quantity * order_items.unit_price_pesewas".freeze
-    COST = "order_items.quantity * order_items.unit_cost_pesewas".freeze
+    # What still counts as sold on a line: sold, less what came back.
+    KEPT = "(order_items.quantity - order_items.returned_quantity)".freeze
+    REVENUE = "#{KEPT} * order_items.unit_price_pesewas".freeze
+    COST = "#{KEPT} * order_items.unit_cost_pesewas".freeze
 
     def orders
       Order.counted.where(created_at: period.range)

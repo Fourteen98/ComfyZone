@@ -68,7 +68,9 @@ class OrdersController < InertiaController
         }
       ),
       locations: location_options,
-      ways_to_pay: Payment::WAYS.map { |value, label| { value: value, label: label } },
+      ways_to_pay: PaymentMethod.options,
+      # Names for every method, hidden ones too, to label old payments.
+      payment_names: PaymentMethod.names,
       # What THIS person may do to THIS order right now. React only shows
       # buttons; each action checks again on the server.
       can: {

@@ -58,11 +58,12 @@ module SaleCapture
         due_pesewas: order.due_pesewas,         # goods + delivery
         paid_pesewas: order.paid_pesewas,
         balance_pesewas: order.balance_pesewas, # > 0 they owe her, < 0 she owes them
-        units: order.items.sum(&:quantity),
+        units: order.items.sum(&:kept),
         at: order.created_at.strftime("%-d %b, %-l:%M %P"),
         channel: order.sales_channel&.name, # "WhatsApp"; nil if not recorded
         items: order.items.sort_by(&:id).map { |item|
-          { id: item.id, name: item.variant.full_name, quantity: item.quantity, total_pesewas: item.total_pesewas }
+          { id: item.id, name: item.variant.full_name, quantity: item.quantity, returned: item.returned_quantity,
+            total_pesewas: item.total_pesewas }
         }
       }
     end

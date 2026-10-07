@@ -3,7 +3,7 @@ class CustomersController < InertiaController
 
   require_permission "customers.view", only: :index
   require_permission "customers.manage", except: :index
-  before_action :set_customer, only: %i[ edit update ]
+  before_action :set_customer, only: %i[ edit update merge ]
 
   # GET /customers?q=ama
   def index
@@ -63,8 +63,21 @@ class CustomersController < InertiaController
         location: @customer.location.to_s, note: @customer.note.to_s,
         region: @customer.region.to_s, place: @customer.delivery_area&.name.to_s
       },
-      locations: location_options
+      locations: location_options,
+      # Everyone else, for "the same person was entered twice".
+      others: known_buyers.reject { |buyer| buyer[:id] == @customer.id },
+      orders_count: @customer.orders.count
     }
+  end
+
+  # POST /customers/:id/merge   { other_id: 9 }
+  def merge
+    other = Customer.find(params.expect(:other_id))
+    name = other.display_name
+    @customer.absorb!(other)
+    redirect_to edit_customer_path(@customer), notice: "Merged #{name} into #{@customer.display_name}."
+  rescue ArgumentError, ActiveRecord::RecordInvalid => problem
+    redirect_to edit_customer_path(@customer), alert: "Couldn't merge: #{problem.message}"
   end
 
   def update

@@ -1,22 +1,26 @@
+<%#
+  The web app manifest: what a phone needs to put the app on its home screen
+  like a real one. Served at /manifest.json (see config/routes.rb) and linked
+  from the <head> of every page.
+%>
 {
-  "name": "Comfyzone",
-  "icons": [
-    {
-      "src": "/icon.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    },
-    {
-      "src": "/icon.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "maskable"
-    }
-  ],
+  "name": "The Comfy Zone",
+  "short_name": "Comfy Zone",
+  "description": "Stock, live sales and orders for The Comfy Zone by Fazy.",
   "start_url": "/",
-  "display": "standalone",
   "scope": "/",
-  "description": "Comfyzone.",
-  "theme_color": "red",
-  "background_color": "red"
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#3f1a22",
+  "background_color": "#faf7f4",
+  "icons": [
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/icon.png", "type": "image/png", "sizes": "512x512" },
+    { "src": "/icon-maskable.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Live sales", "url": "/live" },
+    { "name": "Record a sale", "url": "/orders/new" },
+    { "name": "Orders", "url": "/orders" }
+  ]
 }
