@@ -70,6 +70,9 @@ class OrderTaker
       return existing if existing
 
       order = Order.create!(customer: customer, live_session: live_session, sales_channel: channel, user: user)
+      # An order added to a live after it ended was really claimed during
+      # it. Dating it then keeps it on the right day in the reports.
+      order.update_column(:created_at, live_session.ended_at) if live_session&.ended_at
       # Pick-up or delivery, if she said so while recording the sale.
       order.set_delivery!(**delivery) if delivery && delivery[:delivery_method].present?
       order

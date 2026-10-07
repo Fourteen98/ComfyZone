@@ -1,0 +1,21 @@
+momo:
+  key: momo
+  name: Mobile money
+  wants_reference: true
+  position: 1
+
+cash:
+  key: cash
+  name: Cash
+  position: 2
+
+bank:
+  key: bank
+  name: Bank transfer
+  wants_reference: true
+  position: 3
+
+other:
+  key: other
+  name: Other
+  position: 4

@@ -110,4 +110,30 @@ class Orders::EditingTest < ActionDispatch::IntegrationTest
     assert LiveSession.exists?(live.id)
     assert_match "can't be deleted", flash[:alert]
   end
+
+  test "an ended live reopens its claim screen only when asked" do
+    live = LiveSession.create!(user: @owner)
+    live.finish!
+
+    get live_path(live)
+    assert_not inertia.props[:adding]
+    assert_nil inertia.props[:products]
+
+    get live_path(live, add: 1)
+    assert inertia.props[:adding]
+    assert inertia.props[:products].any?
+  end
+
+  test "someone who can't record sales can't reopen an ended live" do
+    live = LiveSession.create!(user: @owner)
+    live.finish!
+    delete session_path
+    roles(:assistant).update!(permissions: [ "orders.view" ])
+    sign_in_as(users(:two))
+
+    get live_path(live, add: 1)
+
+    assert_not inertia.props[:adding]
+    assert_nil inertia.props[:products]
+  end
 end

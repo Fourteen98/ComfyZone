@@ -35,14 +35,17 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_includes inertia.props[:errors][:items].first, "Only 5 left"
   end
 
-  test "a claim can't be attached to a live that has ended" do
+  test "a missed order can be added to a live that has ended, dated when the live was" do
     sign_in_as(users(:one))
-    live = LiveSession.create!(user: users(:one))
-    live.finish!
+    live = travel_to(2.days.ago) { LiveSession.create!(user: users(:one)).tap(&:finish!) }
 
     post orders_path, params: claim_params(live: live)
 
-    assert_nil Order.newest_first.first.live_session
+    order = Order.newest_first.first
+    assert_redirected_to live_path(live, add: 1)
+    assert_equal live, order.live_session
+    assert_in_delta live.ended_at, order.created_at, 1.second
+    assert_equal 4, @black.reload.stock_on_hand
   end
 
   test "lists orders, leaving cancelled ones out unless asked" do

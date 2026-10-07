@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Plus } from 'lucide-react'
 import type { FormEvent } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import Button, { ButtonLink } from '@/components/ui/Button'
@@ -11,7 +11,7 @@ import type { SalesChannel } from '@/lib/orders'
 
 // Props from LiveSessionsController#edit
 type Props = {
-  live: { id: number; title: string; sales_channel_id: string; orders: number }
+  live: { id: number; title: string; sales_channel_id: string; orders: number; running: boolean }
   channels: SalesChannel[]
 }
 
@@ -41,6 +41,16 @@ export default function LiveEdit({ live, channels }: Props) {
       <div className="mt-2">
         <PageHeader title="Edit live" />
       </div>
+
+      {/* The live is over, but an order that was missed can still go on it. */}
+      {!live.running && (
+        <div className="mt-5">
+          <ButtonLink href={`/live/${live.id}`} data={{ add: 1 }} variant="secondary">
+            <Plus className="size-5" aria-hidden="true" />
+            Add a missed order
+          </ButtonLink>
+        </div>
+      )}
 
       <form onSubmit={submit} className="mt-6 max-w-xl space-y-5">
         <TextField

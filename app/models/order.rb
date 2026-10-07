@@ -51,8 +51,9 @@ class Order < ApplicationRecord
   # The message is written for the person, and shown as it is.
   class WrongStage < StandardError; end
 
+  # Items that still count as sold (returned ones don't).
   def units
-    items.sum(&:quantity)
+    items.sum(&:kept)
   end
 
   def cost_pesewas
@@ -227,17 +228,44 @@ class Order < ApplicationRecord
     end
   end
 
-  # The buyer sent a delivered order back.
-  #   restock: true   the goods are fine and go back on the shelf
-  #   restock: false  they are not sellable; stock is left alone
-  def return!(by:, restock:)
+  # The buyer sent back all of a delivered order, or part of it.
+  #
+  #   quantities: { item_id => how_many }   only those; nil = everything
+  #   restock: true    the goods are fine and go back on the shelf
+  #   restock: false   they are not sellable; stock is left alone
+  #
+  # Part of an order: it stays "delivered", its total shrinks to what was
+  # kept, and if she was paid for more than that, the difference shows as
+  # money to give back. All of it: the order becomes "returned".
+  def return_items!(by:, restock:, quantities: nil)
     transaction do
       lock!
       raise WrongStage, "Only a delivered order can be returned. This one is #{status}." unless delivered?
 
-      items.includes(:variant).each { |item| put_back(item, by: by, reason: "return") } if restock
-      update!(status: "returned", returned_at: Time.current)
+      returning = items.includes(:variant).filter_map { |item|
+        wanted = quantities ? quantities[item.id].to_i : item.kept
+        [ item, wanted.clamp(0, item.kept) ] if wanted.positive? && item.kept.positive?
+      }
+      raise WrongStage, "Nothing was chosen to return." if returning.empty?
+
+      returning.each do |item, count|
+        put_back(item, by: by, reason: "return", quantity: count) if restock
+        item.update!(returned_quantity: item.returned_quantity + count)
+      end
+
+      if items.reload.all? { |item| item.kept.zero? }
+        # Everything came back. (The total is left as it was: a record of
+        # what the order had been worth. Nothing is due on a returned order.)
+        update!(status: "returned", returned_at: Time.current)
+      else
+        update!(total_pesewas: items.sum(&:total_pesewas))
+      end
     end
+  end
+
+  # The whole order came back.
+  def return!(by:, restock:)
+    return_items!(by: by, restock: restock)
   end
 
   private
@@ -286,7 +314,7 @@ class Order < ApplicationRecord
       customer.save! if customer.changed?
     end
 
-    def put_back(item, by:, reason:)
-      StockLedger.record!(variant: item.variant, quantity: item.quantity, reason: reason, source: self, user: by)
+    def put_back(item, by:, reason:, quantity: item.quantity)
+      StockLedger.record!(variant: item.variant, quantity: quantity, reason: reason, source: self, user: by)
     end
 end

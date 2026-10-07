@@ -15,7 +15,7 @@ export default function Steps({ steps }: { steps: Step[] }) {
   return (
     <ol className="flex">
       {steps.map((step, index) => (
-        <li key={step.label} className="relative flex-1 text-center">
+        <li key={step.label} className="relative min-w-0 flex-1 px-1 text-center">
           {/* The line joining this step to the one before it. */}
           {index > 0 && (
             <span
@@ -34,7 +34,9 @@ export default function Steps({ steps }: { steps: Step[] }) {
             {step.label}
             {step.done && <span className="sr-only"> (done)</span>}
           </span>
-          {step.note && <span className="block text-xs text-taupe-600">{step.note}</span>}
+          {/* text-balance splits "7 Oct, 7:04 am" evenly over two lines on a
+              phone, where four of them side by side would collide. */}
+          {step.note && <span className="block text-xs leading-tight text-balance text-taupe-600">{step.note}</span>}
         </li>
       ))}
     </ol>

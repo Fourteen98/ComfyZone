@@ -12,7 +12,8 @@ type Props = {
   kind: 'payment' | 'refund'
   /** The amount to start with: what is owed, or what there is to give back. */
   suggestedPesewas: number
-  ways: { value: string; label: string }[]
+  /** `reference`: does this method come with a transaction ID worth keeping? */
+  ways: { value: string; label: string; reference?: boolean }[]
   onCancel?: () => void
 }
 
@@ -23,7 +24,7 @@ export default function OrderPaymentForm({ orderId, kind, suggestedPesewas, ways
   const form = useForm({ amount: toMoneyInput(Math.max(suggestedPesewas, 0)), via: '', reference: '', note: '' })
   const errors = form.errors as Record<string, string[] | undefined>
   // A transaction ID only makes sense where there is one.
-  const hasReference = form.data.via === 'momo' || form.data.via === 'bank'
+  const hasReference = ways.find((way) => way.value === form.data.via)?.reference === true
 
   function submit(event: FormEvent) {
     event.preventDefault()

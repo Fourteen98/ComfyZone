@@ -25,6 +25,8 @@ type Props = {
   over_time: Moment[]
   top_products: { id: number; name: string; units: number; sales_pesewas: number; profit_pesewas?: number }[]
   channels: { name: string; orders: number; sales_pesewas: number }[]
+  regions: { name: string; orders: number; sales_pesewas: number }[]
+  places: { id: number; name: string; region: string; orders: number; sales_pesewas: number }[]
   lives: { id: number; name: string; orders: number; sales_pesewas: number }[]
   customers: { id: number; name: string; orders: number; sales_pesewas: number }[] | null // null = may not see customers
   money_in: { name: string; amount_pesewas: number }[]
@@ -52,7 +54,7 @@ function Change({ now, before, days }: { now: number; before: number; days: numb
 }
 
 export default function ReportsShow(props: Props) {
-  const { period, presets, totals, previous, over_time, top_products, channels, lives, customers, money_in, expenses, sees_costs } = props
+  const { period, presets, totals, previous, over_time, top_products, channels, regions, places, lives, customers, money_in, expenses, sees_costs } = props
   const [from, setFrom] = useState(period.from)
   const [to, setTo] = useState(period.to)
   const [custom, setCustom] = useState(period.key === 'custom')
@@ -168,6 +170,22 @@ export default function ReportsShow(props: Props) {
             empty="Nothing sold in this period."
             format={formatMoney}
             rows={channels.map((row) => ({ key: row.name, label: row.name, note: orders(row.orders), value: row.sales_pesewas }))}
+          />
+        </Panel>
+
+        <Panel title="Where buyers are">
+          <BarList
+            empty="Nothing sold in this period."
+            format={formatMoney}
+            rows={regions.map((row) => ({ key: row.name, label: row.name, note: orders(row.orders), value: row.sales_pesewas }))}
+          />
+        </Panel>
+
+        <Panel title="Top places">
+          <BarList
+            empty="No sales yet to a buyer whose exact place is known."
+            format={formatMoney}
+            rows={places.map((row) => ({ key: row.id, label: row.name, note: `${row.region}, ${orders(row.orders)}`, value: row.sales_pesewas }))}
           />
         </Panel>
 

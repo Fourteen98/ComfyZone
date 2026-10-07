@@ -52,6 +52,10 @@ class Dashboard
   DEFAULT = { "tiles" => %w[ sales_today orders_to_pack low_stock money_owed ], "panels" => %w[ recent_orders low_stock ] }.freeze
   MAX_TILES = 8
 
+  # `user` is usually a User. It can also be a Role, to set the dashboard
+  # everyone in that role starts with: a Role answers the same three
+  # questions this class asks (can?, dashboard_layout, update), so no other
+  # code changes. That is "duck typing".
   def initialize(user)
     @user = user
   end
@@ -98,8 +102,11 @@ class Dashboard
       widgets.select { |widget| widget.needs.all? { |key| @user.can?(key) } }
     end
 
+    # Their own choice; failing that, their role's standard; failing that,
+    # the app's. (A Role is asked the same question when its standard is
+    # being set, and has no `role` of its own to fall back on.)
     def layout
-      @user.dashboard_layout.presence || DEFAULT
+      @user.dashboard_layout.presence || (@user.respond_to?(:role) && @user.role.dashboard_layout.presence) || DEFAULT
     end
 
     # The person's keys, in their order, minus anything that no longer

@@ -26,3 +26,15 @@ if (document.getElementById('app')) {
     },
   })
 }
+
+// Register the service worker (app/views/pwa/service-worker.js), which
+// shows a friendly page when there is no signal. Production only: in
+// development it would get in the way of Vite's live reloading.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch(() => {
+      // Not being able to register is not worth bothering her about: the
+      // app works exactly the same, just without the offline page.
+    })
+  })
+}

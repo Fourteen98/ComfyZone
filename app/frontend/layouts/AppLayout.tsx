@@ -33,6 +33,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const barItems = items.filter((item) => item.mobile).slice(0, 4)
   const moreItems = items.filter((item) => !barItems.includes(item))
   const moreIsActive = moreItems.some(isActive) || onAccount
+  const alerts = props.alerts as Record<string, number | null> | undefined
+  const moreHasAlert = moreItems.some((item) => item.alert && (alerts?.[item.alert.key] ?? 0) > 0)
 
   // Close the sheet whenever she lands on a new page.
   useEffect(() => setMoreOpen(false), [url])
@@ -175,15 +177,38 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           type="button"
           onClick={() => setMoreOpen(!moreOpen)}
           aria-expanded={moreOpen}
-          className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${
+          className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${
             moreOpen || moreIsActive ? 'font-medium text-wine-800' : 'text-taupe-700'
           }`}
         >
           <Menu className="size-5" aria-hidden="true" />
           More
+          {/* A dot when something under "More" has a badge of its own
+              (low stock, say), so it isn't hidden behind the menu. */}
+          {moreHasAlert && (
+            <span className="absolute top-2 left-1/2 ml-2 size-2.5 rounded-full bg-wine-800">
+              <span className="sr-only">Something here needs attention</span>
+            </span>
+          )}
         </button>
       </nav>
     </div>
+  )
+}
+
+// The little count beside a menu item ("Orders 3"): things waiting to be
+// done, visible from every page. Nothing is drawn for zero, or when this
+// person may not see the number (Rails sends null).
+function NavBadge({ item, className }: { item: NavItem; className: string }) {
+  const alerts = usePage().props.alerts as Record<string, number | null> | undefined
+  const count = item.alert ? alerts?.[item.alert.key] : null
+  if (!item.alert || !count) return null
+
+  return (
+    <span className={`rounded-full px-1.5 text-xs leading-5 font-semibold tabular-nums ${className}`}>
+      {count > 99 ? '99+' : count}
+      <span className="sr-only"> {item.alert.says}</span>
+    </span>
   )
 }
 
@@ -212,6 +237,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
     >
       <Icon className="size-5" aria-hidden="true" />
       {item.label}
+      <NavBadge item={item} className={`ml-auto ${active ? 'bg-wine-800 text-taupe-50' : 'bg-taupe-50 text-wine-800'}`} />
     </Link>
   )
 }
@@ -234,6 +260,7 @@ function SheetLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link href={item.href} aria-current={active ? 'page' : undefined} className={`${base} ${active ? 'bg-taupe-100 font-medium text-wine-800' : ''}`}>
       <Icon className="size-6 text-wine-800" aria-hidden="true" />
       {item.label}
+      <NavBadge item={item} className="ml-auto bg-wine-800 text-taupe-50" />
     </Link>
   )
 }
@@ -255,10 +282,12 @@ function BottomBarLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       href={item.href}
       aria-current={active ? 'page' : undefined}
-      className={`${base} ${active ? 'font-medium text-wine-800' : 'text-taupe-700'}`}
+      className={`${base} relative ${active ? 'font-medium text-wine-800' : 'text-taupe-700'}`}
     >
       <Icon className="size-5" aria-hidden="true" />
       {item.label}
+      {/* Pinned to the corner of the icon, like a phone's app badges. */}
+      <NavBadge item={item} className="absolute top-1.5 left-1/2 ml-1.5 bg-wine-800 text-taupe-50" />
     </Link>
   )
 }

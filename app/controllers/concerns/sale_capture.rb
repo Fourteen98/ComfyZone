@@ -27,9 +27,9 @@ module SaleCapture
     # Buyers she already knows, most recent first, for the suggestions under
     # the buyer box. Capped: beyond this, typing the name still works.
     def known_buyers
-      Customer.order(updated_at: :desc).limit(500).map { |customer|
+      Customer.includes(:delivery_area).order(updated_at: :desc).limit(500).map { |customer|
         { id: customer.id, handle: customer.handle, name: customer.name, phone: customer.phone,
-          location: customer.location, delivery_area_id: customer.delivery_area_id }
+          location: customer.location, region: customer.region, place: customer.delivery_area&.name }
       }
     end
 
@@ -38,9 +38,15 @@ module SaleCapture
       scope.ordered.map { |channel| { id: channel.id, name: channel.name, kind: channel.kind } }
     end
 
-    # The places she delivers to, with the usual fee ready for a money box.
-    def delivery_areas
-      DeliveryArea.active.ordered.map { |area| { id: area.id, name: area.name, fee: area.fee, fee_pesewas: area.fee_pesewas } }
+    # Everything a region + place picker needs: the fixed regions, and the
+    # places known so far (each with its usual delivery fee).
+    def location_options
+      {
+        regions: Region::ALL,
+        places: DeliveryArea.active.where.not(region: nil).ordered.map { |area|
+          { id: area.id, region: area.region, name: area.name, fee: area.fee, fee_pesewas: area.fee_pesewas }
+        }
+      }
     end
 
     def order_summary(order)
@@ -52,11 +58,12 @@ module SaleCapture
         due_pesewas: order.due_pesewas,         # goods + delivery
         paid_pesewas: order.paid_pesewas,
         balance_pesewas: order.balance_pesewas, # > 0 they owe her, < 0 she owes them
-        units: order.items.sum(&:quantity),
+        units: order.items.sum(&:kept),
         at: order.created_at.strftime("%-d %b, %-l:%M %P"),
         channel: order.sales_channel&.name, # "WhatsApp"; nil if not recorded
         items: order.items.sort_by(&:id).map { |item|
-          { id: item.id, name: item.variant.full_name, quantity: item.quantity, total_pesewas: item.total_pesewas }
+          { id: item.id, name: item.variant.full_name, quantity: item.quantity, returned: item.returned_quantity,
+            total_pesewas: item.total_pesewas }
         }
       }
     end

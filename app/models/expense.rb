@@ -15,7 +15,7 @@ class Expense < ApplicationRecord
   validates :spent_on, presence: true
   validates :category, presence: true, length: { maximum: 40 }
   validates :note, length: { maximum: 200 }
-  validates :paid_via, inclusion: { in: Payment::WAYS.keys }, allow_nil: true
+  validates :paid_via, inclusion: { in: ->(_) { PaymentMethod.keys } }, allow_nil: true
   validate { errors.add(:amount, "must be more than zero") if amount_pesewas && amount_pesewas <= 0 }
   validate { errors.add(:spent_on, "can't be in the future") if spent_on && spent_on > Date.current }
 

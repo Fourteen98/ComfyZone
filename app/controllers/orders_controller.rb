@@ -36,6 +36,8 @@ class OrdersController < InertiaController
         customer_id: @order.customer_id,
         customer_phone: @order.customer.phone,
         customer_location: @order.customer.location,
+        customer_region: @order.customer.region,
+        customer_place: @order.customer.delivery_area&.name,
         live: @order.live_session && { id: @order.live_session.id, title: @order.live_session.title },
         recorded_by: @order.user.name,
         note: @order.note,
@@ -45,8 +47,8 @@ class OrdersController < InertiaController
           fee: @order.delivery_fee, # "25" or "25.50", ready for the form
           fee_pesewas: @order.delivery_fee_pesewas,
           address: @order.delivery_address,
-          area_id: @order.delivery_area_id,
-          area: @order.delivery_area&.name
+          region: @order.delivery_area&.region,
+          place: @order.delivery_area&.name
         },
         # The stages it has been through, for the small timeline.
         timeline: {
@@ -65,8 +67,10 @@ class OrdersController < InertiaController
           }
         }
       ),
-      delivery_areas: delivery_areas,
-      ways_to_pay: Payment::WAYS.map { |value, label| { value: value, label: label } },
+      locations: location_options,
+      ways_to_pay: PaymentMethod.options,
+      # Names for every method, hidden ones too, to label old payments.
+      payment_names: PaymentMethod.names,
       # What THIS person may do to THIS order right now. React only shows
       # buttons; each action checks again on the server.
       can: {
@@ -83,24 +87,32 @@ class OrdersController < InertiaController
   # GET /orders/new   a sale made outside a live (WhatsApp, a walk-in)
   def new
     render inertia: "Orders/New", props: {
-      products: sellable_products, buyers: known_buyers, channels: sales_channels, delivery_areas: delivery_areas
+      products: sellable_products, buyers: known_buyers, channels: sales_channels, locations: location_options
     }
   end
 
   # POST /orders
   # The live screen and the new-order page both post here.
   def create
-    live = LiveSession.running.find_by(id: params.dig(:order, :live_session_id))
+    # A live that has ended can still be given an order that was missed.
+    live = LiveSession.find_by(id: params.dig(:order, :live_session_id))
+    customer = buyer
+    # Where they are, if she said: a region, and a place within it. A place
+    # typed for the first time joins the list.
+    where = params.dig(:order, :location)
+    customer.locate(region: where[:region], place: where[:place]) if where.is_a?(ActionController::Parameters)
+
     taker = OrderTaker.new(
-      customer: buyer,
+      customer: customer,
       user: Current.user,
       live_session: live,
       # Ignored during a live, where the live's own channel is used.
       sales_channel: SalesChannel.active.find_by(id: params.dig(:order, :sales_channel_id)),
-      delivery: live ? nil : delivery_params,
+      delivery: live ? nil : delivery_params(customer), # a live sorts delivery out afterwards
       lines: line_params
     )
-    back = live ? live_path(live) : new_order_path
+    # Back to the live's claim screen (reopened with ?add=1 if it has ended).
+    back = live ? live_path(live, add: live.running? ? nil : 1) : new_order_path
 
     if taker.save
       order = taker.order
@@ -203,14 +215,14 @@ class OrdersController < InertiaController
       Customer.for_sale(**given.permit(:id, :handle, :name, :phone).to_h.symbolize_keys)
     end
 
-    # { delivery_method: "delivery", fee: "25", address: "...", area: <DeliveryArea> }, or nil
-    def delivery_params
+    # { delivery_method: "delivery", fee: "25", address: "...", area: <DeliveryArea> }, or nil.
+    # The area is wherever the buyer is (set just before, in #create).
+    def delivery_params(customer)
       given = params.dig(:order, :delivery)
       return unless given.is_a?(ActionController::Parameters)
 
-      given = given.permit(:delivery_method, :fee, :address, :area_id)
-      { delivery_method: given[:delivery_method], fee: given[:fee], address: given[:address],
-        area: DeliveryArea.active.find_by(id: given[:area_id]) }
+      given = given.permit(:delivery_method, :fee, :address)
+      { delivery_method: given[:delivery_method], fee: given[:fee], address: given[:address], area: customer.delivery_area }
     end
 
     def line_params

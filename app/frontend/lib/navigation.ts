@@ -13,6 +13,10 @@ export type NavItem = {
   /** Who sees this item: anyone holding at least one of these permissions.
       Leave out for items everyone sees. */
   permissions?: string[]
+  /** A count to show as a badge beside the label, from the `alerts` Rails
+      shares with every page (InertiaController). `says` words it for
+      screen readers: "3 to pack". */
+  alert?: { key: 'low_stock' | 'to_pack'; says: string }
 }
 
 // The app's sections, in one place. The sidebar and the phone bottom bar both
@@ -22,9 +26,24 @@ export const navigation: NavItem[] = [
   { label: 'Products', href: '/products', icon: Shirt, ready: true, mobile: true, permissions: ['products.view'] },
   { label: 'Purchases', href: '/purchases', icon: Truck, ready: true, permissions: ['purchases.view'] },
   { label: 'Suppliers', href: '/suppliers', icon: Store, ready: true, permissions: ['purchases.view'] },
-  { label: 'Stock', href: '/stock', icon: Boxes, ready: true, permissions: ['stock.view'] },
+  {
+    label: 'Stock',
+    href: '/stock',
+    icon: Boxes,
+    ready: true,
+    permissions: ['stock.view'],
+    alert: { key: 'low_stock', says: 'low or out' },
+  },
   { label: 'Live sales', href: '/live', icon: Radio, ready: true, mobile: true, permissions: ['orders.view'] },
-  { label: 'Orders', href: '/orders', icon: ReceiptText, ready: true, mobile: true, permissions: ['orders.view'] },
+  {
+    label: 'Orders',
+    href: '/orders',
+    icon: ReceiptText,
+    ready: true,
+    mobile: true,
+    permissions: ['orders.view'],
+    alert: { key: 'to_pack', says: 'to pack' },
+  },
   { label: 'Customers', href: '/customers', icon: Users, ready: true, permissions: ['customers.view'] },
   { label: 'Expenses', href: '/expenses', icon: Wallet, ready: true, permissions: ['expenses.view'] },
   { label: 'Reports', href: '/reports', icon: BarChart3, ready: true, permissions: ['reports.view'] },

@@ -77,8 +77,12 @@ class LiveSessionsController < InertiaController
       can_sell: can?("orders.create")
     }
 
+    # After a live has ended, "Add a missed order" (?add=1) brings the same
+    # claim screen back for it.
+    props[:adding] = !@live.running? && params[:add].present? && can?("orders.create")
+
     # The product and buyer lists are only needed while selling.
-    if @live.running? && can?("orders.create")
+    if (@live.running? || props[:adding]) && can?("orders.create")
       props[:products] = sellable_products
       props[:buyers] = known_buyers
     end
@@ -95,7 +99,8 @@ class LiveSessionsController < InertiaController
   # GET /live/:id/edit
   def edit
     render inertia: "Live/Edit", props: {
-      live: { id: @live.id, title: @live.title, sales_channel_id: @live.sales_channel_id.to_s, orders: @live.orders.count },
+      live: { id: @live.id, title: @live.title, sales_channel_id: @live.sales_channel_id.to_s, orders: @live.orders.count,
+              running: @live.running? },
       channels: sales_channels(SalesChannel.active.social.or(SalesChannel.where(id: @live.sales_channel_id)))
     }
   end

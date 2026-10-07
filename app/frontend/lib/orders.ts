@@ -39,7 +39,8 @@ export type OrderSummary = {
   units: number
   at: string
   channel: string | null // where the sale came from, e.g. "WhatsApp"
-  items: { id: number; name: string; quantity: number; total_pesewas: number }[]
+  // quantity = what was sold; returned = how many of those came back.
+  items: { id: number; name: string; quantity: number; returned: number; total_pesewas: number }[]
 }
 
 export function isOpen(status: OrderStatus): boolean {
