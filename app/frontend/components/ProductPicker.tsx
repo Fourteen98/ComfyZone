@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Swatch } from '@/components/ui/Chip'
 import type { OptionValue } from '@/components/OptionValuesEditor'
 import { formatMoney } from '@/lib/format'
+import { rankProducts } from '@/lib/search'
 
 export type SellableVariant = {
   id: number
@@ -37,7 +38,16 @@ export default function ProductPicker({ label, products, basket, onAdd }: Props)
   const addOne = onAdd
 
   const term = search.trim().toLowerCase()
-  const shown = products.filter((product) => product.name.toLowerCase().includes(term))
+  // Understands sizes and colours: "orange 3xl" (lib/search.ts). Best match first.
+  const ranked = term ? rankProducts(term, products) : products.map((product) => ({ product, best: [] as SellableVariant[] }))
+  const shown = ranked.map((entry) => entry.product)
+  // The sizes/colours the search singled out, per product, to mark them.
+  const pointed = new Set(
+    ranked.flatMap(({ product, best }) => (best.length < product.variants.length ? best.map((variant) => variant.id) : [])),
+  )
+  // A search that points at particular sizes opens the top product, so
+  // they are one tap away.
+  const autoOpen = ranked.length > 0 && ranked[0].best.length < ranked[0].product.variants.length ? ranked[0].product.id : null
 
   function tapProduct(product: SellableProduct) {
     // A product with nothing to choose between is added in one tap.
@@ -58,10 +68,13 @@ export default function ProductPicker({ label, products, basket, onAdd }: Props)
         <input
           id="sale-search"
           type="search"
-          placeholder="Search products"
+          placeholder="Product, size or colour: orange 3xl"
           autoComplete="off"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setOpenProduct(null) // let a new search open its own best match
+          }}
           className="block min-h-12 w-full rounded-md border-taupe-300 bg-white pr-3 pl-10 text-base placeholder:text-taupe-400 focus:border-wine-700 focus:ring-1 focus:ring-wine-700"
         />
       </div>
@@ -75,7 +88,7 @@ export default function ProductPicker({ label, products, basket, onAdd }: Props)
           {shown.map((product) => {
             const stock = product.variants.reduce((sum, variant) => sum + Math.max(left(variant), 0), 0)
             const simple = product.variants.length === 1 && product.variants[0].option_values.length === 0
-            const open = openProduct === product.id
+            const open = openProduct === product.id || (openProduct === null && autoOpen === product.id)
             const inBasket = product.variants.reduce((sum, variant) => sum + (basket[variant.id] ?? 0), 0)
             const prices = product.variants.map((variant) => variant.price_pesewas)
             const from = Math.min(...prices)
@@ -131,7 +144,9 @@ export default function ProductPicker({ label, products, basket, onAdd }: Props)
                             className={`flex min-h-14 w-full flex-col items-start justify-center rounded-md border px-3 py-1.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-700 disabled:opacity-45 ${
                               chosen > 0
                                 ? 'border-wine-800 bg-wine-50'
-                                : 'border-taupe-300 bg-white hover:border-wine-700'
+                                : pointed.has(variant.id)
+                                  ? 'border-wine-700 bg-white ring-2 ring-wine-700/30'
+                                  : 'border-taupe-300 bg-white hover:border-wine-700'
                             }`}
                           >
                             <span className="flex flex-wrap items-center gap-x-1.5 font-medium">
@@ -143,11 +158,7 @@ export default function ProductPicker({ label, products, basket, onAdd }: Props)
                               ))}
                             </span>
                             <span className="text-sm text-taupe-700 tabular-nums">
-                              {remaining <= 0
-                                ? variant.stock === 0
-                                  ? 'Sold out'
-                                  : 'All in this claim'
-                                : `${remaining} left`}
+                              {remaining <= 0 ? (variant.stock === 0 ? 'Sold out' : 'All in this claim') : `${remaining} left`}
                               {chosen > 0 && <span className="font-semibold text-wine-800">, {chosen} picked</span>}
                             </span>
                           </button>
