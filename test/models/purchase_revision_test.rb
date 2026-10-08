@@ -65,3 +65,57 @@ class PurchaseRevisionTest < ActiveSupport::TestCase
     assert_not @purchase.destroy
   end
 end
+
+class PurchaseRemovalTest < ActionDispatch::IntegrationTest
+  setup do
+    @purchase = purchases(:on_the_way) # 10 black, 5 red
+    @purchase.receive!(by: users(:one))
+    @black = variants(:dress_m_black)
+  end
+
+  test "an Owner deletes a received purchase and its stock comes back out" do
+    sign_in_as(users(:one))
+
+    assert_difference "Purchase.count", -1 do
+      delete purchase_path(@purchase)
+    end
+    assert_redirected_to purchases_path
+    assert_equal "Purchase deleted, and its items taken back out of stock.", flash[:notice]
+    assert_equal [ 0, 0 ], [ @black.reload.stock_on_hand, variants(:dress_l_red).reload.stock_on_hand ]
+    assert_match "Purchase deleted", @black.stock_movements.order(:id).last.note
+
+    # The item's history still opens, with the old arrival in it.
+    get stock_path(@black)
+    assert_response :success
+  end
+
+  test "it needs the Delete purchases permission, not just manage" do
+    roles(:assistant).update!(permissions: %w[ purchases.view purchases.manage ])
+    sign_in_as(users(:two))
+
+    assert_no_difference("Purchase.count") { delete purchase_path(@purchase) }
+    assert_match "Delete purchases", flash[:alert]
+
+    roles(:assistant).update!(permissions: %w[ purchases.view purchases.manage purchases.delete ])
+    assert_difference("Purchase.count", -1) { delete purchase_path(@purchase) }
+  end
+
+  test "if some of it has been sold, it can't be deleted and nothing changes" do
+    StockLedger.record!(variant: @black, quantity: -3, reason: "sale")
+    sign_in_as(users(:one))
+
+    assert_no_difference("Purchase.count") { delete purchase_path(@purchase) }
+    assert_match "already gone out", flash[:alert]
+    assert_equal 7, @black.reload.stock_on_hand
+    assert_equal 5, variants(:dress_l_red).reload.stock_on_hand
+  end
+
+  test "a purchase still on the way only needs manage" do
+    on_the_way = Purchase.new(purchased_on: Date.current, supplier: suppliers(:kumasi), user: users(:one), delivery_method: "pickup")
+    assert on_the_way.save_with_items([ { variant_id: @black.id, quantity: 1, unit_cost: "5" } ])
+    roles(:assistant).update!(permissions: %w[ purchases.view purchases.manage ])
+    sign_in_as(users(:two))
+
+    assert_difference("Purchase.count", -1) { delete purchase_path(on_the_way) }
+  end
+end

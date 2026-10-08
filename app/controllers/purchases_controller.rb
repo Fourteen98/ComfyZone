@@ -71,9 +71,19 @@ class PurchasesController < InertiaController
   end
 
   # DELETE /purchases/:id
+  #
+  # On the way: purchases.manage is enough (no stock was touched).
+  # Already in stock: needs purchases.delete as well, and takes the stock out.
   def destroy
-    if @purchase.destroy
-      redirect_to purchases_path, notice: "Purchase deleted.", status: :see_other
+    if @purchase.received? && !can?("purchases.delete")
+      return redirect_to purchase_path(@purchase), status: :see_other,
+        alert: "Deleting a purchase that is already in stock needs the \"Delete purchases\" permission. Ask an Owner."
+    end
+
+    received = @purchase.received?
+    if @purchase.remove!(by: Current.user)
+      redirect_to purchases_path, status: :see_other,
+        notice: received ? "Purchase deleted, and its items taken back out of stock." : "Purchase deleted."
     else
       redirect_to purchase_path(@purchase), alert: @purchase.errors.full_messages.to_sentence, status: :see_other
     end

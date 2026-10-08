@@ -237,7 +237,7 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_match "already received", flash[:alert]
   end
 
-  test "a received purchase can be corrected, and stock follows; it still can't be deleted" do
+  test "a received purchase can be corrected, and stock follows" do
     sign_in_as(users(:one))
     purchase = purchases(:on_the_way)
     purchase.receive!(by: users(:one))
@@ -251,10 +251,6 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Saved. Stock has been corrected to match.", flash[:notice]
     assert_equal [ 6, 0 ], [ variants(:dress_m_black).reload.stock_on_hand, variants(:dress_l_red).reload.stock_on_hand ]
     assert_equal "INV-10", purchase.reload.reference
-
-    assert_no_difference "Purchase.count" do
-      delete purchase_path(purchase)
-    end
   end
 
   test "deletes an ordered purchase" do
