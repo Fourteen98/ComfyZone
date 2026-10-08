@@ -83,17 +83,20 @@ export default function PurchaseShow({ purchase }: Props) {
         title={purchase.supplier ?? 'Purchase'}
         description={`Bought ${purchase.purchased_on}. Recorded by ${purchase.recorded_by}.`}
         actions={
-          manage &&
-          ordered && (
+          manage && (
             <>
+              {/* Received purchases can be corrected too; stock follows the change. */}
               <ButtonLink href={`/admin/purchases/${purchase.id}/edit`} variant="secondary">
                 <Pencil className="size-5" aria-hidden="true" />
-                Edit
+                {ordered ? 'Edit' : 'Correct this purchase'}
               </ButtonLink>
-              <Button type="button" variant="danger" onClick={destroy}>
-                <Trash2 className="size-5" aria-hidden="true" />
-                Delete
-              </Button>
+              {/* Deleting is only for goods not yet in stock. */}
+              {ordered && (
+                <Button type="button" variant="danger" onClick={destroy}>
+                  <Trash2 className="size-5" aria-hidden="true" />
+                  Delete
+                </Button>
+              )}
             </>
           )
         }

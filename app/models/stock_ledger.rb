@@ -52,6 +52,26 @@ class StockLedger
     end
   end
 
+  # Change what the units on the shelf are worth, without moving any: a
+  # received purchase's price was corrected.
+  #
+  #   units: how many of the corrected units this applies to. Only the ones
+  #   still on the shelf can be re-valued (sold ones went at the old cost),
+  #   so at most stock_on_hand of them count.
+  #
+  #   12 on the shelf at GH₵ 50, 10 of them from a purchase now found to
+  #   have cost GH₵ 3 more each:  (12 x 50 + 10 x 3) / 12 = GH₵ 52.50
+  def self.revalue!(variant:, change_each_pesewas:, units:)
+    variant.with_lock do
+      on_hand = [ variant.stock_on_hand, 0 ].max
+      return if on_hand.zero?
+
+      affected = [ units, on_hand ].min
+      value = variant.average_cost_pesewas * on_hand + change_each_pesewas * affected
+      variant.update!(average_cost_pesewas: [ (value.to_r / on_hand).round, 0 ].max)
+    end
+  end
+
   # A push notification the moment stock CROSSES a line: from above the
   # product's warning level to at or below it, or from something to nothing.
   # Comparing before and after is what stops a notification on every sale

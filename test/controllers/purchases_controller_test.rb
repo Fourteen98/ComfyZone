@@ -237,16 +237,20 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_match "already received", flash[:alert]
   end
 
-  test "a received purchase can't be edited or deleted" do
+  test "a received purchase can be corrected, and stock follows; it still can't be deleted" do
     sign_in_as(users(:one))
     purchase = purchases(:on_the_way)
     purchase.receive!(by: users(:one))
 
     get edit_purchase_path(purchase)
-    assert_redirected_to purchase_path(purchase)
+    assert_inertia_component "Purchases/Form"
+    assert_equal true, inertia.props[:purchase][:received]
 
-    patch purchase_path(purchase), params: params
-    assert_equal 2, purchase.items.reload.count
+    patch purchase_path(purchase), params: params(reference: "INV-10") # 6 black, 0 red
+    assert_redirected_to purchase_path(purchase)
+    assert_equal "Saved. Stock has been corrected to match.", flash[:notice]
+    assert_equal [ 6, 0 ], [ variants(:dress_m_black).reload.stock_on_hand, variants(:dress_l_red).reload.stock_on_hand ]
+    assert_equal "INV-10", purchase.reload.reference
 
     assert_no_difference "Purchase.count" do
       delete purchase_path(purchase)

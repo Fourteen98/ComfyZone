@@ -1,5 +1,6 @@
 # One restock. Starts "ordered" (editable, stock untouched); receiving it
-# adds the stock and locks it.
+# adds the stock. A received purchase can still be corrected with revise!,
+# which moves stock and cost by exactly the difference (see below).
 class Purchase < ApplicationRecord
   include HasMoney
 
@@ -94,17 +95,7 @@ class Purchase < ApplicationRecord
 
     transaction do
       items.destroy_all if persisted?
-      Array(lines).each do |line|
-        line = line.to_h.symbolize_keys
-        next if line[:quantity].to_i.zero? # a row left at 0 means "none of these"
-
-        item = items.build(variant_id: line[:variant_id], quantity: line[:quantity])
-        if foreign?
-          item.price_in_foreign(line[:unit_cost], rate: exchange_rate)
-        else
-          item.unit_cost = line[:unit_cost]
-        end
-      end
+      build_lines(lines)
 
       if save
         # Buying something from a supplier shows they sell it. Remember that,
@@ -117,6 +108,64 @@ class Purchase < ApplicationRecord
     end
 
     saved
+  end
+
+  # Correcting a purchase whose goods are already in stock: something was
+  # left off, a quantity or a price was wrong.
+  #
+  #   purchase.assign_attributes(note: "...", transport_cost: "50")
+  #   purchase.revise!(lines, by: user)   # => true, or false with errors
+  #
+  # The lines are the WHOLE purchase as it should now be (like the form
+  # sends), not a list of changes. For each item the difference between
+  # before and after is sent through the stock ledger:
+  #
+  #   more than before   the extra units go into stock at their landed cost
+  #   fewer than before  the units come out again (refused if they have
+  #                      already been sold: you can't un-buy a sold dress)
+  #   same units, new cost  the units still on the shelf are re-valued
+  #
+  # Order lines already sold keep the cost they were sold at: a sale is a
+  # record of what happened that day.
+  def revise!(lines, by:)
+    raise ArgumentError, "revise! is for received purchases; use save_with_items" unless received?
+
+    revised = false
+    transaction do
+      # Lock the row so two corrections can't run at once. Not `lock!`:
+      # that reloads the record and would throw away the changes the
+      # controller has just assigned (date, supplier, costs...).
+      self.class.lock.find(id)
+      # What each item was, before anything changes: quantity and landed total.
+      before = items.reload.to_h { |item| [ item.variant_id, [ item.quantity, item.landed_total_pesewas.to_i ] ] }
+
+      @revising = true
+      items.destroy_all
+      build_lines(lines)
+      raise ActiveRecord::Rollback unless valid?
+
+      # The lines just built, still in memory (asking the database would
+      # find none: they aren't saved yet).
+      fresh = live_items
+      share_out_extra_costs(fresh)
+      save!
+      fresh.each(&:save!)
+      after = fresh.to_h { |item| [ item.variant_id, [ item.quantity, item.landed_total_pesewas ] ] }
+
+      (before.keys | after.keys).each do |variant_id|
+        settle_difference(Variant.find(variant_id), before[variant_id], after[variant_id], by)
+      end
+
+      supplier.sells!(fresh.map { |item| item.variant.product_id })
+      revised = true
+    rescue StockLedger::NotEnough => problem
+      errors.add(:items, "#{problem.message}, so this purchase can't be lowered that far. Those units have already gone out.")
+      raise ActiveRecord::Rollback
+    ensure
+      @revising = false
+    end
+
+    revised
   end
 
   # The goods have arrived: add them to stock and lock the purchase.
@@ -154,6 +203,47 @@ class Purchase < ApplicationRecord
   class AlreadyReceived < StandardError; end
 
   private
+    def build_lines(lines)
+      Array(lines).each do |line|
+        line = line.to_h.symbolize_keys
+        next if line[:quantity].to_i.zero? # a row left at 0 means "none of these"
+
+        item = items.build(variant_id: line[:variant_id], quantity: line[:quantity])
+        if foreign?
+          item.price_in_foreign(line[:unit_cost], rate: exchange_rate)
+        else
+          item.unit_cost = line[:unit_cost]
+        end
+      end
+    end
+
+    # One item's correction. was / now are [quantity, landed total], or nil
+    # when the item wasn't on the purchase before / isn't any more.
+    def settle_difference(variant, was, now, by)
+      old_quantity, old_total = was || [ 0, 0 ]
+      new_quantity, new_total = now || [ 0, 0 ]
+
+      # Same units, different cost: re-value the ones still on the shelf.
+      # Done first, so units added below blend in on top of the right value.
+      kept = [ old_quantity, new_quantity ].min
+      if kept.positive?
+        change_each = Rational(new_total, new_quantity) - Rational(old_total, old_quantity)
+        StockLedger.revalue!(variant: variant, change_each_pesewas: change_each, units: kept) unless change_each.zero?
+      end
+
+      difference = new_quantity - old_quantity
+      return if difference.zero?
+
+      StockLedger.record!(
+        variant: variant, quantity: difference, reason: "purchase", source: self, user: by,
+        # Units coming in carry their landed cost; units going out don't
+        # change the average (they leave at whatever it is).
+        total_cost_pesewas: difference.positive? ? (Rational(new_total, new_quantity) * difference).round : nil,
+        note: "Purchase corrected",
+        guard_stock: difference.negative?
+      )
+    end
+
     def live_items
       items.reject(&:marked_for_destruction?).reject(&:destroyed?)
     end
@@ -203,6 +293,7 @@ class Purchase < ApplicationRecord
 
     def not_changed_after_receiving
       return unless status_was == "received"
+      return if @revising # a correction through revise!, which keeps stock in step
 
       errors.add(:base, "This purchase has been received and added to stock, so it can't be changed")
     end
