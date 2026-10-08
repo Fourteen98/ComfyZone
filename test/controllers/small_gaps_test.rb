@@ -131,7 +131,7 @@ class SmallGapsTest < ActionDispatch::IntegrationTest
 
     assert_not Customer.exists?(twin.id)
     assert_equal keep, order.reload.customer
-    assert_equal [ "kofi.b", "Kofi Boateng", "055 000 1111", "Ashanti" ], keep.reload.values_at(:handle, :name, :phone, :region)
+    assert_equal [ "kofi.b", "Kofi Boateng", "+233550001111", "Ashanti" ], keep.reload.values_at(:handle, :name, :phone, :region)
   end
 
   test "merging never overwrites what was known, and can take over a username" do
@@ -139,7 +139,7 @@ class SmallGapsTest < ActionDispatch::IntegrationTest
 
     post merge_customer_path(keep), params: { other_id: customers(:ama).id }
 
-    assert_equal [ "ama_k", "Ama K", "020 999 8888", "East Legon" ], keep.reload.values_at(:handle, :name, :phone, :location)
+    assert_equal [ "ama_k", "Ama K", "+233209998888", "East Legon" ], keep.reload.values_at(:handle, :name, :phone, :location)
   end
 
   test "a customer can't be merged with themselves" do

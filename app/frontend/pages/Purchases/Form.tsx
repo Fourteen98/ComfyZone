@@ -17,6 +17,8 @@ import type { OptionValue } from '@/components/OptionValuesEditor'
 import LocationFields, { nowhere } from '@/components/LocationFields'
 import type { Locations } from '@/components/LocationFields'
 import { formatForeign, formatMoney, toPesewas } from '@/lib/format'
+import { formatPhone } from '@/lib/phone'
+import PhoneField from '@/components/ui/PhoneField'
 
 type PickableVariant = { id: number; name: string; option_values: (OptionValue & { name: string })[]; stock: number }
 type PickableProduct = {
@@ -223,7 +225,7 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                   form.setData('supplier_id', e.target.value)
                   form.clearErrors('supplier' as never)
                 }}
-                hint={pickedSupplier ? (pickedSupplier.phone ?? 'No phone number saved yet') : undefined}
+                hint={pickedSupplier ? (pickedSupplier.phone ? formatPhone(pickedSupplier.phone) : 'No phone number saved yet') : undefined}
                 error={errors.supplier}
               />
             </div>
@@ -275,15 +277,12 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                   onChange={(e) => set('new_supplier_name', e.target.value)}
                   error={errors.new_supplier_name}
                 />
-                <TextField
+                <PhoneField
                   id="new_supplier_phone"
                   label="Phone number"
-                  type="tel"
                   required
-                  maxLength={25}
-                  placeholder="e.g. 024 123 4567"
                   value={form.data.new_supplier_phone}
-                  onChange={(e) => set('new_supplier_phone', e.target.value)}
+                  onChange={(phone) => set('new_supplier_phone', phone)}
                   error={errors.new_supplier_phone}
                 />
                 {/* Where they are. For goods bought abroad, pick the country. */}

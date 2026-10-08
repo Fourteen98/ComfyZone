@@ -22,7 +22,7 @@ class CustomerTest < ActiveSupport::TestCase
   test "is shown by name, else @handle, else phone" do
     assert_equal "Ama Koranteng", customers(:ama).display_name
     assert_equal "@kofi.b", customers(:kofi).display_name
-    assert_equal "020 000 1111", Customer.new(phone: "020 000 1111").display_name
+    assert_equal "+233 20 000 1111", Customer.new(phone: "020 000 1111").display_name
   end
 
   test "needs something to identify them, a unique handle and a sensible phone" do
@@ -65,12 +65,12 @@ class CustomerForSaleTest < ActiveSupport::TestCase
   test "a new buyer keeps everything that was typed" do
     customer = Customer.for_sale(name: "Mrs Mensah", phone: "020 111 2222", handle: "")
 
-    assert_equal [ nil, "Mrs Mensah", "020 111 2222" ], customer.values_at(:handle, :name, :phone)
+    assert_equal [ nil, "Mrs Mensah", "+233201112222" ], customer.values_at(:handle, :name, :phone)
   end
 
   test "new details fill blanks on a known customer but never overwrite" do
     kofi = Customer.for_sale(handle: "kofi.b", name: "Kofi Boateng", phone: "055 000 1111")
-    assert_equal [ customers(:kofi).id, "Kofi Boateng", "055 000 1111" ], kofi.values_at(:id, :name, :phone)
+    assert_equal [ customers(:kofi).id, "Kofi Boateng", "+233550001111" ], kofi.values_at(:id, :name, :phone)
 
     ama = Customer.for_sale(handle: "ama_k", name: "Someone else")
     assert_equal "Ama Koranteng", ama.name

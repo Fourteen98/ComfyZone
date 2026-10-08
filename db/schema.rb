@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_100001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_08_060001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -67,7 +67,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_100001) do
     t.index ["country"], name: "index_customers_on_country"
     t.index ["delivery_area_id"], name: "index_customers_on_delivery_area_id"
     t.index ["handle"], name: "index_customers_on_handle", unique: true, where: "(handle IS NOT NULL)"
-    t.index ["phone"], name: "index_customers_on_phone"
+    t.index ["phone"], name: "index_customers_on_phone", unique: true, where: "(phone IS NOT NULL)"
     t.index ["region"], name: "index_customers_on_region"
   end
 

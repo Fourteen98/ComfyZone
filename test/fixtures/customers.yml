@@ -1,7 +1,7 @@
 ama:
   handle: ama_k
   name: Ama Koranteng
-  phone: "024 222 3333"
+  phone: "+233242223333" # stored shape; typed as 024 222 3333
   location: East Legon
 
 kofi:

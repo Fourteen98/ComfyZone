@@ -10,20 +10,16 @@ class Supplier < ApplicationRecord
   has_many :products, through: :product_suppliers
 
   normalizes :name, with: ->(name) { name.squish }
-  normalizes :phone, with: ->(phone) { phone.squish.presence }
-
-  # Something dialable: digits with optional +, spaces, dashes or brackets,
-  # and at least 7 digits. Deliberately loose; phone formats vary.
-  PHONE = /\A\+?[\d\s\-()]{7,25}\z/
+  # Stored as +233242223333, the same as customers (see PhoneNumber). Not
+  # unique here: two suppliers can share a shop's number.
+  normalizes :phone, with: ->(phone) { PhoneNumber.normalize(phone) }
 
   validates :name, presence: true, length: { maximum: 60 }, uniqueness: { case_sensitive: false }
   # Required from now on. There is no NOT NULL in the database, because
   # suppliers saved before this rule may have no number yet; they are asked
   # for one the next time they are edited.
   validates :phone, presence: { message: "is needed so you can reach them" }
-  validates :phone, format: { with: PHONE, message: "doesn't look like a phone number" },
-    if: -> { phone.present? }
-  validate :phone_has_enough_digits, if: -> { phone.present? }
+  validate :phone_is_a_number, if: -> { phone.present? }
   validates :note, length: { maximum: 500 }
   normalizes :location, with: ->(text) { text.to_s.squish.presence }
   validates :location, length: { maximum: 80 }
@@ -55,7 +51,7 @@ class Supplier < ApplicationRecord
   end
 
   private
-    def phone_has_enough_digits
-      errors.add(:phone, "doesn't look like a phone number") if phone.count("0-9") < 7 && errors[:phone].empty?
+    def phone_is_a_number
+      errors.add(:phone, "doesn't look like a phone number. Try 024 123 4567, or +86 138 0013 8000 abroad") unless PhoneNumber.valid?(phone)
     end
 end

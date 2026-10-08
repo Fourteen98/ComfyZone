@@ -19,7 +19,7 @@ class Orders::ChannelsTest < ActionDispatch::IntegrationTest
       order = sale(buyer: { name: "Mrs Mensah", phone: "020 111 2222" }, channel: sales_channels(:whatsapp))
 
       assert_equal sales_channels(:whatsapp), order.sales_channel
-      assert_equal [ nil, "Mrs Mensah", "020 111 2222" ], order.customer.values_at(:handle, :name, :phone)
+      assert_equal [ nil, "Mrs Mensah", "+233201112222" ], order.customer.values_at(:handle, :name, :phone)
     end
   end
 

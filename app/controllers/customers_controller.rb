@@ -10,9 +10,10 @@ class CustomersController < InertiaController
     customers = Customer.ordered
     if params[:q].present?
       term = "%#{Customer.sanitize_sql_like(params[:q].strip.delete_prefix('@'))}%"
-      digits = params[:q].gsub(/\D/, "")
+      # Phones are stored as +233242223333, so "024 22" is searched as "24 22".
+      digits = PhoneNumber.search_digits(params[:q])
       customers = customers.where(
-        "handle ILIKE :term OR name ILIKE :term OR regexp_replace(coalesce(phone, ''), '\\D', '', 'g') LIKE :phone",
+        "handle ILIKE :term OR name ILIKE :term OR phone LIKE :phone",
         term: term, phone: digits.length >= 3 ? "%#{digits}%" : nil
       )
     end

@@ -63,7 +63,7 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     dress = inertia.props[:products].find { |p| p[:name] == "Ankara wrap dress" }
     assert_equal 4, dress[:variants].size
     assert_equal "80", dress[:last_cost]
-    assert_equal [ [ "Kumasi Fabrics", "024 000 0000" ] ], inertia.props[:suppliers].map { |s| s.values_at(:name, :phone) }
+    assert_equal [ [ "Kumasi Fabrics", "+233240000000" ] ], inertia.props[:suppliers].map { |s| s.values_at(:name, :phone) }
     assert_nil inertia.props[:products].find { |p| p[:name] == "Old tote bag" }, "archived products aren't offered"
   end
 
@@ -166,7 +166,7 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     end
 
     supplier = Purchase.newest_first.first.supplier
-    assert_equal [ "Makola Traders", "020 111 2222" ], [ supplier.name, supplier.phone ]
+    assert_equal [ "Makola Traders", "+233201112222" ], [ supplier.name, supplier.phone ]
   end
 
   test "a new supplier needs a name and a phone number, and nothing is saved without them" do

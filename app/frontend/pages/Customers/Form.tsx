@@ -13,6 +13,7 @@ import LocationFields from '@/components/LocationFields'
 import type { Locations } from '@/components/LocationFields'
 import TextAreaField from '@/components/ui/TextAreaField'
 import TextField from '@/components/ui/TextField'
+import PhoneField from '@/components/ui/PhoneField'
 
 type Props = {
   customer: { id: number; handle: string; name: string; phone: string; location: string; note: string; country: string; region: string; place: string } | null
@@ -69,15 +70,14 @@ export default function CustomerForm({ customer, locations, others = [] }: Props
 
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField id="name" label="Name" maxLength={60} value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} error={errors.name} />
-          <TextField
+          {/* The number is how a customer is recognised: one number, one customer. */}
+          <PhoneField
             id="phone"
             label="Phone number"
-            type="tel"
-            maxLength={25}
-            placeholder="e.g. 024 123 4567"
             value={form.data.phone}
-            onChange={(e) => form.setData('phone', e.target.value)}
+            onChange={(phone) => form.setData('phone', phone)}
             error={errors.phone}
+            hint="One number per customer. It is how they are recognised next time."
           />
         </div>
         <TextField

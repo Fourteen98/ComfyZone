@@ -2,6 +2,7 @@ import { router, usePage } from '@inertiajs/react'
 import { MapPin } from 'lucide-react'
 import { useRef, useState } from 'react'
 import Alert from '@/components/ui/Alert'
+import { formatPhone } from '@/lib/phone'
 import BuyerPicker from '@/components/BuyerPicker'
 import type { Buyer, BuyerChoice } from '@/components/BuyerPicker'
 import Button from '@/components/ui/Button'
@@ -188,7 +189,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
             </div>
             {known ? (
               <p className="mt-1.5 text-sm text-emerald-800">
-                {known.name ? `${known.name}, bought` : 'Bought'} from you before{known.phone ? `. ${known.phone}` : ''}.
+                {known.name ? `${known.name}, bought` : 'Bought'} from you before{known.phone ? `. ${formatPhone(known.phone)}` : ''}.
               </p>
             ) : (
               typed &&

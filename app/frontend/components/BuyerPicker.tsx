@@ -1,7 +1,9 @@
 import { Search, UserPlus, X } from 'lucide-react'
 import { useState } from 'react'
 import Button from '@/components/ui/Button'
+import PhoneField from '@/components/ui/PhoneField'
 import TextField from '@/components/ui/TextField'
+import { formatPhone, joinPhone, phoneSearchDigits, splitPhone } from '@/lib/phone'
 
 export type Buyer = {
   id: number
@@ -33,10 +35,22 @@ type Props = {
 const digits = (text: string) => text.replace(/\D/g, '')
 
 export function buyerLabel(buyer: Buyer): string {
-  return buyer.name ?? (buyer.handle ? `@${buyer.handle}` : (buyer.phone ?? ''))
+  return buyer.name ?? (buyer.handle ? `@${buyer.handle}` : formatPhone(buyer.phone))
 }
 
-// Choosing the buyer for a sale recorded by hand. Three states:
+// The second line under a buyer: their username (if the name is shown
+// above) and their number.
+const buyerDetails = (buyer: Buyer) =>
+  [buyer.name && buyer.handle ? `@${buyer.handle}` : null, formatPhone(buyer.phone)].filter(Boolean).join(', ')
+
+// Choosing the buyer for a sale recorded by hand.
+//
+// The PHONE NUMBER is how a customer is recognised: one number, one
+// customer (Rails enforces it). So the number comes first when adding
+// someone, and as soon as it matches a customer she already has, the form
+// says so and offers to use them instead of making a second one.
+//
+// Three states:
 //
 //   searching  one box that looks through names, usernames and phone numbers
 //   picked     a known customer is chosen (shown as a card with "Change")
@@ -50,7 +64,8 @@ export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false,
   const [fresh, setFresh] = useState<{ name: string; phone: string; handle: string } | null>(null)
 
   const term = search.trim().toLowerCase().replace(/^@/, '')
-  const termDigits = digits(term)
+  // Numbers are stored as +233..., so "024 22" is looked for as "24 22".
+  const termDigits = phoneSearchDigits(term)
   const matches = term
     ? buyers
         .filter(
@@ -83,7 +98,8 @@ export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false,
     if (typed.startsWith('@') || (usernameFirst && typed !== '' && !/\s/.test(typed) && !/^\+?[\d\s]+$/.test(typed))) {
       start.handle = typed.replace(/^@/, '')
     } else if (/^\+?[\d\s-]{6,}$/.test(typed)) {
-      start.phone = typed
+      const { country, local } = splitPhone(typed)
+      start.phone = joinPhone(country, local)
     } else {
       start.name = typed
     }
@@ -93,7 +109,7 @@ export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false,
   function update(next: { name: string; phone: string; handle: string }) {
     setFresh(next)
     const known = next.name.trim() || next.handle.trim() || next.phone.trim()
-    const label = next.name.trim() || (next.handle.trim() ? `@${next.handle.trim().replace(/^@/, '')}` : next.phone.trim())
+    const label = next.name.trim() || (next.handle.trim() ? `@${next.handle.trim().replace(/^@/, '')}` : formatPhone(next.phone))
     onChange(known ? next : null, label)
   }
 
@@ -104,7 +120,7 @@ export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false,
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{buyerLabel(picked)}</p>
           <p className="truncate text-sm text-taupe-700">
-            {[picked.name && picked.handle ? `@${picked.handle}` : null, picked.phone].filter(Boolean).join(', ') || 'Bought from you before'}
+            {buyerDetails(picked) || 'Bought from you before'}
           </p>
         </div>
         <Button type="button" variant="secondary" onClick={startOver}>
@@ -116,6 +132,31 @@ export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false,
 
   // ----- adding someone new -----
   if (fresh) {
+    // Is this number already one of her customers?
+    const same = fresh.phone ? buyers.find((buyer) => buyer.phone && digits(buyer.phone) === digits(fresh.phone)) : undefined
+    const phone = (
+      <div>
+        <PhoneField
+          id="buyer_phone"
+          label="Phone number"
+          autoFocus={!usernameFirst}
+          value={fresh.phone}
+          onChange={(value) => update({ ...fresh, phone: value })}
+          hint="The best way to recognise them next time."
+        />
+        {same && (
+          <div className="mt-2 flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+            <p className="min-w-0 flex-1 text-amber-950">
+              This number is <strong>{buyerLabel(same)}</strong>&apos;s. The sale will go to them, not a new customer.
+            </p>
+            <Button type="button" variant="secondary" className="min-h-10! px-3!" onClick={() => pick(same)}>
+              Use {buyerLabel(same)}
+            </Button>
+          </div>
+        )}
+      </div>
+    )
+
     const username = (
       <TextField
         id="buyer_handle"
@@ -145,28 +186,17 @@ export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false,
           </button>
         </div>
         {usernameFirst && username}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField
-            id="buyer_name"
-            label="Name"
-            autoComplete="off"
-            maxLength={60}
-            value={fresh.name}
-            onChange={(e) => update({ ...fresh, name: e.target.value })}
-          />
-          <TextField
-            id="buyer_phone"
-            label="Phone number"
-            type="tel"
-            autoComplete="off"
-            maxLength={25}
-            placeholder="e.g. 024 123 4567"
-            value={fresh.phone}
-            onChange={(e) => update({ ...fresh, phone: e.target.value })}
-          />
-        </div>
+        {phone}
+        <TextField
+          id="buyer_name"
+          label="Name"
+          autoComplete="off"
+          maxLength={60}
+          value={fresh.name}
+          onChange={(e) => update({ ...fresh, name: e.target.value })}
+        />
         {!usernameFirst && username}
-        <p className="text-sm text-taupe-700">Fill in what you know. One of them is enough.</p>
+        <p className="text-sm text-taupe-700">Fill in what you know. One is enough, but the phone number is what recognises them next time.</p>
       </div>
     )
   }
@@ -186,7 +216,7 @@ export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false,
           autoCorrect="off"
           autoComplete="off"
           spellCheck={false}
-          placeholder="Name, phone number or username"
+          placeholder="Phone number, name or username"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="block min-h-14 w-full rounded-md border-taupe-300 bg-white pr-3.5 pl-11 text-lg placeholder:text-taupe-400 focus:border-wine-700 focus:ring-1 focus:ring-wine-700"
@@ -203,9 +233,7 @@ export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false,
                 className="flex min-h-12 w-full flex-wrap items-baseline gap-x-3 px-4 py-2 text-left hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
               >
                 <span className="font-medium">{buyerLabel(buyer)}</span>
-                <span className="text-sm text-taupe-700">
-                  {[buyer.name && buyer.handle ? `@${buyer.handle}` : null, buyer.phone].filter(Boolean).join(', ')}
-                </span>
+                <span className="text-sm text-taupe-700">{buyerDetails(buyer)}</span>
               </button>
             </li>
           ))}
