@@ -168,6 +168,39 @@ class Purchase < ApplicationRecord
     revised
   end
 
+  # Deleting a purchase, whatever its state. (Plain `destroy` still refuses
+  # a received one, so nothing deletes stock-carrying history by accident;
+  # this is the deliberate way, behind the purchases.delete permission.)
+  #
+  # A received purchase's stock is taken back out first, one movement per
+  # item. If some of it has already been sold there is nothing to take
+  # out, so the whole thing is refused and nothing changes.
+  #
+  # The stock movements it made when it arrived stay in each item's
+  # history: the ledger is never rewritten. Their link to the purchase
+  # simply leads nowhere any more.
+  def remove!(by:)
+    transaction do
+      self.class.lock.find(id) # see revise! for why not lock!
+
+      if received?
+        items.includes(:variant).each do |item|
+          StockLedger.record!(variant: item.variant, quantity: -item.quantity, reason: "purchase", user: by,
+            guard_stock: true, note: "Purchase deleted (#{[ supplier&.name, purchased_on.strftime('%-d %b %Y') ].compact.join(', ')})")
+        end
+      end
+
+      @removing = true
+      destroy!
+    end
+    true
+  rescue StockLedger::NotEnough => problem
+    errors.add(:base, "#{problem.message}, so this purchase can't be deleted: some of its stock has already gone out. Correct it instead.")
+    false
+  ensure
+    @removing = false
+  end
+
   # The goods have arrived: add them to stock and lock the purchase.
   def receive!(by:)
     transaction do
@@ -299,7 +332,7 @@ class Purchase < ApplicationRecord
     end
 
     def only_while_ordered
-      return if ordered?
+      return if ordered? || @removing
 
       errors.add(:base, "A received purchase can't be deleted, because its stock has been counted")
       throw :abort

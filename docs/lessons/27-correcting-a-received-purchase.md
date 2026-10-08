@@ -70,7 +70,26 @@ aren't saved), and returns `[]`. The first version of `revise!` did exactly
 that and quietly took everything out of stock. A test caught it. The fix is
 to use the in-memory lines (`live_items`).
 
-## What stays locked
+## Deleting, behind its own permission
 
-Deleting. A received purchase's movements are history; to undo one, lower
-its quantities to what really arrived.
+A purchase still on the way can be deleted by anyone with
+`purchases.manage`: nothing touched stock.
+
+A purchase already in stock needs **`purchases.delete`** ("Delete purchases
+already in stock"). Owners have it automatically (the system role can do
+everything, including permissions added later); for other roles tick it in
+Settings > Roles.
+
+`Purchase#remove!` takes each item's units back out of stock (one movement
+each, note "Purchase deleted (supplier, date)") and then deletes the
+purchase, all in one transaction. If some of the stock has been sold
+already, there is nothing to take out, so the whole delete is refused:
+"correct it instead".
+
+Plain `purchase.destroy` still refuses a received purchase. Only `remove!`,
+the deliberate path, can delete one. A guard that the normal method keeps,
+with one explicit way around it, is safer than removing the guard.
+
+The movements the purchase made when it arrived stay in each item's
+history: the ledger is never rewritten. Their link to the purchase just
+leads nowhere now (`movement.source` returns nil for a deleted record).

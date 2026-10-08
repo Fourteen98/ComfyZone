@@ -17,7 +17,9 @@ module Permission
     },
     "Purchases" => {
       "purchases.view"   => "See purchases and suppliers",
-      "purchases.manage" => "Record purchases and manage suppliers"
+      "purchases.manage" => "Record purchases and manage suppliers",
+      # On its own because it takes stock back out of the shop.
+      "purchases.delete" => "Delete purchases already in stock (their stock is taken back out)"
     },
     "Stock" => {
       "stock.view"   => "See stock levels",

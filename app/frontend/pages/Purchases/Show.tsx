@@ -51,7 +51,10 @@ type Props = {
 
 // Props from PurchasesController#show
 export default function PurchaseShow({ purchase }: Props) {
-  const manage = useCan()('purchases.manage')
+  const can = useCan()
+  const manage = can('purchases.manage')
+  // A purchase already in stock needs its own permission to delete.
+  const deletable = manage && (purchase.status === 'ordered' || can('purchases.delete'))
   const ordered = purchase.status === 'ordered'
   const pickup = purchase.delivery_method === 'pickup'
   const Way = pickup ? Store : Truck
@@ -71,7 +74,10 @@ export default function PurchaseShow({ purchase }: Props) {
   }
 
   async function destroy() {
-    if (!(await confirmAction('Delete this purchase? Nothing was added to stock, so nothing else changes.', { confirm: 'Delete', danger: true }))) return
+    const message = ordered
+      ? 'Delete this purchase? Nothing was added to stock, so nothing else changes.'
+      : `Delete this purchase? Its ${purchase.units} ${purchase.units === 1 ? 'item' : 'items'} will be taken back out of stock. If any have been sold, it can't be deleted.`
+    if (!(await confirmAction(message, { confirm: 'Delete', danger: true }))) return
     router.delete(`/admin/purchases/${purchase.id}`)
   }
 
@@ -90,8 +96,8 @@ export default function PurchaseShow({ purchase }: Props) {
                 <Pencil className="size-5" aria-hidden="true" />
                 {ordered ? 'Edit' : 'Correct this purchase'}
               </ButtonLink>
-              {/* Deleting is only for goods not yet in stock. */}
-              {ordered && (
+              {/* Goods already in stock need the "Delete purchases" permission. */}
+              {deletable && (
                 <Button type="button" variant="danger" onClick={destroy}>
                   <Trash2 className="size-5" aria-hidden="true" />
                   Delete
