@@ -8,9 +8,9 @@ class StockController < InertiaController
     variants = Variant.active.joins(:product).merge(Product.active)
       .includes(product: { photos: { image_attachment: :blob } })
       .order("lower(products.name), variants.position")
-    variants = variants.where("products.name ILIKE ?", "%#{Product.sanitize_sql_like(params[:q].strip)}%") if params[:q].present?
-
-    all = variants.to_a
+    # "orange 3xl": find that size and colour, best match first (see VariantSearch).
+    search = VariantSearch.new(params[:q])
+    all = search.blank? ? variants.to_a : search.rank(variants.to_a)
     uncosted = can?("costs.view") ? all.select { |variant| variant.stock_on_hand.positive? && variant.average_cost_pesewas.zero? } : []
     show = %w[ low out ].include?(params[:show]) || (params[:show] == "uncosted" && uncosted.any?) ? params[:show] : "all"
     shown = case show
@@ -24,6 +24,8 @@ class StockController < InertiaController
       # Grouped by product for display: [{ product..., variants: [...] }, ...]
       groups: shown.group_by(&:product).map { |product, list| group_props(product, list) },
       filters: { show: show, q: params[:q].to_s },
+      # While searching, the best match: its quick "add stock" form opens by itself.
+      focus_id: search.blank? ? nil : shown.first&.id,
       counts: {
         all: all.size,
         low: all.count { |variant| variant.stock_level == :low },

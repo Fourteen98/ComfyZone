@@ -1,5 +1,5 @@
-import { Head, Link, router } from '@inertiajs/react'
-import { Boxes, ChevronRight, ClipboardList, Search, Shirt } from 'lucide-react'
+import { Head, Link, router, usePage } from '@inertiajs/react'
+import { Boxes, ChevronRight, ClipboardList, Search, Shirt, SlidersHorizontal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import { ButtonLink } from '@/components/ui/Button'
@@ -8,6 +8,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import PageHeader from '@/components/ui/PageHeader'
 import StatStrip from '@/components/ui/StatStrip'
 import StockLevelBadge from '@/components/StockLevelBadge'
+import StockAdjustForm from '@/components/StockAdjustForm'
 import type { OptionValue } from '@/components/OptionValuesEditor'
 import { formatMoney } from '@/lib/format'
 import { useCan } from '@/lib/permissions'
@@ -31,12 +32,25 @@ type Props = {
   // uncosted: null = may not see costs
   counts: { all: number; low: number; out: number; uncosted: number | null }
   totals: { units: number; value_pesewas: number | null }
+  /** While searching: the best match, whose quick form opens by itself. */
+  focus_id: number | null
 }
 
 // Props from StockController#index
-export default function StockIndex({ groups, filters, counts, totals }: Props) {
+export default function StockIndex({ groups, filters, counts, totals, focus_id }: Props) {
   const can = useCan()
   const [query, setQuery] = useState(filters.q)
+  const errors = usePage().props.errors as Record<string, string[] | undefined>
+
+  // Type "orange 3xl" and that item comes first with its "update stock"
+  // form already open: find it, type the number, done. Other rows open
+  // theirs with the Adjust button. A failed save comes back open.
+  const searching = filters.q !== '' && can('stock.adjust')
+  const [openId, setOpenId] = useState<number | null>(searching ? Number(errors.adjusting?.[0]) || focus_id : null)
+  useEffect(() => {
+    if (searching) setOpenId(Number(errors.adjusting?.[0]) || focus_id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus_id, filters.q])
 
   const params = (show: string, q = filters.q) => ({ show: show === 'all' ? undefined : show, q: q || undefined })
 
@@ -134,7 +148,7 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
               <input
                 type="search"
                 aria-label="Search stock"
-                placeholder="Search by product"
+                placeholder="Product, size or colour: orange 3xl"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="block min-h-11 w-full rounded-md border-taupe-300 bg-white pr-3 pl-10 text-base placeholder:text-taupe-400 focus:border-wine-700 focus:ring-1 focus:ring-wine-700"
@@ -175,33 +189,58 @@ export default function StockIndex({ groups, filters, counts, totals }: Props) {
 
                   <ul className="divide-y divide-taupe-200">
                     {group.variants.map((variant) => (
-                      <li key={variant.id}>
-                        <Link
-                          href={`/admin/stock/${variant.id}`}
-                          className="flex min-h-14 items-center gap-3 px-4 py-2 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
-                        >
-                          <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-                            {variant.option_values.length === 0 ? (
-                              <span className="text-taupe-700">One item</span>
-                            ) : (
-                              variant.option_values.map((value) => <Chip key={value.name} label={value.label} swatch={value.swatch} />)
-                            )}
-                          </span>
-                          <StockLevelBadge level={variant.level} />
-                          {variant.value_pesewas !== null && variant.stock > 0 && (
-                            <span className="hidden w-28 text-right text-sm text-taupe-700 tabular-nums sm:block">
-                              {variant.no_cost ? 'No cost yet' : formatMoney(variant.value_pesewas)}
-                            </span>
-                          )}
-                          <span
-                            className={`w-10 text-right text-xl font-semibold tabular-nums ${
-                              variant.level === 'out' ? 'text-taupe-400' : 'text-ink'
-                            }`}
+                      <li key={variant.id} className={variant.id === openId ? 'bg-wine-50/60' : ''}>
+                        <div className="flex items-stretch">
+                          <Link
+                            href={`/admin/stock/${variant.id}`}
+                            className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-2 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
                           >
-                            {variant.stock}
-                          </span>
-                          <ChevronRight className="size-5 shrink-0 text-taupe-400" aria-hidden="true" />
-                        </Link>
+                            <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+                              {variant.option_values.length === 0 ? (
+                                <span className="text-taupe-700">One item</span>
+                              ) : (
+                                variant.option_values.map((value) => <Chip key={value.name} label={value.label} swatch={value.swatch} />)
+                              )}
+                            </span>
+                            <StockLevelBadge level={variant.level} />
+                            {variant.value_pesewas !== null && variant.stock > 0 && (
+                              <span className="hidden w-28 text-right text-sm text-taupe-700 tabular-nums sm:block">
+                                {variant.no_cost ? 'No cost yet' : formatMoney(variant.value_pesewas)}
+                              </span>
+                            )}
+                            <span
+                              className={`w-10 text-right text-xl font-semibold tabular-nums ${
+                                variant.level === 'out' ? 'text-taupe-400' : 'text-ink'
+                              }`}
+                            >
+                              {variant.stock}
+                            </span>
+                            <ChevronRight className="size-5 shrink-0 text-taupe-400" aria-hidden="true" />
+                          </Link>
+                          {searching && (
+                            <button
+                              type="button"
+                              onClick={() => setOpenId(openId === variant.id ? null : variant.id)}
+                              aria-expanded={openId === variant.id}
+                              aria-label={`Adjust stock for ${group.name}, ${variant.name}`}
+                              className="flex w-14 shrink-0 items-center justify-center border-l border-taupe-200 text-wine-800 hover:bg-taupe-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
+                            >
+                              <SlidersHorizontal className="size-5" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                        {searching && openId === variant.id && (
+                          <div className="border-t border-taupe-200 px-4 py-4">
+                            {/* Starts on "Found more" (adding); she can switch to counting or taking off. */}
+                            <StockAdjustForm
+                              key={variant.id}
+                              variant={variant}
+                              reason="found"
+                              back={{ q: filters.q, show: filters.show }}
+                              idPrefix={`v${variant.id}_`}
+                            />
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>

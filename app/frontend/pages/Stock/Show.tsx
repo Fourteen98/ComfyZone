@@ -9,12 +9,11 @@ import MoneyField from '@/components/ui/MoneyField'
 import Chip from '@/components/ui/Chip'
 import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
-import SelectField from '@/components/ui/SelectField'
-import TextField from '@/components/ui/TextField'
 import StockLevelBadge from '@/components/StockLevelBadge'
 import type { OptionValue } from '@/components/OptionValuesEditor'
 import { formatMoney, toMoneyInput } from '@/lib/format'
-import { adjustmentReasons, reasonLabels } from '@/lib/stock'
+import { reasonLabels } from '@/lib/stock'
+import StockAdjustForm from '@/components/StockAdjustForm'
 import type { StockLevel } from '@/lib/stock'
 
 type Movement = {
@@ -50,18 +49,6 @@ type Props = {
 
 // Props from StockController#show
 export default function StockShow({ variant, movements, movements_total, can_adjust, can_set_cost, siblings_without_cost }: Props) {
-  const form = useForm({ reason: '', quantity: '', note: '' })
-  const errors = form.errors as Record<string, string[] | undefined>
-
-  const chosen = adjustmentReasons.find((reason) => reason.value === form.data.reason)
-  const direction = chosen?.direction
-  const amount = Number.parseInt(form.data.quantity, 10)
-  const typed = form.data.quantity !== '' && Number.isFinite(amount)
-
-  // What the count will become, shown before she saves. Rails works out the
-  // real figure again at the moment of saving, from the latest number.
-  const after = !typed || !direction ? null : direction === 'set' ? amount : direction === 'out' ? variant.stock - amount : variant.stock + amount
-
   // ----- what one cost (for stock that never came through a purchase) -----
   const noCost = variant.average_cost_pesewas === 0
   const costForm = useForm({
@@ -75,12 +62,6 @@ export default function StockShow({ variant, movements, movements_total, can_adj
     costForm.patch(`/admin/stock/${variant.id}/cost`, { preserveScroll: true }) // -> Stock::CostsController#update
   }
 
-  function submit(event: FormEvent) {
-    event.preventDefault()
-    form.transform((data) => ({ adjustment: data }))
-    // -> Stock::AdjustmentsController#create
-    form.post(`/admin/stock/${variant.id}/adjustments`, { preserveScroll: true, onSuccess: () => form.reset() })
-  }
 
   return (
     <AppLayout>
@@ -160,65 +141,7 @@ export default function StockShow({ variant, movements, movements_total, can_adj
 
           {can_adjust && (
             <Panel title="Correct the count">
-              <form onSubmit={submit} className="space-y-4">
-                <SelectField
-                  id="reason"
-                  label="What happened?"
-                  required
-                  placeholder="Choose one"
-                  options={adjustmentReasons.map((reason) => ({ value: reason.value, label: reason.label }))}
-                  value={form.data.reason}
-                  onChange={(e) => {
-                    form.setData({ ...form.data, reason: e.target.value, quantity: '' })
-                    form.clearErrors()
-                  }}
-                  error={errors.reason}
-                />
-
-                {direction && (
-                  <>
-                    <TextField
-                      id="quantity"
-                      // The question changes with the reason, so it is always
-                      // clear what number belongs in the box.
-                      label={direction === 'set' ? 'How many are there?' : direction === 'out' ? 'How many to take off?' : 'How many to add?'}
-                      inputMode="numeric"
-                      required
-                      autoComplete="off"
-                      value={form.data.quantity}
-                      onChange={(e) => {
-                        form.setData('quantity', e.target.value.replace(/\D/g, '').slice(0, 6))
-                        form.clearErrors('quantity')
-                      }}
-                      error={errors.quantity}
-                    />
-
-                    {after !== null && (
-                      <p className={`text-sm ${after < 0 ? 'text-red-800' : 'text-taupe-800'}`} role="status">
-                        {after < 0
-                          ? `There are only ${variant.stock} in stock.`
-                          : after === variant.stock
-                            ? `That is what the app already shows.`
-                            : `Stock will go from ${variant.stock} to ${after}.`}
-                      </p>
-                    )}
-
-                    <TextField
-                      id="note"
-                      label="Note (optional)"
-                      maxLength={200}
-                      placeholder="Anything worth remembering"
-                      value={form.data.note}
-                      onChange={(e) => form.setData('note', e.target.value)}
-                      error={errors.note}
-                    />
-
-                    <Button type="submit" block disabled={form.processing}>
-                      Update stock
-                    </Button>
-                  </>
-                )}
-              </form>
+              <StockAdjustForm variant={variant} />
             </Panel>
           )}
         </div>

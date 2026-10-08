@@ -8,6 +8,7 @@ import Button, { ButtonLink } from '@/components/ui/Button'
 import Chip from '@/components/ui/Chip'
 import PageHeader from '@/components/ui/PageHeader'
 import type { OptionValue } from '@/components/OptionValuesEditor'
+import { rankProducts } from '@/lib/search'
 
 type Variant = { id: number; name: string; option_values: (OptionValue & { name: string })[]; stock: number }
 type Product = { id: number; name: string; variants: Variant[] }
@@ -21,8 +22,9 @@ export default function StockCount({ products }: { products: Product[] }) {
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const term = search.trim().toLowerCase()
-  const shown = products.filter((product) => product.name.toLowerCase().includes(term))
+  // "orange 3xl" narrows the list to that size and colour (lib/search.ts);
+  // a product name alone shows the whole product.
+  const shown = search.trim() ? rankProducts(search, products).map(({ product, matches }) => ({ ...product, variants: matches })) : products
 
   const all = products.flatMap((product) => product.variants)
   const counted = all.filter((variant) => (counts[variant.id] ?? '') !== '')
@@ -32,7 +34,11 @@ export default function StockCount({ products }: { products: Product[] }) {
     event.preventDefault()
     setSaving(true)
     // Only what she typed is sent. -> Stock::CountsController#create
-    router.post('/admin/stock/count', { counts: Object.fromEntries(counted.map((variant) => [variant.id, counts[variant.id]])) }, { onFinish: () => setSaving(false) })
+    router.post(
+      '/admin/stock/count',
+      { counts: Object.fromEntries(counted.map((variant) => [variant.id, counts[variant.id]])) },
+      { onFinish: () => setSaving(false) },
+    )
   }
 
   return (
@@ -63,7 +69,7 @@ export default function StockCount({ products }: { products: Product[] }) {
           <input
             type="search"
             aria-label="Find a product"
-            placeholder="Find a product"
+            placeholder="Product, size or colour: orange 3xl"
             autoComplete="off"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

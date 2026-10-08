@@ -17,6 +17,7 @@ import type { OptionValue } from '@/components/OptionValuesEditor'
 import LocationFields, { nowhere } from '@/components/LocationFields'
 import type { Locations } from '@/components/LocationFields'
 import { formatForeign, formatMoney, toPesewas } from '@/lib/format'
+import { rankProducts } from '@/lib/search'
 import { formatPhone } from '@/lib/phone'
 import PhoneField from '@/components/ui/PhoneField'
 
@@ -89,7 +90,15 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
   // Change a simple field and clear its error, so a red message doesn't
   // linger after she has fixed the problem.
   function set(
-    field: 'purchased_on' | 'new_supplier_name' | 'new_supplier_phone' | 'reference' | 'transport_cost' | 'extra_costs' | 'note' | 'exchange_rate',
+    field:
+      | 'purchased_on'
+      | 'new_supplier_name'
+      | 'new_supplier_phone'
+      | 'reference'
+      | 'transport_cost'
+      | 'extra_costs'
+      | 'note'
+      | 'exchange_rate',
     value: string,
   ) {
     form.setData(field, value)
@@ -113,9 +122,22 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
   const rate = foreign ? Number.parseFloat(form.data.exchange_rate) || 0 : 1
   const inCedis = (minor: number) => Math.round(minor * rate)
 
-  function addProduct(product: PickableProduct) {
-    // "Last time" is a cedi figure, so it only pre-fills a cedi purchase.
-    setBlocks([...blocks, { productId: product.id, cost: foreign ? '' : product.last_cost, quantities: {} }])
+  // `matched`: the sizes/colours her search pointed at ("orange 3xl"). Each
+  // gets 1 straight away, so finding it and adding it is one tap. A product
+  // already on the purchase gets one more of those instead of a second block.
+  function addProduct(product: PickableProduct, matched: PickableVariant[] = []) {
+    const bump = (quantities: Record<number, string>) => {
+      const next = { ...quantities }
+      for (const variant of matched) next[variant.id] = String((Number.parseInt(next[variant.id] ?? '', 10) || 0) + 1)
+      return next
+    }
+    const existing = blocks.find((block) => block.productId === product.id)
+    if (existing) {
+      patchBlock(product.id, { quantities: bump(existing.quantities) })
+    } else {
+      // "Last time" is a cedi figure, so it only pre-fills a cedi purchase.
+      setBlocks([...blocks, { productId: product.id, cost: foreign ? '' : product.last_cost, quantities: bump({}) }])
+    }
     setSearch('')
   }
 
@@ -179,7 +201,20 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
 
   const added = new Set(blocks.map((block) => block.productId))
   const term = search.trim().toLowerCase()
-  const available = products.filter((product) => !added.has(product.id) && product.name.toLowerCase().includes(term))
+  // Searching understands sizes and colours too ("orange 3xl"), best match
+  // first; see lib/search.ts. With nothing typed: everything not yet added.
+  const ranked = term
+    ? rankProducts(term, products)
+    : products
+        .filter((product) => !added.has(product.id))
+        .map((product) => ({ product, score: 1, matches: product.variants, best: product.variants }))
+  // Which variants the search singled out, per product (all of them = the search was just the name).
+  // The sizes/colours the search singled out, per product. Empty when the
+  // search was just the product's name (every variant matched equally).
+  const pointedAt = new Map<number, PickableVariant[]>(
+    ranked.map(({ product, best }) => [product.id, best.length < product.variants.length ? best : []]),
+  )
+  const available = ranked.map((entry) => entry.product)
 
   // Offer the chosen supplier's own products first: they are the likely picks.
   const theirs = new Set(pickedSupplier?.product_ids ?? [])
@@ -196,9 +231,9 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
       <PageHeader title={purchase?.received ? 'Correct this purchase' : editing ? 'Edit purchase' : 'Record a purchase'} />
       {purchase?.received && (
         <div className="mt-4 max-w-3xl rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-amber-950">
-          These goods are already in your stock. Change anything that was wrong or left out, and stock is corrected to match:
-          items you add go in, items you remove or lower come out, and a corrected price re-values what is still on the shelf.
-          Sales already made keep the cost they had.
+          These goods are already in your stock. Change anything that was wrong or left out, and stock is corrected to match: items you add
+          go in, items you remove or lower come out, and a corrected price re-values what is still on the shelf. Sales already made keep the
+          cost they had.
         </div>
       )}
 
@@ -429,14 +464,20 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                             <li key={product.id}>
                               <button
                                 type="button"
-                                onClick={() => addProduct(product)}
+                                onClick={() => addProduct(product, pointedAt.get(product.id))}
                                 className="flex w-full items-center gap-3 rounded-md border border-taupe-200 bg-white p-2 text-left hover:border-wine-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-700"
                               >
                                 <Thumb url={product.thumb_url} />
                                 <span className="min-w-0">
                                   <span className="block truncate font-medium">{product.name}</span>
                                   <span className="block text-sm text-taupe-700">
-                                    {product.variants.length === 1 ? 'One item' : `${product.variants.length} variants`}
+                                    {(pointedAt.get(product.id) ?? []).length > 0
+                                      ? `${added.has(product.id) ? 'One more of ' : 'Add '}${(pointedAt.get(product.id) ?? []).map((variant) => variant.name).join(', ')}`
+                                      : added.has(product.id)
+                                        ? 'Already on this purchase'
+                                        : product.variants.length === 1
+                                          ? 'One item'
+                                          : `${product.variants.length} variants`}
                                   </span>
                                 </span>
                               </button>
@@ -462,7 +503,12 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                 name="delivery_method"
                 choices={[
                   { value: 'pickup', label: 'We picked them up', description: 'You or someone you sent went for them', icon: Store },
-                  { value: 'delivery', label: 'They were delivered', description: 'Brought to you by the supplier or a rider', icon: Truck },
+                  {
+                    value: 'delivery',
+                    label: 'They were delivered',
+                    description: 'Brought to you by the supplier or a rider',
+                    icon: Truck,
+                  },
                 ]}
                 value={form.data.delivery_method}
                 onChange={(value) => {
@@ -493,8 +539,8 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                 />
               </div>
               <p className="max-w-xl text-sm text-taupe-700">
-                These are part of what the goods cost you. They are shared across the items by value, so your profit on
-                each sale is worked out from what the item really cost.
+                These are part of what the goods cost you. They are shared across the items by value, so your profit on each sale is worked
+                out from what the item really cost.
               </p>
             </div>
           </Panel>
@@ -558,8 +604,8 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                   Save, goods still on the way
                 </Button>
                 <p className="px-1 text-sm text-taupe-700">
-                  If the goods have not arrived, save them as on the way and mark them arrived later. You can still
-                  correct a purchase after it is in stock.
+                  If the goods have not arrived, save them as on the way and mark them arrived later. You can still correct a purchase after
+                  it is in stock.
                 </p>
               </>
             )}
