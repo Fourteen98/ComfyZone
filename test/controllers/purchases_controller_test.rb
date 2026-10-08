@@ -63,7 +63,7 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     dress = inertia.props[:products].find { |p| p[:name] == "Ankara wrap dress" }
     assert_equal 4, dress[:variants].size
     assert_equal "80", dress[:last_cost]
-    assert_equal [ [ "Kumasi Fabrics", "024 000 0000" ] ], inertia.props[:suppliers].map { |s| s.values_at(:name, :phone) }
+    assert_equal [ [ "Kumasi Fabrics", "+233240000000" ] ], inertia.props[:suppliers].map { |s| s.values_at(:name, :phone) }
     assert_nil inertia.props[:products].find { |p| p[:name] == "Old tote bag" }, "archived products aren't offered"
   end
 
@@ -166,7 +166,7 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     end
 
     supplier = Purchase.newest_first.first.supplier
-    assert_equal [ "Makola Traders", "020 111 2222" ], [ supplier.name, supplier.phone ]
+    assert_equal [ "Makola Traders", "+233201112222" ], [ supplier.name, supplier.phone ]
   end
 
   test "a new supplier needs a name and a phone number, and nothing is saved without them" do
@@ -237,16 +237,20 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_match "already received", flash[:alert]
   end
 
-  test "a received purchase can't be edited or deleted" do
+  test "a received purchase can be corrected, and stock follows; it still can't be deleted" do
     sign_in_as(users(:one))
     purchase = purchases(:on_the_way)
     purchase.receive!(by: users(:one))
 
     get edit_purchase_path(purchase)
-    assert_redirected_to purchase_path(purchase)
+    assert_inertia_component "Purchases/Form"
+    assert_equal true, inertia.props[:purchase][:received]
 
-    patch purchase_path(purchase), params: params
-    assert_equal 2, purchase.items.reload.count
+    patch purchase_path(purchase), params: params(reference: "INV-10") # 6 black, 0 red
+    assert_redirected_to purchase_path(purchase)
+    assert_equal "Saved. Stock has been corrected to match.", flash[:notice]
+    assert_equal [ 6, 0 ], [ variants(:dress_m_black).reload.stock_on_hand, variants(:dress_l_red).reload.stock_on_hand ]
+    assert_equal "INV-10", purchase.reload.reference
 
     assert_no_difference "Purchase.count" do
       delete purchase_path(purchase)

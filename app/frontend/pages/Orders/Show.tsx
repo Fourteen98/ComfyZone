@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react'
-import { ArrowLeft, Pencil, Phone, X } from 'lucide-react'
+import { ArrowLeft, Pencil, X } from 'lucide-react'
 import { useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import Button, { ButtonLink } from '@/components/ui/Button'
@@ -16,6 +16,7 @@ import OrderStatusBadge from '@/components/OrderStatusBadge'
 import { formatMoney } from '@/lib/format'
 import type { OrderSummary } from '@/lib/orders'
 import { confirmAction } from '@/lib/confirm'
+import PhoneLinks from '@/components/PhoneLinks'
 
 type Payment = {
   id: number
@@ -167,15 +168,7 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
             {order.live.title}
           </Link>
         )}
-        {order.customer_phone && (
-          <a
-            href={`tel:${order.customer_phone.replace(/[^\d+]/g, '')}`}
-            className="flex items-center gap-1.5 font-medium text-wine-800 underline decoration-taupe-400 underline-offset-4"
-          >
-            <Phone className="size-4" aria-hidden="true" />
-            {order.customer_phone}
-          </a>
-        )}
+        {order.customer_phone && <PhoneLinks phone={order.customer_phone} />}
       </div>
 
       {/* Phone order: where it stands, what's on it, money, delivery.

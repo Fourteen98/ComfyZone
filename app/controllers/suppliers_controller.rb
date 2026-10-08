@@ -12,14 +12,14 @@ class SuppliersController < InertiaController
       term = "%#{Supplier.sanitize_sql_like(params[:q].strip)}%"
       # Phones are stored as typed ("020 111 2222"), so compare digits only:
       # searching 0201112222 or 111 22 both find it.
-      digits = params[:q].gsub(/\D/, "")
+      digits = PhoneNumber.search_digits(params[:q])
       phone = digits.length >= 3 ? "%#{digits}%" : nil
 
       # Find a supplier by their own name, their phone, OR by something they
       # sell: "who do I buy kaftans from?"
       suppliers = suppliers.where(
         "suppliers.name ILIKE :term
-         OR regexp_replace(coalesce(suppliers.phone, ''), '\\D', '', 'g') LIKE :phone
+         OR suppliers.phone LIKE :phone
          OR suppliers.id IN (
            SELECT supplier_id FROM product_suppliers
            JOIN products ON products.id = product_suppliers.product_id

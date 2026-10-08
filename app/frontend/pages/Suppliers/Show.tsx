@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react'
-import { Pencil, Phone, Plus, Shirt, Truck } from 'lucide-react'
+import { Pencil, Plus, Shirt, Truck } from 'lucide-react'
 import AppLayout from '@/layouts/AppLayout'
 import Badge from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
@@ -10,6 +10,7 @@ import StatStrip from '@/components/ui/StatStrip'
 import StatusBadge from '@/components/PurchaseStatusBadge'
 import { formatMoney } from '@/lib/format'
 import { useCan } from '@/lib/permissions'
+import PhoneLinks from '@/components/PhoneLinks'
 
 type Props = {
   supplier: {
@@ -56,14 +57,7 @@ export default function SupplierShow({ supplier }: Props) {
 
       <div className="mt-4">
         {supplier.phone ? (
-          // tel: makes the number tappable to call on a phone.
-          <a
-            href={`tel:${supplier.phone.replace(/[^\d+]/g, '')}`}
-            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-taupe-300 bg-white px-4 text-lg font-medium text-wine-800 tabular-nums hover:border-wine-700"
-          >
-            <Phone className="size-5" aria-hidden="true" />
-            {supplier.phone}
-          </a>
+          <PhoneLinks phone={supplier.phone} />
         ) : (
           <p className="text-amber-800">No phone number yet. Edit this supplier to add one.</p>
         )}

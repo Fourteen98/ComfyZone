@@ -11,6 +11,7 @@ import type { Locations } from '@/components/LocationFields'
 import BagLine from '@/components/shop/BagLine'
 import type { BagLineData } from '@/components/shop/BagLine'
 import { formatMoney } from '@/lib/format'
+import PhoneField from '@/components/ui/PhoneField'
 
 type Props = {
   cart: { lines: BagLineData[]; total_pesewas: number }
@@ -60,19 +61,15 @@ export default function ShopCheckout({ cart, locations }: Props) {
             onChange={(e) => form.setData('name', e.target.value)}
             error={errors.name}
           />
-          <TextField
+          <PhoneField
             id="phone"
             label="Phone number"
-            type="tel"
             required
-            maxLength={25}
-            autoComplete="tel"
-            placeholder="e.g. 024 123 4567"
             value={form.data.phone}
-            onChange={(e) => form.setData('phone', e.target.value)}
+            onChange={(phone) => form.setData('phone', phone)}
             error={errors.phone ?? errors.customer}
+            hint="We will call or WhatsApp this number about your order."
           />
-          <p className="-mt-2 text-sm text-taupe-700">We will call or WhatsApp this number about your order.</p>
         </section>
 
         <section className="space-y-4">

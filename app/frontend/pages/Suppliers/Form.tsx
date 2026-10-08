@@ -10,6 +10,7 @@ import LocationFields from '@/components/LocationFields'
 import type { Locations } from '@/components/LocationFields'
 import ProductMultiPicker from '@/components/ProductMultiPicker'
 import type { PickableProduct } from '@/components/ProductMultiPicker'
+import PhoneField from '@/components/ui/PhoneField'
 
 type Props = {
   // null when adding; the supplier when editing.
@@ -78,15 +79,12 @@ export default function SupplierForm({ supplier, products, locations }: Props) {
                 onChange={(e) => form.setData('name', e.target.value)}
                 error={errors.name}
               />
-              <TextField
+              <PhoneField
                 id="phone"
                 label="Phone number"
-                type="tel"
                 required
-                maxLength={25}
-                placeholder="e.g. 024 123 4567"
                 value={form.data.phone}
-                onChange={(e) => form.setData('phone', e.target.value)}
+                onChange={(phone) => form.setData('phone', phone)}
                 error={errors.phone}
               />
             </div>

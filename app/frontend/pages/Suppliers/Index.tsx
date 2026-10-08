@@ -7,6 +7,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import PageHeader from '@/components/ui/PageHeader'
 import { formatMoney } from '@/lib/format'
 import { useCan } from '@/lib/permissions'
+import { formatPhone } from '@/lib/phone'
 
 type SupplierRow = {
   id: number
@@ -87,7 +88,7 @@ export default function SuppliersIndex({ suppliers, filters, total }: Props) {
                     <div className="min-w-0 flex-1 basis-64">
                       <p className="truncate font-medium">{supplier.name}</p>
                       <p className="text-sm text-taupe-700 tabular-nums">
-                        {supplier.phone ?? <span className="text-amber-800">No phone number yet</span>}
+                        {supplier.phone ? formatPhone(supplier.phone) : <span className="text-amber-800">No phone number yet</span>}
                         {supplier.where && <span className="text-taupe-600">, {supplier.where}</span>}
                       </p>
                       <p className="mt-1.5 flex flex-wrap gap-1.5">

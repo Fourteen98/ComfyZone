@@ -4,7 +4,6 @@ class PurchasesController < InertiaController
   require_permission "purchases.manage", except: %i[ index show ]
 
   before_action :set_purchase, only: %i[ show edit update destroy receive ]
-  before_action :only_while_ordered, only: %i[ edit update ]
 
   # GET /purchases?status=ordered
   def index
@@ -50,7 +49,13 @@ class PurchasesController < InertiaController
     @purchase.assign_attributes(purchase_params)
     @purchase.supplier = chosen_supplier
 
-    if save(@purchase)
+    # A purchase already in stock is corrected (stock follows the
+    # difference); one still on the way is simply saved.
+    saved = @purchase.received? ? @purchase.revise!(item_params, by: Current.user) : save(@purchase)
+
+    if saved && @purchase.received?
+      redirect_to purchase_path(@purchase), notice: "Saved. Stock has been corrected to match."
+    elsif saved
       finish(@purchase, created: false)
     else
       redirect_to edit_purchase_path(@purchase), inertia: { errors: form_errors(@purchase) }
@@ -77,12 +82,6 @@ class PurchasesController < InertiaController
   private
     def set_purchase
       @purchase = Purchase.find(params.expect(:id))
-    end
-
-    def only_while_ordered
-      return if @purchase.ordered?
-
-      redirect_to purchase_path(@purchase), alert: "This purchase has been received, so it can't be changed."
     end
 
     def purchase_params
@@ -203,6 +202,7 @@ class PurchasesController < InertiaController
       {
         purchase: purchase && {
           id: purchase.id,
+          received: purchase.received?, # saving then corrects stock
           purchased_on: purchase.purchased_on.iso8601,
           supplier_id: purchase.supplier_id,
           reference: purchase.reference.to_s,

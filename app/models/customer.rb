@@ -5,12 +5,17 @@ class Customer < ApplicationRecord
   # "@Ama_K " -> "ama_k". nil if nothing is left.
   normalizes :handle, with: ->(handle) { handle.to_s.strip.delete_prefix("@").gsub(/\s+/, "").downcase.presence }
   normalizes :name, :location, with: ->(text) { text.squish.presence }
-  normalizes :phone, with: ->(phone) { phone.squish.presence }
+  # Always stored as +233242223333, however it was typed (see PhoneNumber).
+  normalizes :phone, with: ->(phone) { PhoneNumber.normalize(phone) }
 
   validates :handle, uniqueness: true, length: { maximum: 40 }, allow_nil: true
   validates :handle, format: { with: /\A[a-z0-9._]+\z/, message: "can only have letters, numbers, dots and underscores" }, allow_nil: true
   validates :name, length: { maximum: 60 }
-  validates :phone, format: { with: Supplier::PHONE, message: "doesn't look like a phone number" }, allow_nil: true
+  validate :phone_is_a_number
+  # The phone number IS the customer: one number, one customer. The unique
+  # index in the database is the real guarantee; this gives the message.
+  validates :phone, uniqueness: { message: ->(customer, _) { "already belongs to #{Customer.find_by(phone: customer.phone)&.display_name || 'another customer'}" } },
+    allow_nil: true
   validates :location, length: { maximum: 80 }
   validates :note, length: { maximum: 500 }
   validate :can_be_identified
@@ -37,7 +42,12 @@ class Customer < ApplicationRecord
   # What to call them on screen: their name if known, otherwise @handle,
   # otherwise their phone number.
   def display_name
-    name || (handle && "@#{handle}") || phone
+    name || (handle && "@#{handle}") || phone_display
+  end
+
+  # "+233 24 222 3333", for reading.
+  def phone_display
+    phone && PhoneNumber.format(phone)
   end
 
   # The buyer typed during a live: one box, a username. Finds them, or makes
@@ -52,8 +62,9 @@ class Customer < ApplicationRecord
   # The buyer for a sale recorded by hand, where any of these may be known.
   #
   #   id      she picked someone from the list
+  #   phone   THE identity: the same number is the same person, however it
+  #           was typed. Checked first, so it wins over a username.
   #   handle  a username: the same username is the same person
-  #   phone   the same number is the same person, however it is spaced
   #   name    names are NOT unique, so a name alone is always a new customer
   #
   # Anything new she typed fills in blanks on a customer we already had
@@ -62,8 +73,8 @@ class Customer < ApplicationRecord
     return find_by(id: id) || new if id.present?
 
     handle = normalize_value_for(:handle, handle)
-    digits = phone.to_s.gsub(/\D/, "")
-    customer = (handle && find_by(handle: handle)) || (digits.present? && with_phone_digits(digits).first) || new
+    number = normalize_value_for(:phone, phone)
+    customer = (number && find_by(phone: number)) || (handle && find_by(handle: handle)) || new
 
     customer.handle ||= handle
     customer.name ||= name
@@ -71,10 +82,14 @@ class Customer < ApplicationRecord
     customer
   end
 
-  # "024 222 3333" and "0242223333" are the same number.
-  scope :with_phone_digits, ->(digits) { where("regexp_replace(phone, '\\D', '', 'g') = ?", digits) }
+  # For the search box: "024 22" finds +23324 22... (see PhoneNumber.search_digits).
+  scope :phone_like, ->(text) { where("phone LIKE ?", "%#{sanitize_sql_like(PhoneNumber.search_digits(text))}%") }
 
   private
+    def phone_is_a_number
+      errors.add(:phone, "doesn't look like a phone number. Try 024 123 4567, or +44 7700 900123 abroad") if phone && !PhoneNumber.valid?(phone)
+    end
+
     def can_be_identified
       return if handle.present? || name.present? || phone.present?
 

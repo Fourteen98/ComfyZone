@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react'
-import { PackageCheck, Pencil, Phone, Store, Trash2, Truck } from 'lucide-react'
+import { PackageCheck, Pencil, Store, Trash2, Truck } from 'lucide-react'
 import AppLayout from '@/layouts/AppLayout'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import Chip from '@/components/ui/Chip'
@@ -10,6 +10,7 @@ import type { OptionValue } from '@/components/OptionValuesEditor'
 import { formatForeign, formatMoney } from '@/lib/format'
 import { useCan } from '@/lib/permissions'
 import { confirmAction } from '@/lib/confirm'
+import PhoneLinks from '@/components/PhoneLinks'
 
 type Item = {
   id: number
@@ -82,17 +83,20 @@ export default function PurchaseShow({ purchase }: Props) {
         title={purchase.supplier ?? 'Purchase'}
         description={`Bought ${purchase.purchased_on}. Recorded by ${purchase.recorded_by}.`}
         actions={
-          manage &&
-          ordered && (
+          manage && (
             <>
+              {/* Received purchases can be corrected too; stock follows the change. */}
               <ButtonLink href={`/admin/purchases/${purchase.id}/edit`} variant="secondary">
                 <Pencil className="size-5" aria-hidden="true" />
-                Edit
+                {ordered ? 'Edit' : 'Correct this purchase'}
               </ButtonLink>
-              <Button type="button" variant="danger" onClick={destroy}>
-                <Trash2 className="size-5" aria-hidden="true" />
-                Delete
-              </Button>
+              {/* Deleting is only for goods not yet in stock. */}
+              {ordered && (
+                <Button type="button" variant="danger" onClick={destroy}>
+                  <Trash2 className="size-5" aria-hidden="true" />
+                  Delete
+                </Button>
+              )}
             </>
           )
         }
@@ -104,16 +108,7 @@ export default function PurchaseShow({ purchase }: Props) {
           <Way className="size-4" aria-hidden="true" />
           {pickup ? 'Picked up' : 'Delivered'}
         </p>
-        {/* tel: makes the number tappable to call on a phone. */}
-        {purchase.supplier_phone && (
-          <a
-            href={`tel:${purchase.supplier_phone.replace(/[^\d+]/g, '')}`}
-            className="flex items-center gap-1.5 font-medium text-wine-800 underline decoration-taupe-400 underline-offset-4 hover:decoration-wine-800"
-          >
-            <Phone className="size-4" aria-hidden="true" />
-            {purchase.supplier_phone}
-          </a>
-        )}
+        {purchase.supplier_phone && <PhoneLinks phone={purchase.supplier_phone} />}
         {purchase.supplier_where && <p className="text-taupe-700">{purchase.supplier_where}</p>}
         {purchase.received_at && <p className="text-taupe-700">Arrived {purchase.received_at}</p>}
         {purchase.reference && <p className="text-taupe-700">Ref {purchase.reference}</p>}

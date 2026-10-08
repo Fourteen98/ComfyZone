@@ -80,10 +80,11 @@ class PurchaseTest < ActiveSupport::TestCase
     assert_equal 10, variants(:dress_m_black).reload.stock_on_hand
   end
 
-  test "a received purchase can't be changed or deleted" do
+  test "a received purchase can't be changed behind the stock's back, or deleted" do
     @purchase.receive!(by: @owner)
     received = Purchase.find(@purchase.id)
 
+    # A plain update would change it without correcting stock; revise! is the way.
     assert_not received.update(note: "changed my mind")
     assert_not received.destroy
     assert Purchase.exists?(received.id)

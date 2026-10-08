@@ -17,6 +17,8 @@ import type { OptionValue } from '@/components/OptionValuesEditor'
 import LocationFields, { nowhere } from '@/components/LocationFields'
 import type { Locations } from '@/components/LocationFields'
 import { formatForeign, formatMoney, toPesewas } from '@/lib/format'
+import { formatPhone } from '@/lib/phone'
+import PhoneField from '@/components/ui/PhoneField'
 
 type PickableVariant = { id: number; name: string; option_values: (OptionValue & { name: string })[]; stock: number }
 type PickableProduct = {
@@ -31,6 +33,7 @@ type Props = {
   // null when recording a new purchase.
   purchase: {
     id: number
+    received: boolean // already in stock: saving corrects stock
     purchased_on: string
     supplier_id: number | null
     reference: string
@@ -190,7 +193,14 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
   return (
     <AppLayout>
       <Head title={editing ? 'Edit purchase' : 'Record a purchase'} />
-      <PageHeader title={editing ? 'Edit purchase' : 'Record a purchase'} />
+      <PageHeader title={purchase?.received ? 'Correct this purchase' : editing ? 'Edit purchase' : 'Record a purchase'} />
+      {purchase?.received && (
+        <div className="mt-4 max-w-3xl rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-amber-950">
+          These goods are already in your stock. Change anything that was wrong or left out, and stock is corrected to match:
+          items you add go in, items you remove or lower come out, and a corrected price re-values what is still on the shelf.
+          Sales already made keep the cost they had.
+        </div>
+      )}
 
       {/* The form has no single submit: each button says what it will do. */}
       <form onSubmit={(event) => event.preventDefault()} className="mt-6 grid items-start gap-6 xl:grid-cols-3">
@@ -223,7 +233,7 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                   form.setData('supplier_id', e.target.value)
                   form.clearErrors('supplier' as never)
                 }}
-                hint={pickedSupplier ? (pickedSupplier.phone ?? 'No phone number saved yet') : undefined}
+                hint={pickedSupplier ? (pickedSupplier.phone ? formatPhone(pickedSupplier.phone) : 'No phone number saved yet') : undefined}
                 error={errors.supplier}
               />
             </div>
@@ -275,15 +285,12 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                   onChange={(e) => set('new_supplier_name', e.target.value)}
                   error={errors.new_supplier_name}
                 />
-                <TextField
+                <PhoneField
                   id="new_supplier_phone"
                   label="Phone number"
-                  type="tel"
                   required
-                  maxLength={25}
-                  placeholder="e.g. 024 123 4567"
                   value={form.data.new_supplier_phone}
-                  onChange={(e) => set('new_supplier_phone', e.target.value)}
+                  onChange={(phone) => set('new_supplier_phone', phone)}
                   error={errors.new_supplier_phone}
                 />
                 {/* Where they are. For goods bought abroad, pick the country. */}
@@ -538,16 +545,24 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
           </Panel>
 
           <div className="space-y-2">
-            <Button type="button" block disabled={form.processing} onClick={() => save(true)}>
-              Save and add to stock
-            </Button>
-            <Button type="button" block variant="secondary" disabled={form.processing} onClick={() => save(false)}>
-              Save, goods still on the way
-            </Button>
-            <p className="px-1 text-sm text-taupe-700">
-              Adding to stock is final. If the goods have not arrived, save them as on the way and mark them arrived
-              later.
-            </p>
+            {purchase?.received ? (
+              <Button type="button" block disabled={form.processing} onClick={() => save(false)}>
+                Save and correct stock
+              </Button>
+            ) : (
+              <>
+                <Button type="button" block disabled={form.processing} onClick={() => save(true)}>
+                  Save and add to stock
+                </Button>
+                <Button type="button" block variant="secondary" disabled={form.processing} onClick={() => save(false)}>
+                  Save, goods still on the way
+                </Button>
+                <p className="px-1 text-sm text-taupe-700">
+                  If the goods have not arrived, save them as on the way and mark them arrived later. You can still
+                  correct a purchase after it is in stock.
+                </p>
+              </>
+            )}
             <ButtonLink href={editing ? `/admin/purchases/${purchase.id}` : '/admin/purchases'} variant="secondary" block>
               Cancel
             </ButtonLink>

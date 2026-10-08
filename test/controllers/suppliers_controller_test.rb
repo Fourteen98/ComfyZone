@@ -66,7 +66,7 @@ class SuppliersControllerTest < ActionDispatch::IntegrationTest
     supplier.sells!([ products(:dress).id ])
 
     patch supplier_path(supplier), params: { supplier: { name: "Makola Traders Ltd", phone: "+233 20 111 2222", note: "Cash only" } }
-    assert_equal [ "Makola Traders Ltd", "+233 20 111 2222", "Cash only" ], supplier.reload.values_at(:name, :phone, :note)
+    assert_equal [ "Makola Traders Ltd", "+233201112222", "Cash only" ], supplier.reload.values_at(:name, :phone, :note)
     assert_equal 1, supplier.products.count, "no product list sent, so it was left alone"
   end
 

@@ -6,6 +6,7 @@ import { ButtonLink } from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import PageHeader from '@/components/ui/PageHeader'
 import { formatMoney } from '@/lib/format'
+import { formatPhone } from '@/lib/phone'
 
 type CustomerRow = {
   id: number
@@ -80,7 +81,7 @@ export default function CustomersIndex({ customers, filters, total, can_manage }
                     <div className="min-w-0 flex-1 basis-56">
                       <p className="truncate font-medium">{customer.display_name}</p>
                       <p className="truncate text-sm text-taupe-700 tabular-nums">
-                        {[customer.handle && customer.display_name !== `@${customer.handle}` ? `@${customer.handle}` : null, customer.phone, customer.location]
+                        {[customer.handle && customer.display_name !== `@${customer.handle}` ? `@${customer.handle}` : null, formatPhone(customer.phone), customer.location]
                           .filter(Boolean)
                           .join(', ') || 'No details yet'}
                       </p>

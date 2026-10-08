@@ -102,7 +102,7 @@ class ShopTest < ActionDispatch::IntegrationTest
     assert_redirected_to shop_order_path(order.public_token)
     assert_equal [ "claimed", nil, 24_000, "pickup" ], [ order.status, order.user, order.total_pesewas, order.delivery_method ]
     assert_equal "web", order.sales_channel.system_key
-    assert_equal [ "Esi Mensah", "055 111 2222" ], order.customer.then { |c| [ c.name, c.phone ] }
+    assert_equal [ "Esi Mensah", "+233551112222" ], order.customer.then { |c| [ c.name, c.phone ] }
     assert_equal 1, @black.reload.stock_on_hand
 
     get shop_cart_path
