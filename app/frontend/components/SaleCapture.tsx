@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import Alert from '@/components/ui/Alert'
 import { formatPhone } from '@/lib/phone'
 import BuyerPicker from '@/components/BuyerPicker'
+import { bulkNudge, bulkOn, unitPrice } from '@/lib/bulk'
 import type { Buyer, BuyerChoice } from '@/components/BuyerPicker'
 import Button from '@/components/ui/Button'
 import ChoicePills from '@/components/ui/ChoicePills'
@@ -65,15 +66,31 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   const [sending, setSending] = useState(false)
 
   // Look up any variant (and its product) by id.
-  const variants = new Map(
-    products.flatMap((product) => product.variants.map((variant) => [variant.id, { variant, product }] as const)),
-  )
+  const variants = new Map(products.flatMap((product) => product.variants.map((variant) => [variant.id, { variant, product }] as const)))
 
   const lines = Object.entries(basket)
     .map(([id, quantity]) => ({ ...variants.get(Number(id))!, quantity }))
     .filter((line) => line.variant && line.quantity > 0)
   const units = lines.reduce((sum, line) => sum + line.quantity, 0)
-  const total = lines.reduce((sum, line) => sum + line.quantity * line.variant.price_pesewas, 0)
+
+  // Is the buyer marked as a bulk buyer? On a live: the username typed. Recording
+  // a sale: the customer picked.
+  const chosenId = choice && 'id' in choice.buyer ? choice.buyer.id : null
+  const buyerRecord = inLive
+    ? buyers.find((b) => b.handle === buyer.trim().replace(/^@/, '').toLowerCase())
+    : buyers.find((b) => b.id === chosenId)
+  const bulkBuyer = !!buyerRecord?.bulk_buyer
+
+  // Bulk prices: count each PRODUCT in this sale (any size or colour). A
+  // bulk buyer gets it whatever the count. On a live the server also counts
+  // what they claimed earlier in the live, so the final price may be lower still.
+  const pieces = new Map<number, number>()
+  lines.forEach((line) => pieces.set(line.product.id, (pieces.get(line.product.id) ?? 0) + line.quantity))
+  const priced = lines.map((line) => {
+    const on = bulkOn(line.product.bulk, pieces.get(line.product.id) ?? 0, bulkBuyer)
+    return { ...line, bulk: on, unit: unitPrice(line.variant.price_pesewas, line.product.bulk, on) }
+  })
+  const total = priced.reduce((sum, line) => sum + line.quantity * line.unit, 0)
 
   const setQuantity = (variant: SellableVariant, quantity: number) =>
     setBasket({ ...basket, [variant.id]: Math.max(0, Math.min(quantity, variant.stock)) })
@@ -90,13 +107,14 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   // never rewrites where a known customer lives by accident.
   const [liveWhere, setLiveWhere] = useState<Where | null>(null)
   const [whereOpen, setWhereOpen] = useState(false)
-  const knownWhere: Where | null = known?.country || known?.region ? { country: known.country ?? home, region: known.region ?? '', place: known.place ?? '' } : null
+  const knownWhere: Where | null =
+    known?.country || known?.region ? { country: known.country ?? home, region: known.region ?? '', place: known.place ?? '' } : null
   const shownWhere = liveWhere ?? knownWhere ?? nowhere(home)
-  const whereSummary = [shownWhere.place, shownWhere.region, shownWhere.country !== home ? shownWhere.country : ''].filter(Boolean).join(', ')
+  const whereSummary = [shownWhere.place, shownWhere.region, shownWhere.country !== home ? shownWhere.country : '']
+    .filter(Boolean)
+    .join(', ')
   const suggestions =
-    typed && !known
-      ? buyers.filter((b) => b.handle?.includes(typed) || b.name?.toLowerCase().includes(typed)).slice(0, 5)
-      : []
+    typed && !known ? buyers.filter((b) => b.handle?.includes(typed) || b.name?.toLowerCase().includes(typed)).slice(0, 5) : []
 
   // For the total on screen only. Rails works out the real fee on save.
   const deliveryFee = !inLive && delivery.delivery_method === 'delivery' ? toPesewas(delivery.fee) : 0
@@ -106,13 +124,25 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   // A sold-out size tapped: put this buyer on its waiting list, so she can
   // tell them when it's back (WaitingListController#create).
   function waitlist(variant: SellableVariant, product: SellableProduct) {
-    const who = inLive ? (typed ? { buyer: { handle: typed, name: '', phone: '' } } : null) : choice ? ('id' in choice.buyer ? { customer_id: choice.buyer.id } : { buyer: choice.buyer }) : null
+    const who = inLive
+      ? typed
+        ? { buyer: { handle: typed, name: '', phone: '' } }
+        : null
+      : choice
+        ? 'id' in choice.buyer
+          ? { customer_id: choice.buyer.id }
+          : { buyer: choice.buyer }
+        : null
     if (!who) {
       setWaitHint(`Say who is asking first, then tap ${product.name}, ${variant.name} again to add them to the waiting list.`)
       return
     }
     setWaitHint(null)
-    router.post('/admin/waiting', { variant_id: variant.id, source: inLive ? 'live' : 'sale', ...who }, { preserveScroll: true, preserveState: true })
+    router.post(
+      '/admin/waiting',
+      { variant_id: variant.id, source: inLive ? 'live' : 'sale', ...who },
+      { preserveScroll: true, preserveState: true },
+    )
   }
 
   function claim() {
@@ -183,9 +213,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
               Who is claiming?
             </label>
             <div className="relative mt-1.5">
-              <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-lg text-taupe-600">
-                @
-              </span>
+              <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-lg text-taupe-600">@</span>
               <input
                 ref={buyerInput}
                 id="buyer"
@@ -207,9 +235,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
               </p>
             ) : (
               typed &&
-              suggestions.length === 0 && (
-                <p className="mt-1.5 text-sm text-taupe-700">New buyer. They will be saved with this claim.</p>
-              )
+              suggestions.length === 0 && <p className="mt-1.5 text-sm text-taupe-700">New buyer. They will be saved with this claim.</p>
             )}
             {suggestions.length > 0 && (
               <ul className="mt-2 flex flex-wrap gap-2">
@@ -311,9 +337,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           Phone: the lines sit here, between the buyer and the products
           (hidden until something is picked), and the total with the Claim
           button floats just above the bottom bar (see the end of this file). */}
-      <aside
-        className={`lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 ${lines.length === 0 ? 'hidden lg:block' : ''}`}
-      >
+      <aside className={`lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 ${lines.length === 0 ? 'hidden lg:block' : ''}`}>
         <div className="rounded-lg border border-taupe-200 bg-white">
           <h2 className="border-b border-taupe-200 px-5 py-3.5 font-display text-2xl font-semibold text-wine-800">
             {inLive ? 'This claim' : 'This sale'}
@@ -322,23 +346,34 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
             <p className="px-5 py-5 text-taupe-700">Nothing picked yet. Tap a product to add it.</p>
           ) : (
             <ul className="divide-y divide-taupe-200">
-              {lines.map((line) => (
-                <li key={line.variant.id} className="flex items-center gap-3 px-5 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{line.product.name}</p>
-                    <p className="text-sm text-taupe-700 tabular-nums">
-                      {line.variant.option_values.length > 0 && `${line.variant.name}, `}
-                      {formatMoney(line.variant.price_pesewas)}
-                    </p>
-                  </div>
-                  <QuantityStepper
-                    label={`${line.product.name} ${line.variant.name}`}
-                    value={String(line.quantity)}
-                    max={line.variant.stock}
-                    onChange={(value) => setQuantity(line.variant, Number.parseInt(value, 10) || 0)}
-                  />
-                </li>
-              ))}
+              {priced.map((line) => {
+                const nudge = bulkNudge(line.product.bulk, pieces.get(line.product.id) ?? 0, bulkBuyer)
+                return (
+                  <li key={line.variant.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{line.product.name}</p>
+                      <p className="text-sm text-taupe-700 tabular-nums">
+                        {line.variant.option_values.length > 0 && `${line.variant.name}, `}
+                        {line.unit < line.variant.price_pesewas ? (
+                          <>
+                            <span className="line-through">{formatMoney(line.variant.price_pesewas)}</span>{' '}
+                            <span className="font-medium text-emerald-800">{formatMoney(line.unit)} bulk</span>
+                          </>
+                        ) : (
+                          formatMoney(line.variant.price_pesewas)
+                        )}
+                      </p>
+                      {nudge && <p className="text-sm text-emerald-800">{nudge}</p>}
+                    </div>
+                    <QuantityStepper
+                      label={`${line.product.name} ${line.variant.name}`}
+                      value={String(line.quantity)}
+                      max={line.variant.stock}
+                      onChange={(value) => setQuantity(line.variant, Number.parseInt(value, 10) || 0)}
+                    />
+                  </li>
+                )
+              })}
             </ul>
           )}
 

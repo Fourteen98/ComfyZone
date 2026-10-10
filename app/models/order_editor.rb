@@ -102,6 +102,8 @@ class OrderEditor
         item.save!
       end
 
+      # More (or fewer) pieces may switch the bulk price on (or off).
+      BulkPricing.apply!(order)
       order.resettle!
     end
 

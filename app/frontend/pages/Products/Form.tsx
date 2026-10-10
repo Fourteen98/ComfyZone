@@ -23,6 +23,9 @@ type Props = {
     name: string
     description: string
     price: string
+    bulk_price: string
+    bulk_min_quantity: string
+    bulk_on_shop: boolean
     category_id: number | null
     low_stock_at: number
     listed: boolean
@@ -42,6 +45,9 @@ export default function ProductForm({ product, presets, categories }: Props) {
     name: product?.name ?? '',
     description: product?.description ?? '',
     price: product?.price ?? '',
+    bulk_price: product?.bulk_price ?? '',
+    bulk_min_quantity: product?.bulk_min_quantity ?? '',
+    bulk_on_shop: product?.bulk_on_shop ?? false,
     category_id: product?.category_id ? String(product.category_id) : '',
     low_stock_at: String(product?.low_stock_at ?? 2),
     // Off for a new product: nothing goes public until she says so.
@@ -73,6 +79,9 @@ export default function ProductForm({ product, presets, categories }: Props) {
         name: data.name,
         description: data.description,
         price: data.price,
+        bulk_price: data.bulk_price,
+        bulk_min_quantity: data.bulk_min_quantity,
+        bulk_on_shop: data.bulk_on_shop,
         category_id: data.category_id, // '' clears it
         low_stock_at: data.low_stock_at,
         listed: data.listed,
@@ -133,6 +142,49 @@ export default function ProductForm({ product, presets, categories }: Props) {
                   error={errors.category_id ?? errors.category}
                 />
               </div>
+              {/* Bulk: both boxes, or neither. See BulkPricing in Rails. */}
+              <fieldset className="rounded-lg bg-taupe-100 p-4">
+                <legend className="sr-only">Bulk price</legend>
+                <p className="font-medium">Bulk price (optional)</p>
+                <p className="mt-0.5 text-sm text-taupe-700">
+                  Cheaper when someone buys many. Any size or colour counts towards it, and customers you mark as bulk buyers always get it.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-4">
+                  <MoneyField
+                    id="bulk_price"
+                    label="Bulk price, each"
+                    placeholder="0.00"
+                    value={form.data.bulk_price}
+                    onChange={(e) => {
+                      form.setData('bulk_price', e.target.value)
+                      form.clearErrors('bulk_price' as never)
+                    }}
+                    error={errors.bulk_price}
+                  />
+                  <TextField
+                    id="bulk_min_quantity"
+                    label="From how many pieces"
+                    inputMode="numeric"
+                    placeholder="e.g. 6"
+                    value={form.data.bulk_min_quantity}
+                    onChange={(e) => {
+                      form.setData('bulk_min_quantity', e.target.value.replace(/\D/g, '').slice(0, 5))
+                      form.clearErrors('bulk_min_quantity' as never)
+                    }}
+                    error={errors.bulk_min_quantity}
+                  />
+                </div>
+                {form.data.bulk_price.trim() !== '' && (
+                  <div className="mt-4">
+                    <Checkbox
+                      label="Offer the bulk price on the website too"
+                      description="Shoppers see it on the product page, and get it when their bag has enough. Off: only you give it."
+                      checked={form.data.bulk_on_shop}
+                      onChange={(e) => form.setData('bulk_on_shop', e.target.checked)}
+                    />
+                  </div>
+                )}
+              </fieldset>
               <div className="max-w-xs">
                 <TextField
                   id="low_stock_at"
@@ -169,8 +221,8 @@ export default function ProductForm({ product, presets, categories }: Props) {
 
           <Panel title="Sizes, colours and other options">
             <p className="mb-4 text-taupe-700">
-              Does it come in different sizes, colours or lengths? Add each one as an option. If it is a single item
-              with no choices, skip this.
+              Does it come in different sizes, colours or lengths? Add each one as an option. If it is a single item with no choices, skip
+              this.
             </p>
             <ProductOptionsEditor
               options={form.data.options}
@@ -204,9 +256,7 @@ export default function ProductForm({ product, presets, categories }: Props) {
                     </li>
                   ))}
                 </ul>
-                {names.length > PREVIEW_LIMIT && (
-                  <p className="mt-2 text-sm text-taupe-700">and {names.length - PREVIEW_LIMIT} more</p>
-                )}
+                {names.length > PREVIEW_LIMIT && <p className="mt-2 text-sm text-taupe-700">and {names.length - PREVIEW_LIMIT} more</p>}
                 {editing && (
                   <p className="mt-4 border-t border-taupe-200 pt-3 text-sm text-taupe-700">
                     Variants you keep hold on to their prices. Ones you untick are removed.

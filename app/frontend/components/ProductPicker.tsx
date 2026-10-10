@@ -12,7 +12,14 @@ export type SellableVariant = {
   stock: number
   price_pesewas: number
 }
-export type SellableProduct = { id: number; name: string; thumb_url: string | null; variants: SellableVariant[] }
+export type SellableProduct = {
+  id: number
+  name: string
+  thumb_url: string | null
+  variants: SellableVariant[]
+  /** Its bulk price, if it has one (see lib/bulk.ts). */
+  bulk?: { price_pesewas: number; from: number } | null
+}
 
 type Props = {
   /** The question above the search box: "What are they buying?" */
@@ -119,6 +126,11 @@ export default function ProductPicker({ label, products, basket, onAdd, onWaitli
                       {Math.max(...prices) === from ? formatMoney(from) : `from ${formatMoney(from)}`}
                       {stock === 0 ? ', none left' : `, ${stock} left`}
                     </span>
+                    {product.bulk && (
+                      <span className="block text-sm text-emerald-800 tabular-nums">
+                        Bulk {formatMoney(product.bulk.price_pesewas)} from {product.bulk.from}
+                      </span>
+                    )}
                   </span>
                   {inBasket > 0 && (
                     <span className="flex size-7 items-center justify-center rounded-full bg-wine-800 text-sm font-semibold text-taupe-50 tabular-nums">

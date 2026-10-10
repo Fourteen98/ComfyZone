@@ -4,6 +4,7 @@ import type { FormEvent } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import Alert from '@/components/ui/Alert'
 import Button, { ButtonLink } from '@/components/ui/Button'
+import Checkbox from '@/components/ui/Checkbox'
 import PageHeader from '@/components/ui/PageHeader'
 import BuyerPicker from '@/components/BuyerPicker'
 import type { Buyer } from '@/components/BuyerPicker'
@@ -16,7 +17,18 @@ import TextField from '@/components/ui/TextField'
 import PhoneField from '@/components/ui/PhoneField'
 
 type Props = {
-  customer: { id: number; handle: string; name: string; phone: string; location: string; note: string; country: string; region: string; place: string } | null
+  customer: {
+    id: number
+    handle: string
+    name: string
+    phone: string
+    location: string
+    note: string
+    bulk_buyer: boolean
+    country: string
+    region: string
+    place: string
+  } | null
   locations: Locations
   // Editing only: everyone else, and how many orders this customer has.
   others?: Buyer[]
@@ -46,6 +58,7 @@ export default function CustomerForm({ customer, locations, others = [] }: Props
     region: customer?.region ?? '',
     place: customer?.place ?? '',
     note: customer?.note ?? '',
+    bulk_buyer: customer?.bulk_buyer ?? false,
   })
   const errors = form.errors as Record<string, string[] | undefined>
 
@@ -63,13 +76,23 @@ export default function CustomerForm({ customer, locations, others = [] }: Props
   return (
     <AppLayout>
       <Head title={editing ? 'Edit customer' : 'Add a customer'} />
-      <PageHeader title={editing ? 'Edit customer' : 'Add a customer'} description="Fill in what you know. At least one of the first three." />
+      <PageHeader
+        title={editing ? 'Edit customer' : 'Add a customer'}
+        description="Fill in what you know. At least one of the first three."
+      />
 
       <form onSubmit={submit} className="mt-6 max-w-xl space-y-5">
         {errors.base && <Alert tone="error">{errors.base[0]}</Alert>}
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <TextField id="name" label="Name" maxLength={60} value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} error={errors.name} />
+          <TextField
+            id="name"
+            label="Name"
+            maxLength={60}
+            value={form.data.name}
+            onChange={(e) => form.setData('name', e.target.value)}
+            error={errors.name}
+          />
           {/* The number is how a customer is recognised: one number, one customer. */}
           <PhoneField
             id="phone"
@@ -92,7 +115,12 @@ export default function CustomerForm({ customer, locations, others = [] }: Props
           onChange={(e) => form.setData('handle', e.target.value)}
           error={errors.handle}
         />
-        <LocationFields value={form.data} locations={locations} onChange={(where) => form.setData({ ...form.data, ...where })} errors={errors} />
+        <LocationFields
+          value={form.data}
+          locations={locations}
+          onChange={(where) => form.setData({ ...form.data, ...where })}
+          errors={errors}
+        />
         <TextField
           id="location"
           label="Address or landmark"
@@ -102,7 +130,20 @@ export default function CustomerForm({ customer, locations, others = [] }: Props
           onChange={(e) => form.setData('location', e.target.value)}
           error={errors.location}
         />
-        <TextAreaField id="note" label="Notes (optional)" maxLength={500} value={form.data.note} onChange={(e) => form.setData('note', e.target.value)} error={errors.note} />
+        <TextAreaField
+          id="note"
+          label="Notes (optional)"
+          maxLength={500}
+          value={form.data.note}
+          onChange={(e) => form.setData('note', e.target.value)}
+          error={errors.note}
+        />
+        <Checkbox
+          label="Bulk buyer"
+          description="Always gets the bulk price on products that have one, however many they take. For resellers and regular wholesale customers."
+          checked={form.data.bulk_buyer}
+          onChange={(e) => form.setData('bulk_buyer', e.target.checked)}
+        />
 
         <div className="flex flex-wrap gap-3 pt-2">
           <Button type="submit" disabled={form.processing}>
@@ -119,8 +160,7 @@ export default function CustomerForm({ customer, locations, others = [] }: Props
         <div className="mt-10 max-w-xl">
           <Panel title="Entered twice?">
             <p className="mb-4 text-taupe-700">
-              If this person is also in your customers under another name, find the other one here and merge them into
-              this one.
+              If this person is also in your customers under another name, find the other one here and merge them into this one.
             </p>
             <BuyerPicker
               buyers={others}

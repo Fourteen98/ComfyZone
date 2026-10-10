@@ -41,6 +41,8 @@ class Shop::ProductsController < Shop::BaseController
             thumb_url: rails_representation_path(photo.image.variant(:thumb)) }
         },
         options: product.options.map { |option| { name: option.name, values: option.values } },
+        # "Buy 6 or more: GH₵ 100 each". Only if she offers it on the website.
+        bulk: product.bulk? && product.bulk_on_shop? ? { price_pesewas: product.bulk_price_pesewas, from: product.bulk_min_quantity } : nil,
         variants: product.variants.map { |variant|
           {
             id: variant.id,

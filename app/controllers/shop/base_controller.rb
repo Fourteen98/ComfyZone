@@ -38,6 +38,8 @@ class Shop::BaseController < InertiaController
         available: [ line.available, Cart::MAX_EACH ].min, # the stepper's ceiling, not her real count
         short: line.short?,
         unit_price_pesewas: line.unit_price_pesewas,
+        # Set when the bulk price is on: the normal price, to show crossed out.
+        was_pesewas: line.unit_price_pesewas < line.normal_price_pesewas ? line.normal_price_pesewas : nil,
         total_pesewas: line.total_pesewas
       }
     end

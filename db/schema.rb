@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_10_110001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_10_130001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -64,6 +64,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_110001) do
     t.bigint "delivery_area_id"
     t.string "region"
     t.string "country"
+    t.boolean "bulk_buyer", default: false, null: false
     t.index ["country"], name: "index_customers_on_country"
     t.index ["delivery_area_id"], name: "index_customers_on_delivery_area_id"
     t.index ["handle"], name: "index_customers_on_handle", unique: true, where: "(handle IS NOT NULL)"
@@ -151,6 +152,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_110001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "returned_quantity", default: 0, null: false
+    t.boolean "bulk", default: false, null: false
     t.index ["order_id", "variant_id"], name: "index_order_items_on_order_id_and_variant_id", unique: true
     t.index ["order_id"], name: "index_order_items_on_order_id"
     t.index ["variant_id"], name: "index_order_items_on_variant_id"
@@ -272,10 +274,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_110001) do
     t.bigint "category_id"
     t.integer "low_stock_at", default: 2, null: false
     t.boolean "listed", default: false, null: false
+    t.integer "bulk_price_pesewas"
+    t.integer "bulk_min_quantity"
+    t.boolean "bulk_on_shop", default: false, null: false
     t.index "lower((name)::text)", name: "index_products_on_lower_name", unique: true
     t.index ["category_id"], name: "index_products_on_category_id"
     t.index ["listed"], name: "index_products_on_listed", where: "listed"
     t.index ["status"], name: "index_products_on_status"
+    t.check_constraint "bulk_price_pesewas IS NULL AND bulk_min_quantity IS NULL OR bulk_price_pesewas > 0 AND bulk_min_quantity >= 2", name: "products_bulk_price_complete"
     t.check_constraint "low_stock_at >= 0", name: "products_low_stock_at_not_negative"
   end
 
