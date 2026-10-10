@@ -58,7 +58,7 @@ export function moneyNote(order: OrderSummary): { tone: 'warning' | 'danger' | '
     return { tone: 'warning', label: `Owes ${formatMoney(order.balance_pesewas)}` }
   }
   if (order.paid_pesewas > 0) {
-    return { tone: 'neutral', label: `${formatMoney(order.paid_pesewas)} paid so far` }
+    return { tone: 'neutral', label: `Part paid, ${formatMoney(order.balance_pesewas)} left` }
   }
   return null
 }

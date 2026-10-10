@@ -99,7 +99,9 @@ class OrdersController < InertiaController
   # GET /orders/new   a sale made outside a live (WhatsApp, a walk-in)
   def new
     render inertia: "Orders/New", props: {
-      products: sellable_products, buyers: known_buyers, channels: sales_channels, locations: location_options
+      products: sellable_products, buyers: known_buyers, channels: sales_channels, locations: location_options,
+      # "Did they pay?" on the form: only for people who may take payments.
+      ways_to_pay: can?("orders.fulfil") ? PaymentMethod.options : nil
     }
   end
 
@@ -129,7 +131,13 @@ class OrdersController < InertiaController
     if taker.save
       order = taker.order
       notice = "#{order.customer.display_name}: #{order.units} #{'item'.pluralize(order.units)} claimed."
-      redirect_to (live ? back : order_path(order)), notice: notice
+      problem = take_payment_now(order) unless live
+      if problem
+        redirect_to order_path(order), alert: "The sale is recorded, but not the payment: #{problem} Record it below."
+      else
+        notice += " #{money_words(order)}" if order.paid_pesewas.positive?
+        redirect_to (live ? back : order_path(order)), notice: notice
+      end
     else
       redirect_to back, inertia: { errors: taker.errors }
     end
@@ -235,6 +243,29 @@ class OrdersController < InertiaController
 
       given = given.permit(:delivery_method, :fee, :address)
       { delivery_method: given[:delivery_method], fee: given[:fee], address: given[:address], area: customer.delivery_area }
+    end
+
+    # Money taken with the sale (a deposit, or everything), if she said.
+    #   payment: { amount: "all" | "200", via: "momo", reference: "..." }
+    # "all" means whatever the order came to once saved: bulk prices and
+    # the delivery fee are only certain then. Returns a problem, or nil.
+    def take_payment_now(order)
+      given = params.dig(:order, :payment)
+      return unless given.is_a?(ActionController::Parameters) && can?("orders.fulfil")
+
+      given = given.permit(:amount, :via, :reference)
+      return if given[:amount].blank?
+
+      amount = given[:amount] == "all" ? Pesewas.to_input(order.balance_pesewas) : given[:amount]
+      order.record_payment!(amount: amount, via: given[:via], reference: given[:reference].presence, by: Current.user)
+      nil
+    rescue ActiveRecord::RecordInvalid => error
+      error.record.errors.full_messages.to_sentence + "."
+    end
+
+    def money_words(order)
+      left = order.reload.balance_pesewas
+      "GH₵ #{Pesewas.to_input(order.paid_pesewas)} paid" + (left.positive? ? ", GH₵ #{Pesewas.to_input(left)} still to pay." : ", paid in full.")
     end
 
     def line_params

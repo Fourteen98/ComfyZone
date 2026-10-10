@@ -52,6 +52,7 @@ export default function OrderPaymentForm({ orderId, kind, suggestedPesewas, ways
           form.setData('amount', e.target.value)
           form.clearErrors('amount')
         }}
+        hint={refund ? undefined : 'Paying part? Change the amount to what they gave. The rest stays owed, and you can record more later.'}
         error={errors.amount}
       />
 
