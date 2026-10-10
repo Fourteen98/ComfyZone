@@ -1,5 +1,7 @@
 class Supplier < ApplicationRecord
   has_many :purchases, dependent: :nullify
+  # Supplies bought from them (bags, stickers, tape): expenses, not stock.
+  has_many :expenses, dependent: :nullify
 
   include Located # country, region, exact place; locate(...), where_text
 

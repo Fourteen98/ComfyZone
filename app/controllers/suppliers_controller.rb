@@ -83,7 +83,17 @@ class SuppliersController < InertiaController
             units: purchase.units,
             total_pesewas: purchase.total_pesewas
           }
-        }
+        },
+        # Supplies bought from them (bags, stickers, tape). These are
+        # expenses, so only for people who may see expenses.
+        supplies: can?("expenses.view") ? {
+          count: @supplier.expenses.count,
+          spent_pesewas: @supplier.expenses.sum(:amount_pesewas),
+          latest: @supplier.expenses.newest_first.includes(:items).limit(10).map { |expense|
+            { id: expense.id, spent_on: expense.spent_on.strftime("%-d %b %Y"), category: expense.category,
+              items: expense.items.map { |item| "#{item.quantity} × #{item.name}" }, amount_pesewas: expense.amount_pesewas }
+          }
+        } : nil
       }
     }
   end

@@ -16,6 +16,9 @@ type Expense = {
   note: string | null
   paid_via: string | null
   by: string
+  supplier: { id: number; name: string; phone: string | null } | null
+  items: string[] // "500 × Polymer bags"
+  delivery_fee_pesewas: number
 }
 
 // Props from ExpensesController#index
@@ -25,10 +28,12 @@ type Props = {
   total_pesewas: number
   by_category: { name: string; amount_pesewas: number }[]
   expenses: Expense[]
+  // Set when looking at one supplier's expenses (?supplier_id=4).
+  supplier: { id: number; name: string } | null
   can_manage: boolean
 }
 
-export default function ExpensesIndex({ period, presets, total_pesewas, by_category, expenses, can_manage }: Props) {
+export default function ExpensesIndex({ period, presets, total_pesewas, by_category, expenses, supplier, can_manage }: Props) {
   const tab = (on: boolean) =>
     `flex min-h-11 shrink-0 items-center rounded-full border px-4 font-medium ${
       on ? 'border-wine-800 bg-wine-800 text-taupe-50' : 'border-taupe-300 bg-white hover:border-wine-700'
@@ -56,7 +61,7 @@ export default function ExpensesIndex({ period, presets, total_pesewas, by_categ
           <Link
             key={preset.key}
             href="/admin/expenses"
-            data={{ range: preset.key }}
+            data={supplier ? { range: preset.key, supplier_id: supplier.id } : { range: preset.key }}
             aria-current={period.key === preset.key ? 'page' : undefined}
             className={tab(period.key === preset.key)}
           >
@@ -64,6 +69,20 @@ export default function ExpensesIndex({ period, presets, total_pesewas, by_categ
           </Link>
         ))}
       </nav>
+
+      {supplier && (
+        <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-taupe-100 px-4 py-3">
+          <span>
+            Only what you bought from{' '}
+            <Link href={`/admin/suppliers/${supplier.id}`} className="font-medium text-wine-800 underline">
+              {supplier.name}
+            </Link>
+          </span>
+          <Link href="/admin/expenses" data={{ range: period.key }} className="text-sm font-medium text-wine-800 hover:underline">
+            Show everything
+          </Link>
+        </p>
+      )}
 
       <div className="mt-6 grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
         <div className="space-y-6">
@@ -94,7 +113,16 @@ export default function ExpensesIndex({ period, presets, total_pesewas, by_categ
                 const body = (
                   <>
                     <span className="min-w-0 flex-1">
-                      <span className="block font-medium">{expense.category}</span>
+                      <span className="block font-medium">
+                        {expense.category}
+                        {expense.supplier && <span className="font-normal text-taupe-700">, from {expense.supplier.name}</span>}
+                      </span>
+                      {expense.items.length > 0 && (
+                        <span className="block text-sm text-taupe-800">
+                          {expense.items.join(', ')}
+                          {expense.delivery_fee_pesewas > 0 && `, + ${formatMoney(expense.delivery_fee_pesewas)} delivery`}
+                        </span>
+                      )}
                       <span className="block text-sm text-taupe-600">
                         {expense.spent_on}
                         {expense.paid_via && `, ${expense.paid_via.toLowerCase()}`}

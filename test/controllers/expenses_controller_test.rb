@@ -85,4 +85,52 @@ class ExpensesControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal [ 5_000, -5_000 ], [ dashboard_tile(:expenses_month), dashboard_tile(:net_profit_month) ]
   end
+
+  test "records supplies item by item from a new supplier, saved with their phone" do
+    sign_in_as(users(:one))
+
+    assert_difference -> { Supplier.count } => 1, -> { ExpenseItem.count } => 2 do
+      post expenses_path, params: { expense: {
+        spent_on: Date.current.iso8601, category: "Packaging", amount: "", delivery_fee: "15",
+        lines: [ { name: "Polymer bags", quantity: "500", unit_cost: "0.20" }, { name: "Delivery stickers", quantity: "1000", unit_cost: "0.05" } ],
+        new_supplier: { name: "Auntie Ama Packaging", phone: "024 123 4567" }
+      } }
+    end
+    assert_equal "Recorded GH₵ 165 for Packaging.", flash[:notice]
+    assert_equal "+233241234567", Supplier.find_by!(name: "Auntie Ama Packaging").phone
+
+    get expenses_path
+    row = inertia.props[:expenses].first
+    assert_equal [ "500 × Polymer bags", "1000 × Delivery stickers" ], row[:items]
+    assert_equal [ "Auntie Ama Packaging", 1_500 ], [ row[:supplier][:name], row[:delivery_fee_pesewas] ]
+
+    get new_expense_path
+    assert_equal [ "Delivery stickers", "Polymer bags" ], inertia.props[:past_items].map { |item| item[:name] }.sort
+  end
+
+  test "a new supplier with a bad phone stops the whole expense" do
+    sign_in_as(users(:one))
+
+    assert_no_difference -> { Expense.count } do
+      post expenses_path, params: { expense: {
+        spent_on: Date.current.iso8601, category: "Packaging",
+        lines: [ { name: "Tape", quantity: "2", unit_cost: "10" } ],
+        new_supplier: { name: "Somebody", phone: "12" }
+      } }
+    end
+    follow_redirect!
+    assert inertia.props[:errors].key?(:new_supplier_phone)
+    assert_not inertia.props[:errors].key?(:supplier)
+  end
+
+  test "lists only one supplier's expenses, over the last two years" do
+    sign_in_as(users(:one))
+    supplier = suppliers(:kumasi)
+    Expense.create!(user: users(:one), spent_on: Date.current - 100, category: "Packaging", supplier: supplier, lines: [ { name: "Tape", quantity: "2", unit_cost: "10" } ])
+    Expense.create!(user: users(:one), spent_on: Date.current, category: "Data", amount: "50")
+
+    get expenses_path(supplier_id: supplier.id)
+    assert_equal [ 2_000 ], inertia.props[:expenses].map { |row| row[:amount_pesewas] }
+    assert_equal supplier.name, inertia.props[:supplier][:name]
+  end
 end

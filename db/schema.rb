@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_10_090003) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_10_110001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -84,6 +84,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_090003) do
     t.check_constraint "fee_pesewas >= 0", name: "delivery_areas_fee_not_negative"
   end
 
+  create_table "expense_items", force: :cascade do |t|
+    t.bigint "expense_id", null: false
+    t.string "name", null: false
+    t.integer "quantity", null: false
+    t.integer "unit_cost_pesewas", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((name)::text)", name: "index_expense_items_on_lower_name"
+    t.index ["expense_id"], name: "index_expense_items_on_expense_id"
+    t.check_constraint "quantity > 0", name: "expense_items_quantity_positive"
+    t.check_constraint "unit_cost_pesewas >= 0", name: "expense_items_unit_cost_not_negative"
+  end
+
   create_table "expenses", force: :cascade do |t|
     t.date "spent_on", null: false
     t.string "category", null: false
@@ -94,10 +107,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_090003) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "live_session_id"
+    t.bigint "supplier_id"
+    t.integer "delivery_fee_pesewas", default: 0, null: false
     t.index ["live_session_id"], name: "index_expenses_on_live_session_id"
     t.index ["spent_on"], name: "index_expenses_on_spent_on"
+    t.index ["supplier_id"], name: "index_expenses_on_supplier_id"
     t.index ["user_id"], name: "index_expenses_on_user_id"
     t.check_constraint "amount_pesewas > 0", name: "expenses_amount_positive"
+    t.check_constraint "delivery_fee_pesewas >= 0", name: "expenses_delivery_fee_not_negative"
   end
 
   create_table "live_sessions", force: :cascade do |t|
@@ -171,9 +188,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_090003) do
     t.index ["status"], name: "index_orders_on_status"
     t.index ["user_id"], name: "index_orders_on_user_id"
     t.check_constraint "delivery_fee_pesewas >= 0", name: "orders_delivery_fee_not_negative"
-    t.check_constraint "delivery_method::text = ANY (ARRAY['pickup'::character varying, 'delivery'::character varying]::text[])", name: "orders_delivery_method_known"
+    t.check_constraint "delivery_method::text = ANY (ARRAY['pickup'::character varying::text, 'delivery'::character varying::text])", name: "orders_delivery_method_known"
     t.check_constraint "paid_pesewas >= 0", name: "orders_paid_not_negative"
-    t.check_constraint "status::text = ANY (ARRAY['claimed'::character varying, 'paid'::character varying, 'packed'::character varying, 'delivered'::character varying, 'cancelled'::character varying, 'returned'::character varying]::text[])", name: "orders_status_known"
+    t.check_constraint "status::text = ANY (ARRAY['claimed'::character varying::text, 'paid'::character varying::text, 'packed'::character varying::text, 'delivered'::character varying::text, 'cancelled'::character varying::text, 'returned'::character varying::text])", name: "orders_status_known"
   end
 
   create_table "passkeys", force: :cascade do |t|
@@ -297,7 +314,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_090003) do
     t.index ["supplier_id"], name: "index_purchases_on_supplier_id"
     t.index ["user_id"], name: "index_purchases_on_user_id"
     t.check_constraint "currency::text = 'GHS'::text AND exchange_rate IS NULL OR currency::text <> 'GHS'::text AND exchange_rate > 0::numeric", name: "purchases_rate_matches_currency"
-    t.check_constraint "delivery_method::text = ANY (ARRAY['pickup'::character varying, 'delivery'::character varying]::text[])", name: "purchases_delivery_method_known"
+    t.check_constraint "delivery_method::text = ANY (ARRAY['pickup'::character varying::text, 'delivery'::character varying::text])", name: "purchases_delivery_method_known"
   end
 
   create_table "push_subscriptions", force: :cascade do |t|
@@ -335,7 +352,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_090003) do
     t.string "system_key"
     t.index "lower((name)::text)", name: "index_sales_channels_on_lower_name", unique: true
     t.index ["system_key"], name: "index_sales_channels_on_system_key", unique: true
-    t.check_constraint "kind::text = ANY (ARRAY['social'::character varying, 'direct'::character varying]::text[])", name: "sales_channels_kind_known"
+    t.check_constraint "kind::text = ANY (ARRAY['social'::character varying::text, 'direct'::character varying::text])", name: "sales_channels_kind_known"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -381,7 +398,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_090003) do
     t.index ["user_id"], name: "index_stock_requests_on_user_id"
     t.index ["variant_id"], name: "index_stock_requests_on_variant_id"
     t.check_constraint "quantity > 0", name: "stock_requests_quantity_positive"
-    t.check_constraint "source::text = ANY (ARRAY['live'::character varying, 'sale'::character varying, 'shop'::character varying, 'manual'::character varying]::text[])", name: "stock_requests_source_known"
+    t.check_constraint "source::text = ANY (ARRAY['live'::character varying::text, 'sale'::character varying::text, 'shop'::character varying::text, 'manual'::character varying::text])", name: "stock_requests_source_known"
   end
 
   create_table "suppliers", force: :cascade do |t|
@@ -434,7 +451,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_10_090003) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "customers", "delivery_areas", on_delete: :nullify
+  add_foreign_key "expense_items", "expenses", on_delete: :cascade
   add_foreign_key "expenses", "live_sessions", on_delete: :nullify
+  add_foreign_key "expenses", "suppliers"
   add_foreign_key "expenses", "users"
   add_foreign_key "live_sessions", "sales_channels", on_delete: :nullify
   add_foreign_key "live_sessions", "users"
