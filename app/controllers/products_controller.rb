@@ -97,7 +97,10 @@ class ProductsController < InertiaController
     end
 
     def product_params
-      params.expect(product: [ :name, :description, :price, :category_id, :low_stock_at, :listed ])
+      permitted = params.expect(product: [ :name, :description, :price, :category_id, :low_stock_at, :listed, :bulk_price, :bulk_min_quantity, :bulk_on_shop ])
+      # Empty boxes mean "no bulk price" (nil), not zero.
+      permitted[:bulk_min_quantity] = permitted[:bulk_min_quantity].presence if permitted.key?(:bulk_min_quantity)
+      permitted
     end
 
     # Options arrive as a list of { name, values: [{ label, swatch }] }.
@@ -143,6 +146,7 @@ class ProductsController < InertiaController
         shop_path: shop_product_path(product.shop_param),
         category: product.category&.name,
         price_pesewas: product.price_pesewas,
+        bulk: product.bulk? ? { price_pesewas: product.bulk_price_pesewas, from: product.bulk_min_quantity, on_shop: product.bulk_on_shop } : nil,
         options: product.options.map { |option| { name: option.name, values: option.values } },
         # Who she buys it from. nil (not sent) for people who can't see purchases.
         suppliers: can?("purchases.view") ? product.suppliers.ordered.map { |supplier|
@@ -180,6 +184,9 @@ class ProductsController < InertiaController
         name: product.name,
         description: product.description.to_s,
         price: product.price,
+        bulk_price: product.bulk_price.to_s,
+        bulk_min_quantity: product.bulk_min_quantity.to_s,
+        bulk_on_shop: product.bulk_on_shop,
         category_id: product.category_id,
         low_stock_at: product.low_stock_at,
         listed: product.listed,

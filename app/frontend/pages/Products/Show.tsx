@@ -39,6 +39,7 @@ type Props = {
     shop_path: string
     category: string | null
     price_pesewas: number
+    bulk: { price_pesewas: number; from: number; on_shop: boolean } | null
     options: { name: string; values: OptionValue[] }[]
     suppliers: { id: number; name: string; phone: string | null }[] | null // null = may not see purchases
     photos: Photo[]
@@ -69,7 +70,8 @@ export default function ProductShow({ product }: Props) {
   }
 
   async function archive() {
-    if (!(await confirmAction(`Archive ${product.name}? It leaves your product list but keeps its history.`, { confirm: 'Archive' }))) return
+    if (!(await confirmAction(`Archive ${product.name}? It leaves your product list but keeps its history.`, { confirm: 'Archive' })))
+      return
     router.patch(`/admin/products/${product.id}/archive`)
   }
 
@@ -139,10 +141,17 @@ export default function ProductShow({ product }: Props) {
             {product.category && <Badge>{product.category}</Badge>}
             <p>
               <span className="text-taupe-700">Selling price </span>
-              <span className="text-2xl font-semibold text-wine-800 tabular-nums">
-                {formatMoney(product.price_pesewas)}
-              </span>
+              <span className="text-2xl font-semibold text-wine-800 tabular-nums">{formatMoney(product.price_pesewas)}</span>
             </p>
+            {product.bulk && (
+              <p>
+                <span className="text-taupe-700">Bulk, from {product.bulk.from} pieces </span>
+                <span className="text-xl font-semibold text-emerald-800 tabular-nums">{formatMoney(product.bulk.price_pesewas)}</span>
+                <span className="text-sm text-taupe-600">
+                  {product.bulk.on_shop ? ' (also on the website)' : ' (not shown on the website)'}
+                </span>
+              </p>
+            )}
           </div>
           <div className="mt-3 space-y-2">
             {product.options.map((option) => (
@@ -177,76 +186,74 @@ export default function ProductShow({ product }: Props) {
           )}
 
           <form onSubmit={savePrices} className="mt-6">
-        <Panel
-          title={product.variants.length === 1 ? 'What you sell' : `${product.variants.length} variants`}
-          action={
-            manage &&
-            !archived && (
-              <Button type="submit" className="min-h-10! px-4!" disabled={form.processing || !form.isDirty}>
-                Save prices
-              </Button>
-            )
-          }
-        >
-          {manage && !archived && product.variants.length > 1 && (
-            <p className="mb-3 text-sm text-taupe-700">
-              Leave a price empty to use the selling price above. Type one to charge differently for that variant.
-            </p>
-          )}
+            <Panel
+              title={product.variants.length === 1 ? 'What you sell' : `${product.variants.length} variants`}
+              action={
+                manage &&
+                !archived && (
+                  <Button type="submit" className="min-h-10! px-4!" disabled={form.processing || !form.isDirty}>
+                    Save prices
+                  </Button>
+                )
+              }
+            >
+              {manage && !archived && product.variants.length > 1 && (
+                <p className="mb-3 text-sm text-taupe-700">
+                  Leave a price empty to use the selling price above. Type one to charge differently for that variant.
+                </p>
+              )}
 
-          {/* Rows wrap on phones, so this stays readable without a wide table. */}
-          <ul className="-mx-5 divide-y divide-taupe-200 border-t border-taupe-200">
-            {product.variants.map((variant) => (
-              <li key={variant.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3">
-                <div className="min-w-40 flex-1">
-                  <p className="flex flex-wrap gap-1.5">
-                    {variant.option_values.length === 0 ? (
-                      <span className="font-medium">{product.name}</span>
+              {/* Rows wrap on phones, so this stays readable without a wide table. */}
+              <ul className="-mx-5 divide-y divide-taupe-200 border-t border-taupe-200">
+                {product.variants.map((variant) => (
+                  <li key={variant.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3">
+                    <div className="min-w-40 flex-1">
+                      <p className="flex flex-wrap gap-1.5">
+                        {variant.option_values.length === 0 ? (
+                          <span className="font-medium">{product.name}</span>
+                        ) : (
+                          variant.option_values.map((value) => <Chip key={value.name} label={value.label} swatch={value.swatch} />)
+                        )}
+                      </p>
+                      <p className="mt-1 text-sm text-taupe-600 tabular-nums">
+                        {variant.sku}
+                        {variant.average_cost_pesewas !== null && variant.average_cost_pesewas > 0 && (
+                          <span>, costs you {formatMoney(variant.average_cost_pesewas)}</span>
+                        )}
+                      </p>
+                    </div>
+
+                    {variant.stock !== null && (
+                      // Links to the item's stock history, where the count can be corrected.
+                      <Link
+                        href={`/admin/stock/${variant.id}`}
+                        className="flex w-32 items-center justify-end gap-2 rounded-md py-1 tabular-nums hover:underline"
+                      >
+                        <StockLevelBadge level={variant.level} />
+                        <span>
+                          <span className="font-semibold">{variant.stock}</span> in stock
+                        </span>
+                      </Link>
+                    )}
+
+                    {manage && !archived ? (
+                      <div className="w-44">
+                        <MoneyField
+                          id={`price_${variant.id}`}
+                          aria-label={`Price for ${variant.name}`}
+                          placeholder={formatMoney(product.price_pesewas).replace('GH₵ ', '')}
+                          value={form.data.prices[variant.id] ?? ''}
+                          onChange={(e) => form.setData('prices', { ...form.data.prices, [variant.id]: e.target.value })}
+                          error={errors[`price_${variant.id}`]}
+                        />
+                      </div>
                     ) : (
-                      variant.option_values.map((value) => (
-                        <Chip key={value.name} label={value.label} swatch={value.swatch} />
-                      ))
+                      <p className="font-medium tabular-nums">{formatMoney(variant.selling_price_pesewas)}</p>
                     )}
-                  </p>
-                  <p className="mt-1 text-sm text-taupe-600 tabular-nums">
-                    {variant.sku}
-                    {variant.average_cost_pesewas !== null && variant.average_cost_pesewas > 0 && (
-                      <span>, costs you {formatMoney(variant.average_cost_pesewas)}</span>
-                    )}
-                  </p>
-                </div>
-
-                {variant.stock !== null && (
-                  // Links to the item's stock history, where the count can be corrected.
-                  <Link
-                    href={`/admin/stock/${variant.id}`}
-                    className="flex w-32 items-center justify-end gap-2 rounded-md py-1 tabular-nums hover:underline"
-                  >
-                    <StockLevelBadge level={variant.level} />
-                    <span>
-                      <span className="font-semibold">{variant.stock}</span> in stock
-                    </span>
-                  </Link>
-                )}
-
-                {manage && !archived ? (
-                  <div className="w-44">
-                    <MoneyField
-                      id={`price_${variant.id}`}
-                      aria-label={`Price for ${variant.name}`}
-                      placeholder={formatMoney(product.price_pesewas).replace('GH₵ ', '')}
-                      value={form.data.prices[variant.id] ?? ''}
-                      onChange={(e) => form.setData('prices', { ...form.data.prices, [variant.id]: e.target.value })}
-                      error={errors[`price_${variant.id}`]}
-                    />
-                  </div>
-                ) : (
-                  <p className="font-medium tabular-nums">{formatMoney(variant.selling_price_pesewas)}</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </Panel>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
           </form>
         </div>
       </div>

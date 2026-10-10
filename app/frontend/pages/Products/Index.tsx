@@ -43,11 +43,7 @@ export default function ProductsIndex({ products, filters, counts, categories }:
     if (query === filters.q) return
 
     const timer = setTimeout(() => {
-      router.get(
-        '/admin/products',
-        { ...params(filters.category), q: query || undefined },
-        { preserveState: true, replace: true },
-      )
+      router.get('/admin/products', { ...params(filters.category), q: query || undefined }, { preserveState: true, replace: true })
     }, 300)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -140,9 +136,7 @@ export default function ProductsIndex({ products, filters, counts, categories }:
                     preserveState
                     aria-current={on ? 'true' : undefined}
                     className={`inline-flex min-h-10 items-center gap-1.5 rounded-full border px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-700 ${
-                      on
-                        ? 'border-wine-800 bg-wine-800 text-taupe-50'
-                        : 'border-taupe-300 bg-white text-taupe-800 hover:border-wine-700'
+                      on ? 'border-wine-800 bg-wine-800 text-taupe-50' : 'border-taupe-300 bg-white text-taupe-800 hover:border-wine-700'
                     }`}
                   >
                     {category.name}
@@ -193,7 +187,9 @@ export default function ProductsIndex({ products, filters, counts, categories }:
                         {[product.category, product.listed ? 'On the shop' : null].filter(Boolean).join(' · ')}
                       </p>
                     )}
-                    <p className={`line-clamp-2 leading-snug font-medium group-hover:text-wine-800 ${product.category || product.listed ? '' : 'mt-2.5'}`}>
+                    <p
+                      className={`line-clamp-2 leading-snug font-medium group-hover:text-wine-800 ${product.category || product.listed ? '' : 'mt-2.5'}`}
+                    >
                       {product.name}
                     </p>
                     <p className="mt-0.5 font-semibold text-wine-800 tabular-nums">

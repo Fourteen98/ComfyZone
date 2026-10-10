@@ -67,6 +67,7 @@ class CustomersController < InertiaController
         phone: @customer.phone,
         where: [ @customer.where_text, @customer.location ].compact.join(", ").presence,
         note: @customer.note,
+        bulk_buyer: @customer.bulk_buyer,
         since: @customer.created_at.strftime("%-d %b %Y")
       },
       summary: insights.summary.merge(
@@ -107,7 +108,7 @@ class CustomersController < InertiaController
     render inertia: "Customers/Form", props: {
       customer: {
         id: @customer.id, handle: @customer.handle.to_s, name: @customer.name.to_s, phone: @customer.phone.to_s,
-        location: @customer.location.to_s, note: @customer.note.to_s,
+        location: @customer.location.to_s, note: @customer.note.to_s, bulk_buyer: @customer.bulk_buyer,
         **where_now(@customer)
       },
       locations: location_options,
@@ -166,7 +167,7 @@ class CustomersController < InertiaController
     end
 
     def customer_params
-      params.expect(customer: [ :handle, :name, :phone, :location, :note ])
+      params.expect(customer: [ :handle, :name, :phone, :location, :note, :bulk_buyer ])
     end
 
     # An edit form: whatever it sent replaces where they were, and an

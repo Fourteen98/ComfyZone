@@ -12,6 +12,8 @@ module SaleCapture
           id: product.id,
           name: product.name,
           thumb_url: product.photos.first && rails_representation_path(product.photos.first.image.variant(:thumb)),
+          # For the total on screen. Rails works out the real price on save (BulkPricing).
+          bulk: product.bulk? ? { price_pesewas: product.bulk_price_pesewas, from: product.bulk_min_quantity } : nil,
           variants: product.variants.map { |variant|
             {
               id: variant.id,
@@ -31,7 +33,7 @@ module SaleCapture
       Customer.includes(:delivery_area).order(updated_at: :desc).limit(500).map { |customer|
         { id: customer.id, handle: customer.handle, name: customer.name, phone: customer.phone,
           location: customer.location, country: customer.country, region: customer.region,
-          place: customer.delivery_area&.name }
+          place: customer.delivery_area&.name, bulk_buyer: customer.bulk_buyer }
       }
     end
 
@@ -54,7 +56,7 @@ module SaleCapture
         channel: order.sales_channel&.name, # "WhatsApp"; nil if not recorded
         items: order.items.sort_by(&:id).map { |item|
           { id: item.id, name: item.variant.full_name, quantity: item.quantity, returned: item.returned_quantity,
-            total_pesewas: item.total_pesewas }
+            total_pesewas: item.total_pesewas, bulk: item.bulk }
         }
       }
     end

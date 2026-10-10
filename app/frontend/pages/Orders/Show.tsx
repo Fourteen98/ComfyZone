@@ -405,6 +405,7 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
                     <span className="min-w-0 flex-1">
                       {item.quantity > 1 && <span className="font-semibold tabular-nums">{item.quantity} × </span>}
                       {item.name}
+                      {item.bulk && <span className="block text-sm text-emerald-800">Bulk price</span>}
                       {item.returned > 0 && (
                         <span className="block text-sm text-taupe-600">
                           {item.returned === item.quantity ? 'Returned' : `${item.returned} returned`}

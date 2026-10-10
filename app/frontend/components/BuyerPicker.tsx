@@ -14,6 +14,7 @@ export type Buyer = {
   country: string | null // where they usually are
   region: string | null
   place: string | null
+  bulk_buyer?: boolean // always gets the bulk price
 }
 
 // Who is buying, as sent to Rails (OrdersController#buyer):
@@ -119,9 +120,7 @@ export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false,
       <div className="flex items-center gap-3 rounded-lg border border-wine-800 bg-wine-50 px-4 py-3">
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{buyerLabel(picked)}</p>
-          <p className="truncate text-sm text-taupe-700">
-            {buyerDetails(picked) || 'Bought from you before'}
-          </p>
+          <p className="truncate text-sm text-taupe-700">{buyerDetails(picked) || 'Bought from you before'}</p>
         </div>
         <Button type="button" variant="secondary" onClick={startOver}>
           Change
@@ -196,7 +195,9 @@ export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false,
           onChange={(e) => update({ ...fresh, name: e.target.value })}
         />
         {!usernameFirst && username}
-        <p className="text-sm text-taupe-700">Fill in what you know. One is enough, but the phone number is what recognises them next time.</p>
+        <p className="text-sm text-taupe-700">
+          Fill in what you know. One is enough, but the phone number is what recognises them next time.
+        </p>
       </div>
     )
   }

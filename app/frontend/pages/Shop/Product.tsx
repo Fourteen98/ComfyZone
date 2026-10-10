@@ -28,6 +28,8 @@ type Props = {
     photos: { id: number; large_url: string; thumb_url: string }[]
     options: { name: string; values: OptionValue[] }[]
     variants: Variant[]
+    /** Offered on the website: "Buy 6 or more, any size or colour: GH₵ 100 each". */
+    bulk: { price_pesewas: number; from: number } | null
   }
   in_cart: Record<string, number> // variant id -> how many are already in the bag
 }
@@ -129,6 +131,12 @@ export default function ShopProduct({ product, in_cart }: Props) {
               </>
             )}
           </p>
+          {product.bulk && (
+            <p className="mt-2 inline-block rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-900">
+              Buy {product.bulk.from} or more, any {product.options.length > 0 ? 'size or colour' : 'mix'}:{' '}
+              {formatMoney(product.bulk.price_pesewas)} each
+            </p>
+          )}
 
           {everythingGone && (
             <p className="mt-6 rounded-xl bg-taupe-100 p-5 text-taupe-800">
@@ -249,8 +257,20 @@ function NotifyMe({ variantId }: { variantId: number }) {
       className="space-y-3 rounded-xl border border-taupe-200 bg-white p-4"
     >
       <p className="font-medium text-wine-800">That one has sold out. Want to know when it is back?</p>
-      <TextField id="notify_name" label="Your name" maxLength={60} value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />
-      <PhoneField id="notify_phone" label="WhatsApp number" required value={form.data.phone} onChange={(phone) => form.setData('phone', phone)} />
+      <TextField
+        id="notify_name"
+        label="Your name"
+        maxLength={60}
+        value={form.data.name}
+        onChange={(e) => form.setData('name', e.target.value)}
+      />
+      <PhoneField
+        id="notify_phone"
+        label="WhatsApp number"
+        required
+        value={form.data.phone}
+        onChange={(phone) => form.setData('phone', phone)}
+      />
       <Button type="submit" block disabled={form.processing || form.data.phone === ''}>
         Tell me when it is back
       </Button>

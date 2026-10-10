@@ -40,6 +40,8 @@ class OrderTaker
         customer.save! if customer.new_record? || customer.changed?
         @order = open_order
         wanted.each { |variant_id, quantity| add(variant_id, quantity) }
+        # Enough pieces now (or a bulk buyer): the bulk price, on every line of it.
+        BulkPricing.apply!(@order, shop: shop)
         @order.recalculate!
         saved = true
       rescue StockLedger::NotEnough => problem

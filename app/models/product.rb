@@ -25,6 +25,8 @@ class Product < ApplicationRecord
   enum :status, { active: "active", archived: "archived" }
 
   money :price
+  # A lower price for buying many (see BulkPricing). Empty = no bulk price.
+  money :bulk_price, allow_nil: true
 
   normalizes :name, with: ->(name) { name.squish }
 
@@ -32,10 +34,17 @@ class Product < ApplicationRecord
   validates :description, length: { maximum: 1000 }
   validates :low_stock_at, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 10_000 }
   validate :options_make_sense
+  validates :bulk_min_quantity, numericality: { only_integer: true, greater_than_or_equal_to: 2, less_than_or_equal_to: 10_000 }, allow_nil: true
+  validate :bulk_price_is_complete
 
   scope :ordered, -> { order(Arel.sql("lower(name)")) }
   # What the public can see: she ticked "Show on the shop" and it isn't archived.
   scope :on_shop, -> { active.where(listed: true) }
+
+  # Has a bulk price set up.
+  def bulk?
+    bulk_price_pesewas.present? && bulk_min_quantity.present?
+  end
 
   # /shop/12-ankara-wrap-dress. Rails calls to_param to build the :id part of
   # a URL; `Product.find("12-ankara-wrap-dress")` reads the leading number
@@ -104,6 +113,18 @@ class Product < ApplicationRecord
   end
 
   private
+    # Both boxes or neither. A bulk price above the normal one is a typo.
+    def bulk_price_is_complete
+      if bulk_price_pesewas.present? && bulk_min_quantity.blank?
+        errors.add(:bulk_min_quantity, "is needed: from how many pieces does the bulk price start?")
+      elsif bulk_min_quantity.present? && bulk_price_pesewas.blank?
+        errors.add(:bulk_price, "is needed, or clear the number of pieces")
+      elsif bulk_price_pesewas.present?
+        errors.add(:bulk_price, "must be more than zero") unless bulk_price_pesewas.positive?
+        errors.add(:bulk_price, "should be less than the normal price") if price_pesewas && bulk_price_pesewas >= price_pesewas
+      end
+    end
+
     def options_make_sense
       current = options.reject(&:marked_for_destruction?).reject(&:destroyed?)
 

@@ -36,7 +36,11 @@ export default function CustomersIndex({ customers, filters, quiet_count, total,
   useEffect(() => {
     if (query === filters.q) return
     const timer = setTimeout(() => {
-      router.get('/admin/customers', { q: query || undefined, show: filters.show === 'quiet' ? 'quiet' : undefined }, { preserveState: true, replace: true })
+      router.get(
+        '/admin/customers',
+        { q: query || undefined, show: filters.show === 'quiet' ? 'quiet' : undefined },
+        { preserveState: true, replace: true },
+      )
     }, 300)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -89,8 +93,8 @@ export default function CustomersIndex({ customers, filters, quiet_count, total,
           </nav>
           {filters.show === 'quiet' && (
             <p className="mt-3 max-w-2xl text-sm text-taupe-700">
-              Customers who have bought before but not in the last 30 days, biggest spenders first. A message about something new in
-              their size is a good way back.
+              Customers who have bought before but not in the last 30 days, biggest spenders first. A message about something new in their
+              size is a good way back.
             </p>
           )}
 
@@ -118,7 +122,11 @@ export default function CustomersIndex({ customers, filters, quiet_count, total,
                     <div className="min-w-0 flex-1 basis-56">
                       <p className="truncate font-medium">{customer.display_name}</p>
                       <p className="truncate text-sm text-taupe-700 tabular-nums">
-                        {[customer.handle && customer.display_name !== `@${customer.handle}` ? `@${customer.handle}` : null, formatPhone(customer.phone), customer.location]
+                        {[
+                          customer.handle && customer.display_name !== `@${customer.handle}` ? `@${customer.handle}` : null,
+                          formatPhone(customer.phone),
+                          customer.location,
+                        ]
                           .filter(Boolean)
                           .join(', ') || 'No details yet'}
                       </p>

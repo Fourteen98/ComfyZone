@@ -16,8 +16,11 @@ class Cart
   MAX_LINES = 30  # a cookie is small (4 KB); this keeps it far inside that
   MAX_EACH = 20   # more than this of one thing is a wholesale chat, not a basket
 
-  Line = Data.define(:variant, :quantity, :available) do
-    def unit_price_pesewas = variant.selling_price_pesewas
+  # bulk: this product's bulk price is on (enough of it in the basket, and
+  # she offers it on the website). See BulkPricing.
+  Line = Data.define(:variant, :quantity, :available, :bulk) do
+    def unit_price_pesewas = BulkPricing.unit_price(variant, bulk: bulk)
+    def normal_price_pesewas = variant.selling_price_pesewas
     def total_pesewas = unit_price_pesewas * quantity
     # She has fewer than they asked for (it sold since they added it).
     def short? = quantity > available
@@ -57,7 +60,15 @@ class Cart
         .where(id: @items.keys).includes(product: { photos: { image_attachment: :blob } }).index_by { |variant| variant.id.to_s }
       @items.select! { |id, _| variants.key?(id) }
 
-      @items.map { |id, quantity| Line.new(variant: variants[id], quantity: quantity.to_i, available: [ variants[id].stock_on_hand, 0 ].max) }
+      # How many of each PRODUCT (any size or colour) are in the basket.
+      pieces = Hash.new(0)
+      @items.each { |id, quantity| pieces[variants[id].product_id] += quantity.to_i }
+
+      @items.map { |id, quantity|
+        variant = variants[id]
+        bulk = BulkPricing.applies?(variant.product, pieces: pieces[variant.product_id], shop: true)
+        Line.new(variant: variant, quantity: quantity.to_i, available: [ variant.stock_on_hand, 0 ].max, bulk: bulk)
+      }
     end
   end
 

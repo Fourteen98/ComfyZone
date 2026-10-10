@@ -23,6 +23,7 @@ type Props = {
     phone: string | null
     where: string | null
     note: string | null
+    bulk_buyer: boolean
     since: string
   }
   summary: {
@@ -42,7 +43,15 @@ type Props = {
   favourites: { option: string; labels: { label: string; units: number }[] }[]
   top_products: { id: number; name: string; units: number; spent_pesewas: number }[]
   pays: { label: string; hours: number; orders: number; slow: boolean } | null
-  orders: { id: number; at: string; status: OrderStatus; channel: string | null; total_pesewas: number; balance_pesewas: number; items: string }[]
+  orders: {
+    id: number
+    at: string
+    status: OrderStatus
+    channel: string | null
+    total_pesewas: number
+    balance_pesewas: number
+    items: string
+  }[]
   waiting: { id: number; product: string; variant: string; quantity: number; since: string; in_stock: boolean; told: boolean }[]
   /** For "add to the waiting list". Only sent to people who may manage customers. */
   products: FindableProduct[] | null
@@ -80,6 +89,7 @@ export default function CustomerShow({ customer, summary, favourites, top_produc
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         {customer.phone && <PhoneLinks phone={customer.phone} />}
+        {customer.bulk_buyer && <Badge tone="brand">Bulk buyer</Badge>}
         {summary.quiet && <Badge tone="warning">Gone quiet</Badge>}
         {pays && <Badge tone={pays.slow ? 'warning' : 'success'}>{pays.label}</Badge>}
         {summary.owing_pesewas > 0 && <Badge tone="danger">Owes {formatMoney(summary.owing_pesewas)}</Badge>}
@@ -88,8 +98,16 @@ export default function CustomerShow({ customer, summary, favourites, top_produc
       <div className="mt-6">
         <StatStrip
           stats={[
-            { label: 'Spent with you', value: formatMoney(summary.spent_pesewas), hint: `${summary.units} ${summary.units === 1 ? 'piece' : 'pieces'}` },
-            { label: 'Orders', value: String(summary.orders), hint: summary.orders ? `about ${formatMoney(summary.average_pesewas)} each` : undefined },
+            {
+              label: 'Spent with you',
+              value: formatMoney(summary.spent_pesewas),
+              hint: `${summary.units} ${summary.units === 1 ? 'piece' : 'pieces'}`,
+            },
+            {
+              label: 'Orders',
+              value: String(summary.orders),
+              hint: summary.orders ? `about ${formatMoney(summary.average_pesewas)} each` : undefined,
+            },
             {
               label: 'Last bought',
               value: summary.days_since_last === null ? 'Never' : ago(summary.days_since_last),
@@ -168,7 +186,11 @@ export default function CustomerShow({ customer, summary, favourites, top_produc
                       </p>
                       <p className="text-sm text-taupe-700">
                         Asked {entry.since}.{' '}
-                        {entry.in_stock ? <strong className="text-emerald-800">Back in stock{entry.told ? ', told' : ''}.</strong> : 'Still sold out.'}
+                        {entry.in_stock ? (
+                          <strong className="text-emerald-800">Back in stock{entry.told ? ', told' : ''}.</strong>
+                        ) : (
+                          'Still sold out.'
+                        )}
                       </p>
                     </div>
                     {can_manage && (
@@ -191,7 +213,9 @@ export default function CustomerShow({ customer, summary, favourites, top_produc
                   id="waiting_find"
                   label="Asked for something you don't have?"
                   products={products}
-                  onPick={(_, variant) => router.post('/admin/waiting', { variant_id: variant.id, customer_id: customer.id }, { preserveScroll: true })}
+                  onPick={(_, variant) =>
+                    router.post('/admin/waiting', { variant_id: variant.id, customer_id: customer.id }, { preserveScroll: true })
+                  }
                 />
               </div>
             )}
