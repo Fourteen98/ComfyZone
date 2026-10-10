@@ -9,7 +9,10 @@ class ReportsController < InertiaController
   def show
     period = ReportPeriod.from_params(params)
     report = SalesReport.new(period)
-    before = SalesReport.new(period.previous).totals
+    before_report = SalesReport.new(period.previous)
+    before = before_report.totals
+    # The period before, day by day, laid against this one: day 1 with day 1.
+    before_days = before_report.over_time.map { |moment| moment[:sales_pesewas] }
     sees_costs = can?("costs.view")
 
     # Profit and cost only leave the server for people allowed to see them.
@@ -24,7 +27,12 @@ class ReportsController < InertiaController
       totals: hide_costs.(report.totals),
       # For "up 12% on the 7 days before".
       previous: { sales_pesewas: before[:sales_pesewas], orders: before[:orders] },
-      over_time: report.over_time.map(&hide_costs),
+      over_time: report.over_time.each_with_index.map { |moment, index|
+        hide_costs.(moment).merge(previous_sales_pesewas: before_days[index] || 0)
+      },
+      # When people buy, to plan lives around.
+      by_weekday: report.by_weekday,
+      by_hour: report.by_hour,
       top_products: report.top_products.map(&hide_costs),
       channels: report.by_channel,
       regions: report.by_region,

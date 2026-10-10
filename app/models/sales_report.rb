@@ -57,6 +57,32 @@ class SalesReport
     end
   end
 
+  # When people buy: orders and sales by day of the week (Mon..Sun), in
+  # Ghana time. ISODOW is Postgres for 1 = Monday .. 7 = Sunday.
+  WEEKDAYS = %w[ Monday Tuesday Wednesday Thursday Friday Saturday Sunday ].freeze
+
+  def by_weekday
+    day = "EXTRACT(ISODOW FROM #{LOCAL_TIME})::int"
+    found = orders.group(Arel.sql(day)).pluck(Arel.sql(day), Arel.sql("COUNT(*)"), Arel.sql("SUM(orders.total_pesewas)"))
+                  .to_h { |number, count, sales| [ number, [ count, sales ] ] }
+    WEEKDAYS.each_with_index.map do |name, index|
+      count, sales = found.fetch(index + 1, [ 0, 0 ])
+      { label: name, short: name.first(3), orders: count, sales_pesewas: sales }
+    end
+  end
+
+  # ...and by hour of the day: 0 = midnight to 1am, 20 = 8 to 9pm.
+  def by_hour
+    hour = "EXTRACT(HOUR FROM #{LOCAL_TIME})::int"
+    found = orders.group(Arel.sql(hour)).pluck(Arel.sql(hour), Arel.sql("COUNT(*)"), Arel.sql("SUM(orders.total_pesewas)"))
+                  .to_h { |number, count, sales| [ number, [ count, sales ] ] }
+    (0..23).map do |number|
+      count, sales = found.fetch(number, [ 0, 0 ])
+      clock = ->(h) { "#{h % 12 == 0 ? 12 : h % 12}#{h < 12 ? 'am' : 'pm'}" }
+      { label: "#{clock.(number)} to #{clock.((number + 1) % 24)}", short: clock.(number), orders: count, sales_pesewas: sales }
+    end
+  end
+
   def top_products(limit = 10)
     line_items.joins(variant: :product)
       .group("products.id", "products.name")

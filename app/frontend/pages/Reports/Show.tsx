@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import BarChart from '@/components/ui/BarChart'
+import SalesChart from '@/components/SalesChart'
 import BarList from '@/components/ui/BarList'
 import Button from '@/components/ui/Button'
 import PageHeader from '@/components/ui/PageHeader'
@@ -13,6 +14,7 @@ import TextField from '@/components/ui/TextField'
 import { formatMoney } from '@/lib/format'
 
 type Totals = { orders: number; units: number; sales_pesewas: number; cost_pesewas?: number; profit_pesewas?: number }
+type Slot = { label: string; short: string; orders: number; sales_pesewas: number }
 type Moment = { date: string; label: string; short: string; orders: number; sales_pesewas: number; profit_pesewas?: number }
 
 // Props from ReportsController#show. profit_pesewas and cost_pesewas are
@@ -22,7 +24,9 @@ type Props = {
   presets: { key: string; label: string }[]
   totals: Totals
   previous: { sales_pesewas: number; orders: number }
-  over_time: Moment[]
+  over_time: (Moment & { previous_sales_pesewas: number })[]
+  by_weekday: Slot[]
+  by_hour: Slot[]
   top_products: { id: number; name: string; units: number; sales_pesewas: number; profit_pesewas?: number }[]
   channels: { name: string; orders: number; sales_pesewas: number }[]
   regions: { name: string; orders: number; sales_pesewas: number }[]
@@ -72,6 +76,8 @@ export default function ReportsShow(props: Props) {
     totals,
     previous,
     over_time,
+    by_weekday,
+    by_hour,
     top_products,
     channels,
     regions,
@@ -162,25 +168,14 @@ export default function ReportsShow(props: Props) {
         <Change now={totals.sales_pesewas} before={previous.sales_pesewas} days={period.days} />
       </div>
 
-      {/* A single day has nothing to chart. */}
+      {/* A single day has nothing to chart over time; "When people buy" still helps. */}
       {over_time.length > 1 && (
-        <Panel title="Sales over time" className="mt-6">
-          <BarChart
-            title={`Sales for ${period.label}`}
-            valueLabel="Sales"
-            format={formatMoney}
-            bars={over_time.map((moment) => ({
-              label: moment.label,
-              short: moment.short,
-              value: moment.sales_pesewas,
-              details: [
-                orders(moment.orders),
-                ...(moment.profit_pesewas !== undefined ? [`${formatMoney(moment.profit_pesewas)} profit`] : []),
-              ],
-            }))}
-          />
+        <Panel title="How sales moved" className="mt-6">
+          <SalesChart points={over_time} previousLabel={period.days === 1 ? 'The day before' : `The ${period.days} days before`} />
         </Panel>
       )}
+
+      <WhenPeopleBuy weekdays={by_weekday} hours={by_hour} days={period.days} />
 
       {/* Best sellers and what makes money, in one table: sold, sales, profit, margin. */}
       <ProductsPanel top={top_products} profit={product_profit} />
@@ -431,6 +426,57 @@ function ProductsPanel({ top, profit }: { top: TopProduct[]; profit: ProductProf
           </p>
         </>
       )}
+    </Panel>
+  )
+}
+
+// When people buy: by day of the week and by hour, to plan lives and posts
+// around. Counted in orders (how many people), with the money in the readout.
+function WhenPeopleBuy({ weekdays, hours, days }: { weekdays: Slot[]; hours: Slot[]; days: number }) {
+  const total = hours.reduce((sum, slot) => sum + slot.orders, 0)
+  if (total === 0) return null
+
+  const busiest = (slots: Slot[]) => slots.reduce((best, slot) => (slot.orders > best.orders ? slot : best), slots[0])
+  // Late-night hours with nothing in them only waste space: show from the
+  // first hour anything happened to the last.
+  const used = hours.map((slot, i) => (slot.orders > 0 ? i : -1)).filter((i) => i >= 0)
+  const shownHours = hours.slice(Math.max(used[0] - 1, 0), Math.min(used[used.length - 1] + 2, 24))
+  const bars = (slots: Slot[]) =>
+    slots.map((slot) => ({
+      label: slot.label,
+      short: slot.short,
+      value: slot.orders,
+      details: [formatMoney(slot.sales_pesewas)],
+    }))
+  const count = (n: number) => (n === 1 ? '1 order' : `${n} orders`)
+  // A week or more is needed before days of the week mean anything.
+  const showDays = days >= 7
+
+  return (
+    <Panel title="When people buy" className="mt-6">
+      <div className={`grid gap-8 ${showDays ? 'lg:grid-cols-2' : ''}`}>
+        {showDays && (
+          <div>
+            <p className="text-sm text-taupe-700">
+              Busiest day: <strong className="font-semibold text-ink">{busiest(weekdays).label}</strong>, {count(busiest(weekdays).orders)}
+            </p>
+            <div className="mt-3">
+              <BarChart title="Orders by day of the week" valueLabel="Orders" format={String} bars={bars(weekdays)} />
+            </div>
+          </div>
+        )}
+        <div>
+          <p className="text-sm text-taupe-700">
+            Busiest hour: <strong className="font-semibold text-ink">{busiest(hours).label}</strong>, {count(busiest(hours).orders)}
+          </p>
+          <div className="mt-3">
+            <BarChart title="Orders by hour of the day" valueLabel="Orders" format={String} bars={bars(shownHours)} />
+          </div>
+        </div>
+      </div>
+      <p className="mt-4 text-sm text-taupe-600">
+        Ghana time. Going live or posting just before the busy hours puts you in front of people when they are ready to buy.
+      </p>
     </Panel>
   )
 }

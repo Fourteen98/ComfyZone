@@ -110,4 +110,22 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  test "each day carries the same day of the period before, and when-people-buy is sent" do
+    # One sale 7 days ago: day 1 of the week before lines up with day 1 of this week.
+    travel_to(7.days.ago) do
+      OrderTaker.new(customer: Customer.for_claim("@kofi.b"), user: @owner, lines: [ { variant_id: @black.id, quantity: 1 } ]).save
+    end
+    sign_in_as(@owner)
+
+    get reports_path(range: "custom", from: Date.current.iso8601, to: Date.current.iso8601)
+    assert_equal [ 24_000 ], inertia.props[:over_time].map { |moment| moment[:sales_pesewas] }
+
+    get reports_path(range: "custom", from: (Date.current - 6).iso8601, to: Date.current.iso8601)
+    days = inertia.props[:over_time]
+    assert_equal 7, days.size
+    assert_equal 12_000, days.sum { |moment| moment[:previous_sales_pesewas] }
+    assert_equal 7, inertia.props[:by_weekday].size
+    assert_equal 24, inertia.props[:by_hour].size
+  end
 end

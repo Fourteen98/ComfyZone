@@ -114,4 +114,22 @@ class SalesReportTest < ActiveSupport::TestCase
 
     assert_equal [ { name: "Mobile money", amount_pesewas: 12_000 }, { name: "Cash", amount_pesewas: 10_000 } ], week.money_in
   end
+
+  test "when people buy: by day of the week and hour, in Ghana time" do
+    sell(at: Time.zone.local(2026, 10, 6, 20, 15))                   # Tuesday, 8pm
+    sell(at: Time.zone.local(2026, 10, 6, 20, 50), buyer: "@kofi.b") # Tuesday, 8pm again
+    sell(at: Time.zone.local(2026, 10, 5, 9, 0), buyer: "@esi")      # Monday, 9am
+
+    days = week.by_weekday
+    assert_equal 7, days.size
+    assert_equal [ "Monday", 1, 12_000 ], days[0].values_at(:label, :orders, :sales_pesewas)
+    assert_equal [ "Tuesday", 2, 24_000 ], days[1].values_at(:label, :orders, :sales_pesewas)
+    assert_equal 0, days[6][:orders]
+
+    hours = week.by_hour
+    assert_equal 24, hours.size
+    assert_equal [ "8pm to 9pm", "8pm", 2 ], hours[20].values_at(:label, :short, :orders)
+    assert_equal [ "12am to 1am", "12am" ], hours[0].values_at(:label, :short)
+    assert_equal 1, hours[9][:orders]
+  end
 end
