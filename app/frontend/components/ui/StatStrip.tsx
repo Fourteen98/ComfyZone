@@ -17,6 +17,9 @@ const columns: Record<number, string> = {
   2: 'grid-cols-2',
   3: 'grid-cols-1 sm:grid-cols-3',
   4: 'grid-cols-2 xl:grid-cols-4',
+  // Six: two rows of three (three rows of two on phones). Six in one row
+  // would squeeze big amounts like GH₵ 16,950.00 until they overflow.
+  6: 'grid-cols-2 sm:grid-cols-3',
 }
 
 // A row of headline numbers, joined into one band.
@@ -24,7 +27,7 @@ const columns: Record<number, string> = {
 export default function StatStrip({ stats }: { stats: Stat[] }) {
   // Five or more wrap onto further rows of four (two on phones). A last row
   // that isn't full is padded with blank cells, so no grey gap shows.
-  const blanks = stats.length > 4 ? (4 - (stats.length % 4)) % 4 : 0
+  const blanks = stats.length > 4 && stats.length !== 6 ? (4 - (stats.length % 4)) % 4 : 0
 
   return (
     <dl className={`grid gap-px overflow-hidden rounded-lg border border-taupe-200 bg-taupe-200 ${columns[stats.length] ?? columns[4]}`}>
@@ -35,7 +38,7 @@ export default function StatStrip({ stats }: { stats: Stat[] }) {
             {/* Numbers use the sans font: its digits are all one height and
                 width (tabular-nums), so amounts are easy to read and compare.
                 The serif's old-style digits suit headings, not money. */}
-            <dd className="mt-1 text-3xl font-semibold text-wine-800 tabular-nums">
+            <dd className="mt-1 text-xl font-semibold whitespace-nowrap text-wine-800 tabular-nums sm:text-2xl lg:text-3xl">
               {stat.value ?? <span className="text-taupe-300">–</span>}
             </dd>
             {stat.hint && <p className="mt-0.5 text-sm text-taupe-600">{stat.hint}</p>}
@@ -46,12 +49,12 @@ export default function StatStrip({ stats }: { stats: Stat[] }) {
           <Link
             key={stat.label}
             href={stat.href}
-            className="block bg-white px-5 py-4 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
+            className="block bg-white px-4 py-4 hover:bg-taupe-50 sm:px-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
           >
             {body}
           </Link>
         ) : (
-          <div key={stat.label} className="bg-white px-5 py-4">
+          <div key={stat.label} className="bg-white px-4 py-4 sm:px-5">
             {body}
           </div>
         )

@@ -31,7 +31,7 @@ class ReportsController < InertiaController
       places: report.by_place,
       # Profit numbers only for people who may see costs.
       lives: report.lives.map { |row| sees_costs ? row : row.except(:cost_pesewas, :expenses_pesewas, :profit_pesewas) },
-      product_profit: sees_costs ? report.product_profit : nil,
+      product_profit: sees_costs ? report.product_profit(30) : nil,
       customers: can?("customers.view") ? report.top_customers : nil,
       money_in: report.money_in,
       # nil = this person may not see expenses.
