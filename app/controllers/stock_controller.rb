@@ -39,7 +39,8 @@ class StockController < InertiaController
         units: all.sum { |variant| [ variant.stock_on_hand, 0 ].max },
         # nil for people who may not see costs; the number never leaves the server.
         value_pesewas: can?("costs.view") ? all.sum(&:stock_value_pesewas) : nil
-      }
+      },
+      estimate: estimate_props(StockLedger.sales_estimate)
     }
   end
 
@@ -77,10 +78,25 @@ class StockController < InertiaController
   end
 
   private
+    # If it all sells. Profit only for people who may see costs.
+    def estimate_props(estimate)
+      costs = can?("costs.view")
+      {
+        sells_for_pesewas: estimate.sells_for_pesewas,
+        profit_pesewas: costs ? estimate.profit_pesewas : nil,
+        bulk: estimate.bulk_differs? ? {
+          sells_for_pesewas: estimate.bulk_sells_for_pesewas,
+          profit_pesewas: costs ? estimate.bulk_profit_pesewas : nil
+        } : nil
+      }
+    end
+
     def group_props(product, variants)
       {
         id: product.id,
         name: product.name,
+        # What this product's stock should sell for (the pieces listed here).
+        sells_for_pesewas: variants.sum { |variant| [ variant.stock_on_hand, 0 ].max * variant.selling_price_pesewas },
         low_stock_at: product.low_stock_at,
         thumb_url: product.photos.first && rails_representation_path(product.photos.first.image.variant(:thumb)),
         variants: variants.map { |variant|

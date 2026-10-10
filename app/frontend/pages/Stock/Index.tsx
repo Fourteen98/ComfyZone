@@ -24,7 +24,22 @@ type VariantRow = {
   no_cost: boolean // in stock, but the app was never told what it cost
 }
 
-type Group = { id: number; name: string; low_stock_at: number; thumb_url: string | null; variants: VariantRow[] }
+type Group = {
+  id: number
+  name: string
+  low_stock_at: number
+  thumb_url: string | null
+  sells_for_pesewas: number // these pieces, at their selling prices
+  variants: VariantRow[]
+}
+
+// If everything on hand sells (StockLedger.sales_estimate). Profits are null
+// for people who may not see costs; bulk is null when no stock has a lower bulk price.
+type Estimate = {
+  sells_for_pesewas: number
+  profit_pesewas: number | null
+  bulk: { sells_for_pesewas: number; profit_pesewas: number | null } | null
+}
 
 type Props = {
   groups: Group[]
@@ -32,12 +47,13 @@ type Props = {
   // uncosted: null = may not see costs
   counts: { all: number; low: number; out: number; uncosted: number | null }
   totals: { units: number; value_pesewas: number | null }
+  estimate: Estimate
   /** While searching: the best match, whose quick form opens by itself. */
   focus_id: number | null
 }
 
 // Props from StockController#index
-export default function StockIndex({ groups, filters, counts, totals, focus_id }: Props) {
+export default function StockIndex({ groups, filters, counts, totals, estimate, focus_id }: Props) {
   const can = useCan()
   const [query, setQuery] = useState(filters.q)
   const errors = usePage().props.errors as Record<string, string[] | undefined>
@@ -113,6 +129,10 @@ export default function StockIndex({ groups, filters, counts, totals, focus_id }
             <StatStrip stats={stats} />
           </div>
 
+          {estimate.sells_for_pesewas > 0 && (
+            <EstimateCard estimate={estimate} costsOf={totals.value_pesewas} uncosted={counts.uncosted ?? 0} />
+          )}
+
           {/* Why "What it cost you" may look too low, and where to fix it. */}
           {counts.uncosted ? (
             <p className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
@@ -182,11 +202,16 @@ export default function StockIndex({ groups, filters, counts, totals, focus_id }
                         <Shirt className="size-5" aria-hidden="true" />
                       )}
                     </span>
-                    <h2 className="min-w-0 flex-1 truncate font-display text-2xl font-semibold text-wine-800">
-                      <Link href={`/admin/products/${group.id}`} className="hover:underline">
-                        {group.name}
-                      </Link>
-                    </h2>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate font-display text-2xl font-semibold text-wine-800">
+                        <Link href={`/admin/products/${group.id}`} className="hover:underline">
+                          {group.name}
+                        </Link>
+                      </h2>
+                      {group.sells_for_pesewas > 0 && (
+                        <p className="text-sm text-taupe-600 tabular-nums">Sells for {formatMoney(group.sells_for_pesewas)}</p>
+                      )}
+                    </div>
                     <p className="text-sm text-taupe-700 tabular-nums">
                       {group.variants.reduce((sum, variant) => sum + Math.max(variant.stock, 0), 0)} here
                     </p>
@@ -256,5 +281,41 @@ export default function StockIndex({ groups, filters, counts, totals, focus_id }
         </>
       )}
     </AppLayout>
+  )
+}
+
+// "If it all sells": what the stock on hand should bring in, and the profit
+// in it. An estimate: no delivery fees, discounts or deals typed by hand.
+function EstimateCard({ estimate, costsOf, uncosted }: { estimate: Estimate; costsOf: number | null; uncosted: number }) {
+  const margin = (profit: number, sells: number) => (sells > 0 ? Math.round((profit / sells) * 100) : 0)
+  const row = (label: string, sells: number, profit: number | null, main: boolean) => (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+      <dt className={main ? 'text-taupe-800' : 'text-sm text-taupe-700'}>{label}</dt>
+      <dd className="flex flex-wrap items-baseline gap-x-3 tabular-nums">
+        <span className={main ? 'text-2xl font-semibold text-wine-800' : 'font-semibold'}>{formatMoney(sells)}</span>
+        {profit !== null && (
+          <span className={`text-sm ${profit >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>
+            {formatMoney(profit)} profit ({margin(profit, sells)}%)
+          </span>
+        )}
+      </dd>
+    </div>
+  )
+
+  return (
+    <section aria-labelledby="estimate-title" className="mt-4 rounded-lg border border-taupe-200 bg-white px-5 py-4">
+      <h2 id="estimate-title" className="font-medium">
+        If everything on hand sells
+      </h2>
+      <dl className="mt-2 space-y-2">
+        {row('At your selling prices', estimate.sells_for_pesewas, estimate.profit_pesewas, true)}
+        {estimate.bulk && row('If it all went at bulk prices', estimate.bulk.sells_for_pesewas, estimate.bulk.profit_pesewas, false)}
+      </dl>
+      <p className="mt-3 text-sm text-taupe-600">
+        An estimate{costsOf !== null ? `, against the ${formatMoney(costsOf)} it cost you` : ''}. Delivery fees, discounts and deals agreed
+        by hand aren't in it.
+        {estimate.profit_pesewas !== null && uncosted > 0 && ' Items with no cost yet make the profit look bigger than it is.'}
+      </p>
+    </section>
   )
 }
