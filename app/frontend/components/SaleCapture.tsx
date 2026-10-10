@@ -15,6 +15,8 @@ import type { DeliveryChoice } from '@/components/DeliveryFields'
 import LocationFields, { findPlace, nowhere, said } from '@/components/LocationFields'
 import type { Locations, Where } from '@/components/LocationFields'
 import QuantityStepper from '@/components/ui/QuantityStepper'
+import MoneyField from '@/components/ui/MoneyField'
+import TextField from '@/components/ui/TextField'
 import { formatMoney, toPesewas } from '@/lib/format'
 import type { SalesChannel } from '@/lib/orders'
 
@@ -32,7 +34,14 @@ type Props = {
   channels?: SalesChannel[]
   /** Outside a live: Ghana's regions and the places known in each. */
   locations?: Locations
+  /** Outside a live, for people who may take payments: "Did they pay?" */
+  waysToPay?: { value: string; label: string; reference?: boolean }[] | null
 }
+
+// Money taken with the sale. 'all' is worked out by Rails once the order is
+// saved (bulk prices and delivery are only certain then).
+type PayNow = { when: '' | 'all' | 'part'; amount: string; via: string; reference: string }
+const notPaid: PayNow = { when: '', amount: '', via: '', reference: '' }
 
 // The "who wants what" screen. It has two ways of asking WHO:
 //
@@ -46,7 +55,8 @@ type Props = {
 //
 // Stock shown here was correct when the page loaded. Rails checks it again
 // at the moment of the claim, and refuses if something has just sold out.
-export default function SaleCapture({ products, buyers, liveId, liveChannel, channels = [], locations }: Props) {
+export default function SaleCapture({ products, buyers, liveId, liveChannel, channels = [], locations, waysToPay }: Props) {
+  const [pay, setPay] = useState<PayNow>(notPaid)
   const errors = usePage().props.errors as Record<string, string[] | undefined>
   const [waitHint, setWaitHint] = useState<string | null>(null)
   const buyerInput = useRef<HTMLInputElement>(null)
@@ -168,6 +178,9 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
                 ? where
                 : undefined,
           items: lines.map((line) => ({ variant_id: line.variant.id, quantity: line.quantity })),
+          payment: payNow
+            ? { amount: pay.when === 'all' ? 'all' : pay.amount, via: pay.via, reference: hasReference ? pay.reference : '' }
+            : undefined,
         },
       },
       {
@@ -180,6 +193,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           setChoice(null)
           setDelivery(noDelivery)
           setWhere(nowhere(home))
+          setPay(notPaid)
           setLiveWhere(null)
           setWhereOpen(false)
           setSales(sales + 1)
@@ -190,7 +204,11 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
     )
   }
 
-  const ready = who !== '' && units > 0 && !sending
+  // "Did they pay?": sent only once there is an amount and a way.
+  const payNow = !inLive && waysToPay && pay.when !== '' && (pay.when === 'all' || toPesewas(pay.amount || '0') > 0) && pay.via !== ''
+  const payUnfinished = !inLive && pay.when !== '' && !payNow
+  const hasReference = waysToPay?.find((way) => way.value === pay.via)?.reference === true
+  const ready = who !== '' && units > 0 && !sending && !payUnfinished
   const claimLabel = sending ? 'Saving…' : who ? `${inLive ? 'Claim' : 'Record sale'} for ${who}` : inLive ? 'Claim' : 'Record sale'
 
   return (
@@ -328,6 +346,61 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
               </fieldset>
             )}
             <DeliveryFields value={delivery} onChange={setDelivery} errors={errors} />
+            {waysToPay && waysToPay.length > 0 && (
+              <fieldset className="space-y-3">
+                <ChoicePills
+                  legend="Did they pay?"
+                  name="pay_when"
+                  choices={[
+                    { value: '', label: 'Not yet' },
+                    { value: 'all', label: 'All of it' },
+                    { value: 'part', label: 'Part of it' },
+                  ]}
+                  value={pay.when}
+                  onChange={(when) => setPay({ ...pay, when: when as PayNow['when'] })}
+                />
+                {pay.when !== '' && (
+                  <div className="space-y-3 rounded-lg bg-taupe-100 p-4">
+                    {pay.when === 'part' && (
+                      <div className="max-w-48">
+                        <MoneyField
+                          id="pay_amount"
+                          label="How much did they pay?"
+                          placeholder="0.00"
+                          value={pay.amount}
+                          onChange={(e) => setPay({ ...pay, amount: e.target.value })}
+                          hint={total + deliveryFee > 0 ? `Of ${formatMoney(total + deliveryFee)}. The rest stays owed.` : undefined}
+                        />
+                      </div>
+                    )}
+                    <ChoicePills
+                      legend="How?"
+                      name="pay_via"
+                      choices={waysToPay}
+                      value={pay.via}
+                      onChange={(via) => setPay({ ...pay, via })}
+                    />
+                    {hasReference && (
+                      <div className="max-w-xs">
+                        <TextField
+                          id="pay_reference"
+                          label="Transaction ID (optional)"
+                          value={pay.reference}
+                          onChange={(e) => setPay({ ...pay, reference: e.target.value })}
+                        />
+                      </div>
+                    )}
+                    {payUnfinished && (
+                      <p className="text-sm text-taupe-700">
+                        {pay.when === 'part' && toPesewas(pay.amount || '0') <= 0
+                          ? 'Type how much they paid, and how.'
+                          : 'Choose how they paid.'}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </fieldset>
+            )}
           </>
         )}
       </section>

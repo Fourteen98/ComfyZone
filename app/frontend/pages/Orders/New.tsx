@@ -8,9 +8,15 @@ import type { SalesChannel } from '@/lib/orders'
 import type { Locations } from '@/components/LocationFields'
 
 // A sale made outside a live. The same capture screen, with no live attached.
-type Props = { products: SellableProduct[]; buyers: Buyer[]; channels: SalesChannel[]; locations: Locations }
+type Props = {
+  products: SellableProduct[]
+  buyers: Buyer[]
+  channels: SalesChannel[]
+  locations: Locations
+  ways_to_pay: { value: string; label: string; reference?: boolean }[] | null // null = may not take payments
+}
 
-export default function OrderNew({ products, buyers, channels, locations }: Props) {
+export default function OrderNew({ products, buyers, channels, locations, ways_to_pay }: Props) {
   return (
     <AppLayout>
       <Head title="Record a sale" />
@@ -24,7 +30,7 @@ export default function OrderNew({ products, buyers, channels, locations }: Prop
       </div>
 
       <div className="mt-6">
-        <SaleCapture products={products} buyers={buyers} channels={channels} locations={locations} />
+        <SaleCapture products={products} buyers={buyers} channels={channels} locations={locations} waysToPay={ways_to_pay} />
       </div>
     </AppLayout>
   )

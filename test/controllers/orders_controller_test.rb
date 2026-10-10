@@ -148,4 +148,55 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_nil dashboard_tile(:sales_today)
     assert_nil dashboard_panel(:recent_orders)
   end
+
+  test "a part payment taken with the sale is recorded, and the rest stays owed" do
+    sign_in_as(users(:one))
+    params = claim_params(quantity: 2) # 2 × GH₵ 120
+    params[:order][:payment] = { amount: "100", via: "momo", reference: "TX123" }
+
+    post orders_path, params: params
+
+    order = Order.newest_first.first
+    assert_redirected_to order_path(order)
+    assert_equal [ 10_000, 14_000, "claimed" ], [ order.paid_pesewas, order.balance_pesewas, order.status ]
+    assert_equal "TX123", order.payments.first.reference
+    assert_includes flash[:notice], "GH₵ 100 paid, GH₵ 140 still to pay."
+  end
+
+  test "'all' pays whatever the order came to once saved" do
+    sign_in_as(users(:one))
+    params = claim_params(quantity: 2)
+    params[:order][:payment] = { amount: "all", via: "cash" }
+
+    post orders_path, params: params
+
+    order = Order.newest_first.first
+    assert_equal [ 24_000, 0, "paid" ], [ order.paid_pesewas, order.balance_pesewas, order.status ]
+  end
+
+  test "a payment that can't be taken keeps the sale and says why" do
+    sign_in_as(users(:one))
+    params = claim_params(quantity: 1)
+    params[:order][:payment] = { amount: "500", via: "cash" } # more than the GH₵ 120 owed
+
+    assert_difference "Order.count", 1 do
+      post orders_path, params: params
+    end
+    order = Order.newest_first.first
+    assert_redirected_to order_path(order)
+    assert_match "not the payment", flash[:alert]
+    assert_equal 0, order.paid_pesewas
+  end
+
+  test "no payment is taken by someone without orders.fulfil, or during a live" do
+    roles(:assistant).update!(permissions: %w[ orders.create ])
+    sign_in_as(users(:two))
+    params = claim_params(quantity: 1)
+    params[:order][:payment] = { amount: "all", via: "cash" }
+    post orders_path, params: params
+    assert_equal 0, Order.newest_first.first.paid_pesewas
+
+    get new_order_path
+    assert_nil inertia.props[:ways_to_pay]
+  end
 end
