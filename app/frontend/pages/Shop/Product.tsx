@@ -1,10 +1,12 @@
-import { Head, Link, router } from '@inertiajs/react'
+import { Head, Link, router, useForm } from '@inertiajs/react'
 import { ArrowLeft, Check, Shirt } from 'lucide-react'
 import { useState } from 'react'
 import ShopLayout from '@/layouts/ShopLayout'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import { Swatch } from '@/components/ui/Chip'
 import QuantityStepper from '@/components/ui/QuantityStepper'
+import PhoneField from '@/components/ui/PhoneField'
+import TextField from '@/components/ui/TextField'
 import { formatMoney } from '@/lib/format'
 
 type OptionValue = { label: string; swatch?: string | null }
@@ -128,9 +130,12 @@ export default function ShopProduct({ product, in_cart }: Props) {
             )}
           </p>
 
-          {everythingGone ? (
-            <p className="mt-6 rounded-xl bg-taupe-100 p-5 text-taupe-800">This one has sold out. Follow the lives to catch the restock.</p>
-          ) : (
+          {everythingGone && (
+            <p className="mt-6 rounded-xl bg-taupe-100 p-5 text-taupe-800">
+              This one has sold out for now.{product.options.length > 0 ? ' Choose your size and we will tell you when it is back.' : ''}
+            </p>
+          )}
+          {
             <>
               <div className="mt-6 space-y-5">
                 {product.options.map((option) => (
@@ -183,7 +188,7 @@ export default function ShopProduct({ product, in_cart }: Props) {
                     Choose {missing.join(' and ')}
                   </Button>
                 ) : chosen.availability === 'sold_out' ? (
-                  <p className="rounded-xl bg-taupe-100 p-4 text-taupe-800">That one has sold out. Try another {product.options[product.options.length - 1]?.name.toLowerCase() ?? 'option'}.</p>
+                  <NotifyMe variantId={chosen.id} />
                 ) : room === 0 ? (
                   <p className="rounded-xl bg-taupe-100 p-4 text-taupe-800">You have all we have of this one in your bag.</p>
                 ) : (
@@ -211,7 +216,7 @@ export default function ShopProduct({ product, in_cart }: Props) {
                 )}
               </div>
             </>
-          )}
+          }
 
           {product.description && (
             <div className="mt-8 border-t border-taupe-200 pt-6">
@@ -222,5 +227,33 @@ export default function ShopProduct({ product, in_cart }: Props) {
         </div>
       </div>
     </ShopLayout>
+  )
+}
+
+// "Tell me when it's back" for a sold-out size: name and WhatsApp number,
+// then she sees them on her waiting list (Shop::WaitingController).
+function NotifyMe({ variantId }: { variantId: number }) {
+  const form = useForm({ variant_id: variantId, name: '', phone: '' })
+  const [sent, setSent] = useState(false)
+
+  if (sent) {
+    return <p className="rounded-xl bg-emerald-50 p-4 text-emerald-900">Done. We will WhatsApp you as soon as it is back.</p>
+  }
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        form.post('/notify', { preserveScroll: true, onSuccess: () => setSent(true) })
+      }}
+      className="space-y-3 rounded-xl border border-taupe-200 bg-white p-4"
+    >
+      <p className="font-medium text-wine-800">That one has sold out. Want to know when it is back?</p>
+      <TextField id="notify_name" label="Your name" maxLength={60} value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />
+      <PhoneField id="notify_phone" label="WhatsApp number" required value={form.data.phone} onChange={(phone) => form.setData('phone', phone)} />
+      <Button type="submit" block disabled={form.processing || form.data.phone === ''}>
+        Tell me when it is back
+      </Button>
+    </form>
   )
 }

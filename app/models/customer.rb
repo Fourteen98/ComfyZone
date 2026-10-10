@@ -1,5 +1,7 @@
 class Customer < ApplicationRecord
   has_many :orders, dependent: :restrict_with_error
+  # The waiting list: things they asked for that were sold out.
+  has_many :stock_requests, dependent: :destroy
   include Located # country, region, exact place; locate(...), where_text
 
   # "@Ama_K " -> "ama_k". nil if nothing is left.

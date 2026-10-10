@@ -1,4 +1,4 @@
-import { BarChart3, Boxes, LayoutDashboard, Radio, ReceiptText, Settings, Shirt, Store, Truck, Users, Wallet } from 'lucide-react'
+import { BarChart3, Boxes, Hourglass, LayoutDashboard, Radio, ReceiptText, Settings, Shirt, Store, Truck, Users, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export type NavItem = {
@@ -16,7 +16,7 @@ export type NavItem = {
   /** A count to show as a badge beside the label, from the `alerts` Rails
       shares with every page (InertiaController). `says` words it for
       screen readers: "3 to pack". */
-  alert?: { key: 'low_stock' | 'to_pack'; says: string }
+  alert?: { key: 'low_stock' | 'to_pack' | 'to_tell'; says: string }
 }
 
 // The app's sections, in one place. The sidebar and the phone bottom bar both
@@ -45,6 +45,14 @@ export const navigation: NavItem[] = [
     alert: { key: 'to_pack', says: 'to pack' },
   },
   { label: 'Customers', href: '/admin/customers', icon: Users, ready: true, permissions: ['customers.view'] },
+  {
+    label: 'Waiting list',
+    href: '/admin/waiting',
+    icon: Hourglass,
+    ready: true,
+    permissions: ['customers.view'],
+    alert: { key: 'to_tell', says: 'back in stock to tell' },
+  },
   { label: 'Expenses', href: '/admin/expenses', icon: Wallet, ready: true, permissions: ['expenses.view'] },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3, ready: true, permissions: ['reports.view'] },
   {

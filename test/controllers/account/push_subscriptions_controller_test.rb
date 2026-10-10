@@ -29,8 +29,8 @@ class Account::PushSubscriptionsControllerTest < ActionDispatch::IntegrationTest
     get account_path
     push = inertia.props[:push]
     assert_equal "public", push[:public_key]
-    assert_equal %w[ low_stock orders ], push[:topics].pluck("key")
-    assert_equal [ "Android phone", %w[ low_stock orders ] ], push[:devices].first.values_at("device", "topics")
+    assert_equal %w[ low_stock orders back_in_stock ], push[:topics].pluck("key")
+    assert_equal [ "Android phone", %w[ low_stock orders back_in_stock ] ], push[:devices].first.values_at("device", "topics")
 
     assert_no_difference("PushSubscription.count") { subscribe } # the same phone again
   end

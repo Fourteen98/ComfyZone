@@ -104,13 +104,42 @@ class SalesReport
       }
   end
 
+  # Each live: sales, what the goods cost, the costs pinned to it (data, a
+  # host...), and what it made after all of that.
   def lives(limit = 8)
-    orders.joins(:live_session)
+    rows = orders.joins(:live_session)
       .group("live_sessions.id", "live_sessions.title")
       .order(Arel.sql("SUM(orders.total_pesewas) DESC"))
       .limit(limit)
       .pluck("live_sessions.id", "live_sessions.title", Arel.sql("COUNT(*)"), Arel.sql("SUM(orders.total_pesewas)"))
-      .map { |id, title, count, sales| { id: id, name: title, orders: count, sales_pesewas: sales } }
+    ids = rows.map(&:first)
+    goods = line_items.where(orders: { live_session_id: ids }).group("orders.live_session_id").sum(Arel.sql(COST))
+    spent = Expense.where(live_session_id: ids).group(:live_session_id).sum(:amount_pesewas)
+
+    rows.map do |id, title, count, sales|
+      cost = goods.fetch(id, 0)
+      extra = spent.fetch(id, 0)
+      { id: id, name: title, orders: count, sales_pesewas: sales, cost_pesewas: cost, expenses_pesewas: extra,
+        profit_pesewas: sales - cost - extra }
+    end
+  end
+
+  # What actually makes money, per product: profit, and margin (profit as a
+  # share of sales). Most profit first. A best seller with a thin margin can
+  # make less than a quiet piece with a fat one.
+  def product_profit(limit = 15)
+    line_items.joins(variant: :product)
+      .group("products.id", "products.name")
+      .order(Arel.sql("SUM(#{REVENUE}) - SUM(#{COST}) DESC"))
+      .limit(limit)
+      .pluck("products.id", "products.name", Arel.sql("SUM(#{KEPT})"), Arel.sql("SUM(#{REVENUE})"), Arel.sql("SUM(#{COST})"))
+      .map do |id, name, units, sales, cost|
+        profit = sales - cost
+        { id: id, name: name, units: units, sales_pesewas: sales, cost_pesewas: cost, profit_pesewas: profit,
+          margin: sales.positive? ? (profit * 100.0 / sales).round : 0,
+          # Sold with no cost recorded: the margin is not to be trusted yet.
+          unknown_cost: cost.zero? && sales.positive? }
+      end
   end
 
   def top_customers(limit = 10)

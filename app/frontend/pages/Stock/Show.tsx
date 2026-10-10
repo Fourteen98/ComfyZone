@@ -14,6 +14,9 @@ import type { OptionValue } from '@/components/OptionValuesEditor'
 import { formatMoney, toMoneyInput } from '@/lib/format'
 import { reasonLabels } from '@/lib/stock'
 import StockAdjustForm from '@/components/StockAdjustForm'
+import WaitingPanel from '@/components/WaitingPanel'
+import type { WaitingEntry } from '@/components/WaitingPanel'
+import type { Buyer } from '@/components/BuyerPicker'
 import type { StockLevel } from '@/lib/stock'
 
 type Movement = {
@@ -45,10 +48,12 @@ type Props = {
   can_adjust: boolean
   can_set_cost: boolean
   siblings_without_cost: number
+  waiting: WaitingEntry[] | null // null = may not see customers
+  buyers: Buyer[] | null
 }
 
 // Props from StockController#show
-export default function StockShow({ variant, movements, movements_total, can_adjust, can_set_cost, siblings_without_cost }: Props) {
+export default function StockShow({ variant, movements, movements_total, can_adjust, can_set_cost, siblings_without_cost, waiting, buyers }: Props) {
   // ----- what one cost (for stock that never came through a purchase) -----
   const noCost = variant.average_cost_pesewas === 0
   const costForm = useForm({
@@ -138,6 +143,8 @@ export default function StockShow({ variant, movements, movements_total, can_adj
               </form>
             </Panel>
           )}
+
+          {waiting && <WaitingPanel variantId={variant.id} inStock={variant.stock > 0} waiting={waiting} buyers={buyers} />}
 
           {can_adjust && (
             <Panel title="Correct the count">

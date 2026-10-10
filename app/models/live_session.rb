@@ -2,6 +2,8 @@
 class LiveSession < ApplicationRecord
   belongs_to :user
   belongs_to :sales_channel, optional: true # the platform she is live on
+  # Costs pinned to this live (see Expense#live_session).
+  has_many :expenses, dependent: :nullify
   has_many :orders, dependent: :nullify
 
   normalizes :title, with: ->(title) { title.squish }

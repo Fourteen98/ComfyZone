@@ -27,7 +27,9 @@ type Props = {
   channels: { name: string; orders: number; sales_pesewas: number }[]
   regions: { name: string; orders: number; sales_pesewas: number }[]
   places: { id: number; name: string; region: string; orders: number; sales_pesewas: number }[]
-  lives: { id: number; name: string; orders: number; sales_pesewas: number }[]
+  lives: { id: number; name: string; orders: number; sales_pesewas: number; cost_pesewas?: number; expenses_pesewas?: number; profit_pesewas?: number }[]
+  /** What makes money, per product. null = may not see costs. */
+  product_profit: { id: number; name: string; units: number; sales_pesewas: number; profit_pesewas: number; margin: number; unknown_cost: boolean }[] | null
   customers: { id: number; name: string; orders: number; sales_pesewas: number }[] | null // null = may not see customers
   money_in: { name: string; amount_pesewas: number }[]
   expenses: { total_pesewas: number; by_category: { name: string; amount_pesewas: number }[] } | null // null = may not see
@@ -54,7 +56,7 @@ function Change({ now, before, days }: { now: number; before: number; days: numb
 }
 
 export default function ReportsShow(props: Props) {
-  const { period, presets, totals, previous, over_time, top_products, channels, regions, places, lives, customers, money_in, expenses, sees_costs } = props
+  const { period, presets, totals, previous, over_time, top_products, channels, regions, places, lives, customers, money_in, expenses, sees_costs, product_profit } = props
   const [from, setFrom] = useState(period.from)
   const [to, setTo] = useState(period.to)
   const [custom, setCustom] = useState(period.key === 'custom')
@@ -173,6 +175,34 @@ export default function ReportsShow(props: Props) {
           />
         </Panel>
 
+        {product_profit && (
+          <Panel title="What makes money" className="xl:col-span-2">
+            {product_profit.length === 0 ? (
+              <p className="text-taupe-700">Nothing sold in this period.</p>
+            ) : (
+              <>
+                <BarList
+                  empty=""
+                  format={formatMoney}
+                  rows={product_profit.map((row) => ({
+                    key: row.id,
+                    label: row.name,
+                    note: row.unknown_cost
+                      ? `${row.units} sold, no cost recorded yet`
+                      : `${row.margin}% margin on ${formatMoney(row.sales_pesewas)} sold`,
+                    value: row.profit_pesewas,
+                    href: `/admin/products/${row.id}`,
+                  }))}
+                />
+                <p className="mt-4 text-sm text-taupe-700">
+                  Profit after what the pieces cost you, transport and purchase fees included. Margin is the share of each sale you
+                  keep: a best seller with a thin margin can make less than a quiet piece with a fat one.
+                </p>
+              </>
+            )}
+          </Panel>
+        )}
+
         <Panel title="Where buyers are">
           <BarList
             empty="Nothing sold in this period."
@@ -189,11 +219,21 @@ export default function ReportsShow(props: Props) {
           />
         </Panel>
 
-        <Panel title="Lives">
+        <Panel title="Lives" className="xl:col-span-2">
           <BarList
             empty="No sales from a live in this period."
             format={formatMoney}
-            rows={lives.map((row) => ({ key: row.id, label: row.name, note: orders(row.orders), value: row.sales_pesewas, href: `/admin/live/${row.id}` }))}
+            rows={lives.map((row) => ({
+              key: row.id,
+              label: row.name,
+              // With costs: what the live really made, after the goods and any costs pinned to it.
+              note:
+                row.profit_pesewas !== undefined
+                  ? `${orders(row.orders)}, ${formatMoney(row.profit_pesewas)} profit${row.expenses_pesewas ? ` after ${formatMoney(row.expenses_pesewas)} live costs` : ''}`
+                  : orders(row.orders),
+              value: row.sales_pesewas,
+              href: `/admin/live/${row.id}`,
+            }))}
           />
         </Panel>
 

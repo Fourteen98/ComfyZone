@@ -81,6 +81,8 @@ Rails.application.routes.draw do
     # from the top, and the first match wins.
     scope "stock", module: :stock do
       resource :count, only: %i[ new create ], path: "count", path_names: { new: "" }, as: :stock_count
+      # "What to buy next" (RestockAdvisor).
+      resource :advice, only: :show, controller: "advice", as: :stock_advice
     end
 
     resources :stock, only: %i[ index show ], controller: "stock" do
@@ -108,7 +110,11 @@ Rails.application.routes.draw do
         resource :return, only: :create             # POST  /orders/:order_id/return
       end
     end
-    resources :customers, except: %i[ show destroy ] do
+    # The waiting list (StockRequest). URLs say /admin/waiting.
+    resources :waiting, controller: "waiting_list", as: :waiting_list, only: %i[ index create destroy ] do
+      patch :told, on: :member
+    end
+    resources :customers, except: :destroy do
       post :merge, on: :member # /customers/:id/merge  fold a duplicate into this one
     end
 
@@ -154,6 +160,7 @@ Rails.application.routes.draw do
     end
     resource :checkout, only: %i[ show create ], controller: "checkout"
     get "order/:token", to: "orders#show", as: :order      # the shopper's own link
+    post "notify", to: "waiting#create", as: :notify       # "tell me when it's back"
   end
 
   # Old back-office addresses, from before it moved under /admin: saved

@@ -22,6 +22,9 @@ type Props = {
   basket: Record<number, number>
   /** One more of this variant, please. */
   onAdd: (variant: SellableVariant) => void
+  /** Tapping a SOLD OUT size calls this (to put the buyer on the waiting
+      list). Leave out and sold-out sizes can't be tapped. */
+  onWaitlist?: (variant: SellableVariant, product: SellableProduct) => void
 }
 
 // Search the products and tap to add one. A product with sizes or colours
@@ -30,7 +33,7 @@ type Props = {
 // It was the middle of SaleCapture until editing an order needed exactly the
 // same list. It keeps only its own business (the search text, which product
 // is open); what has been picked belongs to whoever is using it.
-export default function ProductPicker({ label, products, basket, onAdd }: Props) {
+export default function ProductPicker({ label, products, basket, onAdd, onWaitlist }: Props) {
   const [search, setSearch] = useState('')
   const [openProduct, setOpenProduct] = useState<number | null>(null)
 
@@ -135,12 +138,14 @@ export default function ProductPicker({ label, products, basket, onAdd }: Props)
                     {product.variants.map((variant) => {
                       const remaining = left(variant)
                       const chosen = basket[variant.id] ?? 0
+                      // Truly sold out (not just all in this claim): offer the waiting list.
+                      const waitable = onWaitlist !== undefined && variant.stock === 0
                       return (
                         <li key={variant.id}>
                           <button
                             type="button"
-                            onClick={() => addOne(variant)}
-                            disabled={remaining <= 0}
+                            onClick={() => (waitable ? onWaitlist(variant, product) : addOne(variant))}
+                            disabled={remaining <= 0 && !waitable}
                             className={`flex min-h-14 w-full flex-col items-start justify-center rounded-md border px-3 py-1.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-700 disabled:opacity-45 ${
                               chosen > 0
                                 ? 'border-wine-800 bg-wine-50'
@@ -158,7 +163,13 @@ export default function ProductPicker({ label, products, basket, onAdd }: Props)
                               ))}
                             </span>
                             <span className="text-sm text-taupe-700 tabular-nums">
-                              {remaining <= 0 ? (variant.stock === 0 ? 'Sold out' : 'All in this claim') : `${remaining} left`}
+                              {remaining <= 0
+                                ? variant.stock === 0
+                                  ? waitable
+                                    ? 'Sold out · tap to add to waiting list'
+                                    : 'Sold out'
+                                  : 'All in this claim'
+                                : `${remaining} left`}
                               {chosen > 0 && <span className="font-semibold text-wine-800">, {chosen} picked</span>}
                             </span>
                           </button>

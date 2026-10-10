@@ -7,6 +7,8 @@ class Variant < ApplicationRecord
   has_many :stock_movements, dependent: :restrict_with_error
   has_many :purchase_items, dependent: :restrict_with_error
   has_many :order_items, dependent: :restrict_with_error
+  # Waiting list entries for this size/colour (see StockRequest).
+  has_many :stock_requests, dependent: :destroy
 
   scope :active, -> { where(active: true) }
 

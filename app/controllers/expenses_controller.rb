@@ -74,19 +74,23 @@ class ExpensesController < InertiaController
 
     def expense_params
       # .presence turns "" (nothing chosen) into nil for the optional field.
-      permitted = params.expect(expense: [ :spent_on, :category, :amount, :note, :paid_via ])
-      permitted.merge(paid_via: permitted[:paid_via].presence)
+      permitted = params.expect(expense: [ :spent_on, :category, :amount, :note, :paid_via, :live_session_id ])
+      permitted.merge(paid_via: permitted[:paid_via].presence, live_session_id: LiveSession.find_by(id: permitted[:live_session_id])&.id)
     end
 
     def form_props(expense)
       {
         expense: expense && {
           id: expense.id, spent_on: expense.spent_on.iso8601, category: expense.category, amount: expense.amount,
-          note: expense.note.to_s, paid_via: expense.paid_via.to_s
+          note: expense.note.to_s, paid_via: expense.paid_via.to_s, live_session_id: expense.live_session_id.to_s
         },
         today: Date.current.iso8601,
         categories: Expense.categories,
-        ways_to_pay: PaymentMethod.options
+        ways_to_pay: PaymentMethod.options,
+        # Recent lives, to pin a cost to one (and the one already chosen, however old).
+        lives: (LiveSession.newest_first.limit(30).to_a | [ expense&.live_session ].compact).map { |live|
+          { id: live.id, label: "#{live.title} (#{live.started_at.strftime('%-d %b')})" }
+        }
       }
     end
 end

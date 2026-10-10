@@ -117,6 +117,8 @@ class OrderTaker
         item.unit_cost_pesewas = variant.average_cost_pesewas
       end
       item.save!
+      # If they were on the waiting list for this, they have it now.
+      StockRequest.fulfil(customer: customer, variant: variant)
     end
 
     def has_a_customer

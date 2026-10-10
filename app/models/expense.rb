@@ -6,6 +6,8 @@ class Expense < ApplicationRecord
   SUGGESTED = [ "Packaging", "Riders and delivery", "Data and airtime", "Advertising", "Rent", "Wages", "Equipment", "Other" ].freeze
 
   belongs_to :user
+  # Optional: a cost that belongs to one live (data, a host, a ring light).
+  belongs_to :live_session, optional: true
 
   money :amount
 

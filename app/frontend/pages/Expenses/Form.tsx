@@ -6,18 +6,20 @@ import Button, { ButtonLink } from '@/components/ui/Button'
 import ChoicePills from '@/components/ui/ChoicePills'
 import MoneyField from '@/components/ui/MoneyField'
 import PageHeader from '@/components/ui/PageHeader'
+import SelectField from '@/components/ui/SelectField'
 import TextField from '@/components/ui/TextField'
 import { confirmAction } from '@/lib/confirm'
 
 // Props from ExpensesController#new and #edit
 type Props = {
-  expense: { id: number; spent_on: string; category: string; amount: string; note: string; paid_via: string } | null
+  expense: { id: number; spent_on: string; category: string; amount: string; note: string; paid_via: string; live_session_id: string } | null
   today: string
   categories: string[] // ones she has used, then suggestions
   ways_to_pay: { value: string; label: string }[]
+  lives: { id: number; label: string }[] // recent lives, to pin a cost to one
 }
 
-export default function ExpenseForm({ expense, today, categories, ways_to_pay }: Props) {
+export default function ExpenseForm({ expense, today, categories, ways_to_pay, lives }: Props) {
   const editing = expense !== null
 
   const form = useForm({
@@ -26,6 +28,7 @@ export default function ExpenseForm({ expense, today, categories, ways_to_pay }:
     amount: expense?.amount ?? '',
     note: expense?.note ?? '',
     paid_via: expense?.paid_via ?? '',
+    live_session_id: expense?.live_session_id ?? '',
   })
   const errors = form.errors as Record<string, string[] | undefined>
 
@@ -120,6 +123,18 @@ export default function ExpenseForm({ expense, today, categories, ways_to_pay }:
           onChange={(paid_via) => form.setData('paid_via', paid_via)}
           error={errors.paid_via}
         />
+
+        {lives.length > 0 && (
+          <SelectField
+            id="live_session_id"
+            label="For a live? (optional)"
+            placeholder="Not for one live"
+            options={lives.map((live) => ({ value: live.id, label: live.label }))}
+            value={form.data.live_session_id}
+            onChange={(e) => form.setData('live_session_id', e.target.value)}
+            hint="Data, a host, lights hired for that live. It is taken off that live's profit."
+          />
+        )}
 
         <TextField
           id="note"
