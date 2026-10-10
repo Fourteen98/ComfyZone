@@ -13,11 +13,13 @@
 // server every time; an old copy of "3 left" is worse than no answer.
 
 const OFFLINE_PAGE = "/offline.html"
-const CACHE = "comfyzone-offline-v1" // change the name to make phones fetch it again
+const CACHE = "comfyzone-offline-v2" // change the name to make phones fetch it again
 
 // When the worker is first installed: fetch the offline page and keep it.
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.add(OFFLINE_PAGE)))
+  // The page and the icon it shows: both must be on the phone already,
+  // since this is exactly when nothing can be fetched.
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([OFFLINE_PAGE, "/icon-192.png"])))
   self.skipWaiting() // take over straight away, don't wait for old tabs to close
 })
 
@@ -31,12 +33,25 @@ self.addEventListener("activate", (event) => {
 
 // Every request the app makes passes through here.
 self.addEventListener("fetch", (event) => {
+  // The offline page's icon, from the cache when there is no network.
+  if (new URL(event.request.url).pathname === "/icon-192.png") {
+    event.respondWith(fetch(event.request).catch(() => caches.match("/icon-192.png")))
+    return
+  }
+
   // Only step in for opening a page ("navigate"). Everything else (saving a
   // sale, loading a photo, Inertia's own requests) goes to the network
   // untouched, so nothing is ever recorded against stale data.
   if (event.request.mode !== "navigate") return
 
-  event.respondWith(fetch(event.request).catch(() => caches.match(OFFLINE_PAGE)))
+  // If the page can't be fetched, wait a moment and try once more before
+  // giving up: a deploy restarts the app for a few seconds, and a single
+  // retry hides most of those blips completely.
+  event.respondWith(
+    fetch(event.request)
+      .catch(() => new Promise((resolve) => setTimeout(resolve, 2000)).then(() => fetch(event.request)))
+      .catch(() => caches.match(OFFLINE_PAGE))
+  )
 })
 
 // ---------- Push notifications ----------
