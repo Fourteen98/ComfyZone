@@ -108,6 +108,7 @@ Rails.application.routes.draw do
         resource :stage, only: :update              # PATCH /orders/:order_id/stage
         resource :delivery, only: :update           # PATCH /orders/:order_id/delivery
         resource :return, only: :create             # POST  /orders/:order_id/return
+        resource :swap, only: :create               # POST  /orders/:order_id/swap   another size instead
       end
     end
     # The waiting list (StockRequest). URLs say /admin/waiting.

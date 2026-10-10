@@ -17,6 +17,9 @@ import { formatMoney } from '@/lib/format'
 import type { OrderSummary } from '@/lib/orders'
 import { confirmAction } from '@/lib/confirm'
 import PhoneLinks from '@/components/PhoneLinks'
+import SwapForm from '@/components/SwapForm'
+import type { SwapLine } from '@/components/SwapForm'
+import type { SellableProduct } from '@/components/ProductPicker'
 
 type Payment = {
   id: number
@@ -55,6 +58,8 @@ type Props = {
   locations: Locations
   ways_to_pay: { value: string; label: string; reference?: boolean }[]
   payment_names: Record<string, string> // every method, hidden ones too
+  /** For "swap a size". null when no swap is possible or allowed. */
+  swap: { lines: SwapLine[]; products: SellableProduct[] } | null
   // What this person may do to this order right now (OrdersController#show).
   can: {
     change: boolean
@@ -62,14 +67,15 @@ type Props = {
     remove_items: boolean
     fulfil: boolean
     refund: boolean
+    swap: boolean
     cancel: boolean
   }
 }
 
 // Props from OrdersController#show
-export default function OrderShow({ order, locations, ways_to_pay, payment_names, can }: Props) {
+export default function OrderShow({ order, locations, ways_to_pay, payment_names, swap, can }: Props) {
   // Which of the small forms is open. Only ever one at a time.
-  const [open, setOpen] = useState<'delivery' | 'refund' | 'return' | null>(null)
+  const [open, setOpen] = useState<'delivery' | 'refund' | 'return' | 'swap' | null>(null)
   const [restock, setRestock] = useState<'yes' | 'no' | ''>('')
 
   const { status, balance_pesewas: balance, paid_pesewas: paid, delivery, timeline } = order
@@ -254,14 +260,29 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
             )}
 
             {/* ---------- Undoing the sale ---------- */}
-            {(can.cancel || (can.refund && status === 'delivered')) && (
-              <div className="mt-5 border-t border-wine-200 pt-4">
+            {(can.cancel || (can.refund && status === 'delivered') || (can.swap && swap)) && (
+              <div className="mt-5 space-y-2 border-t border-wine-200 pt-4">
+                {/* A size that didn't fit: some of a line comes back, another goes out. */}
+                {can.swap && swap && swap.lines.length > 0 && open !== 'swap' && open !== 'return' && (
+                  <Button type="button" variant="secondary" block onClick={() => setOpen('swap')}>
+                    Swap a size
+                  </Button>
+                )}
+                {open === 'swap' && swap && (
+                  <SwapForm
+                    orderId={order.id}
+                    delivered={status === 'delivered'}
+                    lines={swap.lines}
+                    products={swap.products}
+                    onClose={() => setOpen(null)}
+                  />
+                )}
                 {can.cancel && (
                   <Button type="button" variant="danger" block onClick={cancel}>
                     Cancel order
                   </Button>
                 )}
-                {can.refund && status === 'delivered' && open !== 'return' && (
+                {can.refund && status === 'delivered' && open !== 'return' && open !== 'swap' && (
                   <Button type="button" variant="danger" block onClick={() => setOpen('return')}>
                     They sent it back
                   </Button>

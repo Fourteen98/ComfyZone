@@ -73,6 +73,15 @@ class OrdersController < InertiaController
       ways_to_pay: PaymentMethod.options,
       # Names for every method, hidden ones too, to label old payments.
       payment_names: PaymentMethod.names,
+      # For "swap a size": each line still on the order, and what it could
+      # become (every product, with live stock). Only when a swap is possible.
+      swap: can?("orders.refund") && (@order.paid? || @order.packed? || @order.delivered?) ? {
+        lines: @order.items.includes(variant: :product).select { |item| item.kept.positive? }.map { |item|
+          { id: item.id, variant_id: item.variant_id, product_id: item.variant.product_id, name: item.variant.full_name,
+            kept: item.kept, unit_price_pesewas: item.unit_price_pesewas }
+        },
+        products: sellable_products
+      } : nil,
       # What THIS person may do to THIS order right now. React only shows
       # buttons; each action checks again on the server.
       can: {
@@ -81,6 +90,7 @@ class OrdersController < InertiaController
         remove_items: can?("orders.create") && @order.claimed?,
         fulfil: can?("orders.fulfil"),
         refund: can?("orders.refund"),
+        swap: can?("orders.refund") && (@order.paid? || @order.packed? || @order.delivered?),
         cancel: (@order.claimed? || @order.paid? || @order.packed?) && can?(permission_to_cancel)
       }
     }

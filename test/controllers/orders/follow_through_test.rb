@@ -50,7 +50,7 @@ class Orders::FollowThroughTest < ActionDispatch::IntegrationTest
     assert_equal [ 12_000, 14_000, 10_000, 4_000 ], order.values_at(:total_pesewas, :due_pesewas, :paid_pesewas, :balance_pesewas)
     assert_equal [ "delivery", "20", "Osu" ], order[:delivery].values_at(:method, :fee, :address)
     assert_equal [ [ 10_000, "momo" ] ], order[:payments].map { |payment| payment.values_at(:amount_pesewas, :via) }
-    assert_equal({ change: true, edit: true, remove_items: true, fulfil: true, refund: true, cancel: true }, inertia.props[:can].to_h.symbolize_keys)
+    assert_equal({ change: true, edit: true, remove_items: true, fulfil: true, refund: true, swap: false, cancel: true }, inertia.props[:can].to_h.symbolize_keys)
     assert_equal %w[ momo cash bank other ], inertia.props[:ways_to_pay].pluck(:value)
   end
 
