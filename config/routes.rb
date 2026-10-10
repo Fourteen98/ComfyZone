@@ -109,6 +109,7 @@ Rails.application.routes.draw do
         resource :delivery, only: :update           # PATCH /orders/:order_id/delivery
         resource :return, only: :create             # POST  /orders/:order_id/return
         resource :swap, only: :create               # POST  /orders/:order_id/swap   another size instead
+        resource :take_back, only: :create          # POST  /orders/:order_id/take_back  money back instead
       end
     end
     # The waiting list (StockRequest). URLs say /admin/waiting.

@@ -72,4 +72,44 @@ class Orders::SwapsTest < ActionDispatch::IntegrationTest
     assert inertia.props[:can][:swap]
     assert_equal [ @line.id ], inertia.props[:swap][:lines].pluck("id")
   end
+
+  # ---------- money back instead (Order#take_back!) ----------
+
+  def take_back(**params)
+    post order_take_back_path(@order), params: { item_id: @line.id, quantity: 1 }.merge(params)
+  end
+
+  test "the colour they want is sold out: take one back and refund it" do
+    take_back(refund: true, amount: "120", via: "momo", reference: "TX123")
+    @order.reload
+
+    assert_equal [ "delivered", 12_000, 12_000, 0 ], [ @order.status, @order.total_pesewas, @order.paid_pesewas, @order.balance_pesewas ]
+    assert_equal 4, @m.reload.stock_on_hand, "back in stock"
+    refund = @order.payments.order(:id).last
+    assert_equal [ -12_000, "momo" ], [ refund.amount_pesewas, refund.via ]
+    assert_match "TX123", refund.note
+    assert_match "took back 1 × Ankara wrap dress, M / Black, money refunded", @order.note
+  end
+
+  test "taking everything back makes it a return, and the refund can include delivery" do
+    take_back(quantity: 2, refund: true, amount: "240", via: "cash")
+    assert @order.reload.returned?
+    assert_equal 0, @order.paid_pesewas
+  end
+
+  test "no refund now leaves it as a refund due; a refund over what they paid saves nothing" do
+    take_back(refund: false)
+    assert_equal(-12_000, @order.reload.balance_pesewas)
+    assert_includes Order.refund_due, @order
+
+    take_back(refund: true, amount: "500", via: "momo")
+    assert_match "Nothing was saved", flash[:alert]
+    assert_equal 1, @line.reload.returned_quantity, "the second take-back was rolled back whole"
+  end
+
+  test "someone who wanted a sold-out colour goes on its waiting list" do
+    @l.update_columns(stock_on_hand: 0)
+    post waiting_list_index_path, params: { variant_id: @l.id, customer_id: customers(:ama).id, source: "sale" }
+    assert_equal [ customers(:ama), @l ], StockRequest.open.sole.then { |r| [ r.customer, r.variant ] }
+  end
 end

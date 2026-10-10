@@ -230,6 +230,47 @@ class Order < ApplicationRecord
     end
   end
 
+  # Taking an item back without swapping: what they wanted isn't in stock
+  # (or they changed their mind), so they get their money back instead.
+  #
+  #   order.take_back!(item: line, quantity: 1, by: user, restock: true,
+  #                    refund: { amount: "120", via: "momo", reference: "..." })
+  #
+  # Works on paid, packed and delivered orders (an unpaid one is simply
+  # edited). The line keeps its history (returned_quantity goes up), the
+  # total follows what they kept, and the refund, if any, is an ordinary
+  # refund payment (Order#refund!), so it shows in Money received and can
+  # never be more than they paid. If nothing is left on the order, it
+  # becomes "returned". All of it, or none of it.
+  def take_back!(item:, quantity:, by:, restock: true, refund: nil)
+    transaction do
+      lock!
+      raise WrongStage, "Only a paid, packed or delivered order can take an item back. To change an unpaid one, edit it." unless paid? || packed? || delivered?
+
+      item = items.find(item.id)
+      count = quantity.to_i
+      raise WrongStage, "Choose how many are coming back." unless count.positive?
+      raise WrongStage, "Only #{item.kept} of #{item.variant.full_name} left on this order." if count > item.kept
+
+      put_back(item, by: by, reason: "return", quantity: count) if restock
+      item.update!(returned_quantity: item.returned_quantity + count)
+
+      stamp = Time.current.in_time_zone.strftime("%-d %b")
+      self.note = [ note.presence, "#{stamp}: took back #{count} × #{item.variant.full_name}#{refund ? ', money refunded' : ''}." ].compact.join("\n")
+      if items.reload.all? { |line| line.kept.zero? }
+        # Nothing left: a full return. (As in return_items!, the total stays
+        # as a record; nothing is due on a returned order.)
+        self.status = "returned"
+        self.returned_at = Time.current
+      else
+        self.total_pesewas = items.sum(&:total_pesewas)
+      end
+      save!
+
+      refund!(amount: refund[:amount], via: refund[:via], by: by, note: refund[:note]) if refund && refund[:amount].present?
+    end
+  end
+
   def step_back!
     transaction do
       lock!

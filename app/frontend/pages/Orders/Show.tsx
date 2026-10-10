@@ -265,12 +265,17 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
                 {/* A size that didn't fit: some of a line comes back, another goes out. */}
                 {can.swap && swap && swap.lines.length > 0 && open !== 'swap' && open !== 'return' && (
                   <Button type="button" variant="secondary" block onClick={() => setOpen('swap')}>
-                    Swap a size
+                    Swap or refund an item
                   </Button>
                 )}
                 {open === 'swap' && swap && (
                   <SwapForm
                     orderId={order.id}
+                    customerId={order.customer_id}
+                    customerName={order.customer}
+                    paidPesewas={paid}
+                    deliveryFeePesewas={delivery.fee_pesewas}
+                    waysToPay={ways_to_pay}
                     delivered={status === 'delivered'}
                     lines={swap.lines}
                     products={swap.products}

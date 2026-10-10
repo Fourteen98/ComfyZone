@@ -44,3 +44,31 @@ swapped away earlier works the same way: its line gains quantity again.
 `orders.refund`, the same permission as returns: stock comes in and money
 may change hands. Unpaid orders don't offer swaps at all; editing the order
 is the simpler way to change a size before it is paid.
+
+## When what they want isn't there: money back
+
+The button is "Swap or refund an item", and the first question is **what
+do they want instead?**
+
+- **Something else:** another size, colour or piece (`Order#swap!`, above).
+  Sizes and colours that are sold out still show, dashed. Tapping one says
+  so and offers to **put them on the waiting list** for it (lesson 29), then
+  to swap for something else for now or give their money back.
+- **Their money back:** `Order#take_back!`.
+
+```ruby
+order.take_back!(item: line, quantity: 1, by: user, restock: true,
+                 refund: { amount: "120", via: "momo", note: "Took back ... TX123" })
+```
+
+It takes the item back exactly like a swap does (returned quantity up,
+restocked unless damaged, total follows what they kept), then records the
+refund through the existing `Order#refund!`. Reusing it means the refund is
+an ordinary negative payment: it shows in Money received, it can never be
+more than they paid, and if it's wrong the **whole** take-back rolls back,
+because `refund!` runs inside `take_back!`'s transaction.
+
+The refund box starts at what those pieces cost them. If nothing is left on
+the order it starts at everything they paid, delivery included, and the
+order becomes "returned". Leave it empty to refund later: the order then
+shows in "Refunds due" like any other.
