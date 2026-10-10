@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_08_060001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_10_090003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -93,6 +93,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_060001) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "live_session_id"
+    t.index ["live_session_id"], name: "index_expenses_on_live_session_id"
     t.index ["spent_on"], name: "index_expenses_on_spent_on"
     t.index ["user_id"], name: "index_expenses_on_user_id"
     t.check_constraint "amount_pesewas > 0", name: "expenses_amount_positive"
@@ -363,6 +365,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_060001) do
     t.check_constraint "quantity <> 0", name: "stock_movements_quantity_not_zero"
   end
 
+  create_table "stock_requests", force: :cascade do |t|
+    t.bigint "customer_id", null: false
+    t.bigint "variant_id", null: false
+    t.integer "quantity", default: 1, null: false
+    t.string "source", default: "manual", null: false
+    t.string "note"
+    t.bigint "user_id"
+    t.datetime "told_at"
+    t.datetime "closed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["customer_id", "variant_id"], name: "index_stock_requests_one_open_per_customer_and_variant", unique: true, where: "(closed_at IS NULL)"
+    t.index ["customer_id"], name: "index_stock_requests_on_customer_id"
+    t.index ["user_id"], name: "index_stock_requests_on_user_id"
+    t.index ["variant_id"], name: "index_stock_requests_on_variant_id"
+    t.check_constraint "quantity > 0", name: "stock_requests_quantity_positive"
+    t.check_constraint "source::text = ANY (ARRAY['live'::character varying, 'sale'::character varying, 'shop'::character varying, 'manual'::character varying]::text[])", name: "stock_requests_source_known"
+  end
+
   create_table "suppliers", force: :cascade do |t|
     t.string "name", null: false
     t.string "phone"
@@ -413,6 +434,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_060001) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "customers", "delivery_areas", on_delete: :nullify
+  add_foreign_key "expenses", "live_sessions", on_delete: :nullify
   add_foreign_key "expenses", "users"
   add_foreign_key "live_sessions", "sales_channels", on_delete: :nullify
   add_foreign_key "live_sessions", "users"
@@ -439,6 +461,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_08_060001) do
   add_foreign_key "sessions", "users"
   add_foreign_key "stock_movements", "users"
   add_foreign_key "stock_movements", "variants"
+  add_foreign_key "stock_requests", "customers", on_delete: :cascade
+  add_foreign_key "stock_requests", "users", on_delete: :nullify
+  add_foreign_key "stock_requests", "variants", on_delete: :cascade
   add_foreign_key "suppliers", "delivery_areas", on_delete: :nullify
   add_foreign_key "users", "roles"
   add_foreign_key "variants", "products"

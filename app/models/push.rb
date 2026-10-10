@@ -24,7 +24,8 @@ module Push
   # topic on never shows someone what their role may not see.
   TOPICS = [
     Topic.new("low_stock", "Stock running low", "When something drops to its warning level, or sells out.", "stock.view"),
-    Topic.new("orders", "New sales", "When someone else records a sale (not during a live).", "orders.view")
+    Topic.new("orders", "New sales", "When someone else records a sale (not during a live).", "orders.view"),
+    Topic.new("back_in_stock", "Back in stock", "When something people asked for comes back.", "customers.view")
   ].freeze
 
   def self.topic(key)

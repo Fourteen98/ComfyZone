@@ -25,7 +25,7 @@ type Props = {
     ended: string | null
     minutes: number | null
   }
-  stats: { orders: number; units: number; total_pesewas: number; profit_pesewas: number | null }
+  stats: { orders: number; units: number; total_pesewas: number; profit_pesewas: number | null; expenses_pesewas: number | null }
   orders: OrderSummary[]
   can_sell: boolean
   // After the live: is the claim screen open again for a missed order?
@@ -65,7 +65,16 @@ export default function LiveShow({ live, stats, orders, can_sell, adding, produc
     { label: 'Orders', value: String(stats.orders) },
     { label: 'Items', value: String(stats.units) },
     { label: 'Sold', value: formatMoney(stats.total_pesewas) },
-    ...(stats.profit_pesewas !== null ? [{ label: 'Profit', value: formatMoney(stats.profit_pesewas) }] : []),
+    // Profit on the goods, less any costs pinned to this live (Expenses).
+    ...(stats.profit_pesewas !== null
+      ? [
+          {
+            label: stats.expenses_pesewas ? 'Profit after live costs' : 'Profit',
+            value: formatMoney(stats.profit_pesewas - (stats.expenses_pesewas ?? 0)),
+            hint: stats.expenses_pesewas ? `${formatMoney(stats.expenses_pesewas)} live costs taken off` : undefined,
+          },
+        ]
+      : []),
   ]
 
   return (

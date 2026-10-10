@@ -47,6 +47,7 @@ type Props = {
 // at the moment of the claim, and refuses if something has just sold out.
 export default function SaleCapture({ products, buyers, liveId, liveChannel, channels = [], locations }: Props) {
   const errors = usePage().props.errors as Record<string, string[] | undefined>
+  const [waitHint, setWaitHint] = useState<string | null>(null)
   const buyerInput = useRef<HTMLInputElement>(null)
   const inLive = liveId !== undefined
 
@@ -101,6 +102,18 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   const deliveryFee = !inLive && delivery.delivery_method === 'delivery' ? toPesewas(delivery.fee) : 0
   const channel = channels.find((c) => String(c.id) === channelId)
   const who = inLive ? (typed ? `@${typed}` : '') : (choice?.label ?? '')
+
+  // A sold-out size tapped: put this buyer on its waiting list, so she can
+  // tell them when it's back (WaitingListController#create).
+  function waitlist(variant: SellableVariant, product: SellableProduct) {
+    const who = inLive ? (typed ? { buyer: { handle: typed, name: '', phone: '' } } : null) : choice ? ('id' in choice.buyer ? { customer_id: choice.buyer.id } : { buyer: choice.buyer }) : null
+    if (!who) {
+      setWaitHint(`Say who is asking first, then tap ${product.name}, ${variant.name} again to add them to the waiting list.`)
+      return
+    }
+    setWaitHint(null)
+    router.post('/admin/waiting', { variant_id: variant.id, source: inLive ? 'live' : 'sale', ...who }, { preserveScroll: true, preserveState: true })
+  }
 
   function claim() {
     setSending(true)
@@ -160,6 +173,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
     <div className="grid items-start gap-x-6 gap-y-5 pb-24 lg:grid-cols-[minmax(0,1fr)_22rem] lg:pb-0">
       {/* ---------- 1. Who ---------- */}
       <section className="space-y-4 lg:col-start-1">
+        {waitHint && <Alert tone="error">{waitHint}</Alert>}
         {(errors.items || errors.customer || errors.base) && (
           <Alert tone="error">{(errors.items ?? errors.customer ?? errors.base)![0]}</Alert>
         )}
@@ -350,6 +364,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           products={products}
           basket={basket}
           onAdd={addOne}
+          onWaitlist={waitlist}
         />
       </section>
 

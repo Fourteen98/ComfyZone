@@ -180,6 +180,97 @@ class Order < ApplicationRecord
   end
 
   # Undo a tap on the wrong order: delivered -> packed -> waiting.
+  # Swapping: they send back some of one line and take something else
+  # instead, usually the same piece in another size.
+  #
+  #   order.swap!(item: line, to: xl_variant, quantity: 1, by: user)
+  #
+  #   restock:     the one coming back can be sold again (usually yes)
+  #   same_price:  charge what they paid for the old one (a size swap), or
+  #                the new one's own price (a different piece). Any
+  #                difference shows as owing, or as a refund due.
+  #   send_again:  a delivered order goes back to "to deliver", so the new
+  #                one gets sent out
+  #
+  # Stock moves both ways in one transaction: the old one comes in, the new
+  # one goes out (refused if it has just sold out). The swap is written into
+  # the order's note so the history is on the order itself.
+  def swap!(item:, to:, quantity:, by:, restock: true, same_price: true, send_again: true)
+    transaction do
+      lock!
+      raise WrongStage, "Only a paid, packed or delivered order can have a swap. To change an unpaid one, edit it." unless paid? || packed? || delivered?
+
+      item = items.find(item.id)
+      count = quantity.to_i
+      raise WrongStage, "Choose how many to swap." unless count.positive?
+      raise WrongStage, "Only #{item.kept} of #{item.variant.full_name} left on this order." if count > item.kept
+      raise WrongStage, "That is the same item. Choose another size or colour." if to.id == item.variant_id
+
+      # The old one comes back.
+      put_back(item, by: by, reason: "return", quantity: count) if restock
+      item.update!(returned_quantity: item.returned_quantity + count)
+
+      # The new one goes out. guard_stock: refuse if it has just sold out.
+      StockLedger.record!(variant: to, quantity: -count, reason: "sale", source: self, user: by, guard_stock: true,
+        note: "Swap for #{item.variant.full_name}")
+      line = items.find_or_initialize_by(variant: to)
+      if line.new_record?
+        line.unit_price_pesewas = same_price ? item.unit_price_pesewas : to.selling_price_pesewas
+        line.unit_cost_pesewas = to.average_cost_pesewas
+        line.quantity = 0
+      end
+      line.quantity += count
+      line.save!
+
+      self.total_pesewas = items.reload.sum(&:total_pesewas)
+      update!(status: "packed", delivered_at: nil) if delivered? && send_again
+      stamp = Time.current.in_time_zone.strftime("%-d %b")
+      self.note = [ note.presence, "#{stamp}: swapped #{count} × #{item.variant.name} for #{to.name} (#{to.product.name})." ].compact.join("\n")
+      save!
+    end
+  end
+
+  # Taking an item back without swapping: what they wanted isn't in stock
+  # (or they changed their mind), so they get their money back instead.
+  #
+  #   order.take_back!(item: line, quantity: 1, by: user, restock: true,
+  #                    refund: { amount: "120", via: "momo", reference: "..." })
+  #
+  # Works on paid, packed and delivered orders (an unpaid one is simply
+  # edited). The line keeps its history (returned_quantity goes up), the
+  # total follows what they kept, and the refund, if any, is an ordinary
+  # refund payment (Order#refund!), so it shows in Money received and can
+  # never be more than they paid. If nothing is left on the order, it
+  # becomes "returned". All of it, or none of it.
+  def take_back!(item:, quantity:, by:, restock: true, refund: nil)
+    transaction do
+      lock!
+      raise WrongStage, "Only a paid, packed or delivered order can take an item back. To change an unpaid one, edit it." unless paid? || packed? || delivered?
+
+      item = items.find(item.id)
+      count = quantity.to_i
+      raise WrongStage, "Choose how many are coming back." unless count.positive?
+      raise WrongStage, "Only #{item.kept} of #{item.variant.full_name} left on this order." if count > item.kept
+
+      put_back(item, by: by, reason: "return", quantity: count) if restock
+      item.update!(returned_quantity: item.returned_quantity + count)
+
+      stamp = Time.current.in_time_zone.strftime("%-d %b")
+      self.note = [ note.presence, "#{stamp}: took back #{count} × #{item.variant.full_name}#{refund ? ', money refunded' : ''}." ].compact.join("\n")
+      if items.reload.all? { |line| line.kept.zero? }
+        # Nothing left: a full return. (As in return_items!, the total stays
+        # as a record; nothing is due on a returned order.)
+        self.status = "returned"
+        self.returned_at = Time.current
+      else
+        self.total_pesewas = items.sum(&:total_pesewas)
+      end
+      save!
+
+      refund!(amount: refund[:amount], via: refund[:via], by: by, note: refund[:note]) if refund && refund[:amount].present?
+    end
+  end
+
   def step_back!
     transaction do
       lock!

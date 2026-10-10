@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react'
-import { Boxes, ChevronRight, ClipboardList, Search, Shirt, SlidersHorizontal } from 'lucide-react'
+import { Boxes, ChevronRight, ClipboardList, Lightbulb, Search, Shirt, SlidersHorizontal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import { ButtonLink } from '@/components/ui/Button'
@@ -86,13 +86,18 @@ export default function StockIndex({ groups, filters, counts, totals, focus_id }
         title="Stock"
         description="What you have on hand right now. Tap any item to see its history or correct its count."
         actions={
-          can('stock.adjust') &&
-          counts.all > 0 && (
-            <ButtonLink href="/admin/stock/count" variant="secondary">
-              <ClipboardList className="size-5" aria-hidden="true" />
-              Stock take
+          <>
+            <ButtonLink href="/admin/stock/advice" variant="secondary">
+              <Lightbulb className="size-5" aria-hidden="true" />
+              What to buy next
             </ButtonLink>
-          )
+            {can('stock.adjust') && counts.all > 0 && (
+              <ButtonLink href="/admin/stock/count" variant="secondary">
+                <ClipboardList className="size-5" aria-hidden="true" />
+                Stock take
+              </ButtonLink>
+            )}
+          </>
         }
       />
 

@@ -67,7 +67,7 @@ class LiveSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to live_path(live)
 
     get live_path(live)
-    assert_equal({ orders: 1, units: 2, total_pesewas: 24_000, profit_pesewas: 12_000 }.stringify_keys, inertia.props[:stats].to_h.stringify_keys)
+    assert_equal({ orders: 1, units: 2, total_pesewas: 24_000, profit_pesewas: 12_000, expenses_pesewas: 0 }.stringify_keys, inertia.props[:stats].to_h.stringify_keys)
     assert_equal "Ama Koranteng", inertia.props[:orders].first[:customer]
 
     sign_in_as(users(:two)) # can see and create orders, not costs

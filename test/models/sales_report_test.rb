@@ -101,7 +101,7 @@ class SalesReportTest < ActiveSupport::TestCase
     sell(at: 1.day.ago + 60, live: live, buyer: "@kofi.b", lines: [ [ @red, 2 ] ])
     sell(at: 1.hour.ago) # ama again, outside the live
 
-    assert_equal [ { id: live.id, name: "Tuesday live", orders: 2, sales_pesewas: 40_000 } ], week.lives
+    assert_equal [ { id: live.id, name: "Tuesday live", orders: 2, sales_pesewas: 40_000, cost_pesewas: 22_000, expenses_pesewas: 0, profit_pesewas: 18_000 } ], week.lives
     assert_equal [ [ "@kofi.b", 1, 28_000 ], [ "Ama Koranteng", 2, 24_000 ] ], week.top_customers.map { |row| row.values_at(:name, :orders, :sales_pesewas) }
   end
 

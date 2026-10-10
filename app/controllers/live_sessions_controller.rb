@@ -71,7 +71,9 @@ class LiveSessionsController < InertiaController
         orders: counted.size,
         units: counted.sum(&:units),
         total_pesewas: counted.sum(&:total_pesewas),
-        profit_pesewas: can?("costs.view") ? counted.sum(&:profit_pesewas) : nil
+        profit_pesewas: can?("costs.view") ? counted.sum(&:profit_pesewas) : nil,
+        # Costs pinned to this live (Expenses), and what is left after them.
+        expenses_pesewas: can?("costs.view") ? @live.expenses.sum(:amount_pesewas) : nil
       },
       orders: counted.first(@live.running? ? 20 : 500).map { |order| order_summary(order) },
       can_sell: can?("orders.create")

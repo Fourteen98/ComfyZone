@@ -1,8 +1,8 @@
 import { ChevronDown, Search, Shirt } from 'lucide-react'
 import { useState } from 'react'
-import { Swatch } from '@/components/ui/Chip'
 import type { OptionValue } from '@/components/OptionValuesEditor'
 import { formatMoney } from '@/lib/format'
+import VariantChooser from '@/components/VariantChooser'
 import { rankProducts } from '@/lib/search'
 
 export type SellableVariant = {
@@ -22,15 +22,19 @@ type Props = {
   basket: Record<number, number>
   /** One more of this variant, please. */
   onAdd: (variant: SellableVariant) => void
+  /** Tapping a SOLD OUT size calls this (to put the buyer on the waiting
+      list). Leave out and sold-out sizes can't be tapped. */
+  onWaitlist?: (variant: SellableVariant, product: SellableProduct) => void
 }
 
 // Search the products and tap to add one. A product with sizes or colours
-// opens to show them; a simple product is added in one tap.
+// opens a step-by-step chooser (VariantChooser) showing only what is in
+// stock; a simple product is added in one tap.
 //
 // It was the middle of SaleCapture until editing an order needed exactly the
 // same list. It keeps only its own business (the search text, which product
 // is open); what has been picked belongs to whoever is using it.
-export default function ProductPicker({ label, products, basket, onAdd }: Props) {
+export default function ProductPicker({ label, products, basket, onAdd, onWaitlist }: Props) {
   const [search, setSearch] = useState('')
   const [openProduct, setOpenProduct] = useState<number | null>(null)
 
@@ -129,43 +133,17 @@ export default function ProductPicker({ label, products, basket, onAdd }: Props)
                   )}
                 </button>
 
-                {/* The sizes and colours, shown when the product is tapped. */}
+                {/* The sizes and colours, shown when the product is tapped:
+                    only what is in stock, chosen step by step. */}
                 {open && !simple && (
-                  <ul className="grid grid-cols-2 gap-2 bg-taupe-50 px-3 py-3 sm:grid-cols-3">
-                    {product.variants.map((variant) => {
-                      const remaining = left(variant)
-                      const chosen = basket[variant.id] ?? 0
-                      return (
-                        <li key={variant.id}>
-                          <button
-                            type="button"
-                            onClick={() => addOne(variant)}
-                            disabled={remaining <= 0}
-                            className={`flex min-h-14 w-full flex-col items-start justify-center rounded-md border px-3 py-1.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-700 disabled:opacity-45 ${
-                              chosen > 0
-                                ? 'border-wine-800 bg-wine-50'
-                                : pointed.has(variant.id)
-                                  ? 'border-wine-700 bg-white ring-2 ring-wine-700/30'
-                                  : 'border-taupe-300 bg-white hover:border-wine-700'
-                            }`}
-                          >
-                            <span className="flex flex-wrap items-center gap-x-1.5 font-medium">
-                              {variant.option_values.map((value) => (
-                                <span key={value.name} className="inline-flex items-center gap-1">
-                                  {value.swatch && <Swatch colour={value.swatch} />}
-                                  {value.label}
-                                </span>
-                              ))}
-                            </span>
-                            <span className="text-sm text-taupe-700 tabular-nums">
-                              {remaining <= 0 ? (variant.stock === 0 ? 'Sold out' : 'All in this claim') : `${remaining} left`}
-                              {chosen > 0 && <span className="font-semibold text-wine-800">, {chosen} picked</span>}
-                            </span>
-                          </button>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                  <VariantChooser
+                    product={product}
+                    left={left}
+                    basket={basket}
+                    onAdd={addOne}
+                    onWaitlist={onWaitlist}
+                    pointed={product.variants.filter((variant) => pointed.has(variant.id))}
+                  />
                 )}
               </li>
             )

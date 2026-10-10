@@ -1,6 +1,7 @@
 # The stock page: what is on hand right now, and each item's history.
 # (Changing stock by hand is Stock::AdjustmentsController.)
 class StockController < InertiaController
+  include SaleCapture # known_buyers, for adding someone to the waiting list
   require_permission "stock.view"
 
   # GET /stock?show=low&q=dress
@@ -64,6 +65,12 @@ class StockController < InertiaController
       movements_total: variant.stock_movements.count,
       can_adjust: can?("stock.adjust"),
       can_set_cost: can?("stock.adjust") && can?("costs.view"),
+      # Who asked for this while it was sold out (StockRequest).
+      waiting: can?("customers.view") ? variant.stock_requests.open.includes(:customer).order(:created_at).map { |request|
+        { id: request.id, customer_id: request.customer_id, customer: request.customer.display_name, phone: request.customer.phone,
+          quantity: request.quantity, since: request.created_at.strftime("%-d %b"), told: request.told_at.present?, message: request.message }
+      } : nil,
+      buyers: can?("customers.manage") ? known_buyers : nil,
       # How many other sizes/colours of this product also have no cost yet.
       siblings_without_cost: can?("costs.view") ? variant.product.variants.where(average_cost_pesewas: 0).where.not(id: variant.id).count : 0
     }

@@ -38,6 +38,7 @@ class StockLedger
       variant.stock_on_hand += quantity
       variant.save!
       warn_if_running_low(variant, before)
+      announce_back_in_stock(variant, before)
 
       StockMovement.create!(
         variant: variant,
@@ -50,6 +51,20 @@ class StockLedger
         note: note
       )
     end
+  end
+
+  # Sold out, and now there is some again: if anyone was waiting for it,
+  # tell her (she then tells them, from the waiting list).
+  def self.announce_back_in_stock(variant, before)
+    return unless before <= 0 && variant.stock_on_hand.positive?
+
+    waiting = StockRequest.open.where(variant: variant).count
+    return if waiting.zero?
+
+    Push.notify("back_in_stock",
+      title: "Back in stock",
+      body: "#{variant.full_name}: #{waiting} #{waiting == 1 ? 'person' : 'people'} asked for it.",
+      path: "/admin/waiting")
   end
 
   # Change what the units on the shelf are worth, without moving any: a
