@@ -130,6 +130,31 @@ class StockLedger
     sellable.sum("GREATEST(variants.stock_on_hand, 0) * variants.average_cost_pesewas")
   end
 
+  # ---- What the stock should bring in --------------------------------------
+  #
+  # "If everything on the shelf sells": each piece at its selling price (a
+  # size's own price, or the product's). Also at bulk prices, for products
+  # that have one: the least it brings in if it all went to bulk buyers.
+  # Estimates only: no delivery fees, discounts or hand-typed deals.
+  SELLING_PRICE_SQL = "COALESCE(variants.price_pesewas, products.price_pesewas)".freeze
+  BULK_PRICE_SQL = "LEAST(#{SELLING_PRICE_SQL}, COALESCE(products.bulk_price_pesewas, #{SELLING_PRICE_SQL}))".freeze
+
+  Estimate = Data.define(:sells_for_pesewas, :bulk_sells_for_pesewas, :cost_pesewas) do
+    def profit_pesewas = sells_for_pesewas - cost_pesewas
+    def bulk_profit_pesewas = bulk_sells_for_pesewas - cost_pesewas
+    # Only worth showing when some stock has a lower bulk price.
+    def bulk_differs? = bulk_sells_for_pesewas < sells_for_pesewas
+  end
+
+  def self.sales_estimate(scope = sellable)
+    sells, bulk, cost = scope.pick(
+      Arel.sql("COALESCE(SUM(GREATEST(variants.stock_on_hand, 0) * #{SELLING_PRICE_SQL}), 0)"),
+      Arel.sql("COALESCE(SUM(GREATEST(variants.stock_on_hand, 0) * #{BULK_PRICE_SQL}), 0)"),
+      Arel.sql("COALESCE(SUM(GREATEST(variants.stock_on_hand, 0) * variants.average_cost_pesewas), 0)")
+    )
+    Estimate.new(sells_for_pesewas: sells.to_i, bulk_sells_for_pesewas: bulk.to_i, cost_pesewas: cost.to_i)
+  end
+
   # In stock but with no cost recorded: these count as GH₵ 0 in the value
   # above until she says what they cost (CostCorrection).
   def self.uncosted

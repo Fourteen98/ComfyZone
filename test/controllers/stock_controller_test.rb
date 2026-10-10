@@ -107,4 +107,31 @@ class StockControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, inertia.props[:counts][:low], "warnings switched off; out of stock is still flagged"
     assert_equal 2, inertia.props[:counts][:out]
   end
+
+  # 10 black at GH₵ 120 + 2 red at GH₵ 140 = GH₵ 1,480; cost 600 + 160 = GH₵ 760.
+  test "estimates what the stock will sell for, and the profit in it" do
+    sign_in_as(users(:one))
+    get stock_index_path
+
+    assert_equal({ sells_for_pesewas: 148_000, profit_pesewas: 72_000, bulk: nil }, inertia.props[:estimate].symbolize_keys)
+    dress = inertia.props[:groups].find { |group| group[:name] == "Ankara wrap dress" }
+    assert_equal 148_000, dress[:sells_for_pesewas]
+  end
+
+  test "the estimate at bulk prices never raises a price, and profit stays hidden without costs.view" do
+    # Above the dress's 120 (the form refuses that, but it happens if the price
+    # is lowered later), below the red size's own 140.
+    products(:dress).update_columns(bulk_price_pesewas: 12_500, bulk_min_quantity: 3)
+    sign_in_as(users(:one))
+    get stock_index_path
+    # Black stays 120 (bulk would raise it); red drops to 125: 1,200 + 250.
+    assert_equal({ sells_for_pesewas: 145_000, profit_pesewas: 69_000 }, inertia.props[:estimate][:bulk].symbolize_keys)
+
+    roles(:assistant).update!(permissions: roles(:assistant).permissions + %w[ stock.view ] - %w[ costs.view ])
+    sign_in_as(users(:two))
+    get stock_index_path
+    assert_equal 148_000, inertia.props[:estimate][:sells_for_pesewas]
+    assert_nil inertia.props[:estimate][:profit_pesewas]
+    assert_nil inertia.props[:estimate][:bulk][:profit_pesewas]
+  end
 end

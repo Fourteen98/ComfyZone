@@ -37,7 +37,10 @@ class Dashboard
     Tile.new("money_owed", "Money owed to you", %w[ orders.view ], :money, "/admin/orders?status=claimed", -> { Order.owing.sum(Arel.sql(Order::BALANCE_SQL)) }),
     Tile.new("refunds_due", "Refunds to give", %w[ orders.view ], :count, "/admin/orders?status=refunds", -> { Order.refund_due.count }),
     Tile.new("low_stock", "Low on stock", %w[ stock.view ], :count, "/admin/stock?show=low", -> { StockLedger.needing_attention.count }),
-    Tile.new("stock_value", "Stock value", %w[ stock.view costs.view ], :money, "/admin/stock", -> { StockLedger.value_pesewas })
+    Tile.new("stock_value", "Stock value", %w[ stock.view costs.view ], :money, "/admin/stock", -> { StockLedger.value_pesewas }),
+    # What the shelf should bring in if it all sells, and the profit in it.
+    Tile.new("stock_sells_for", "Stock will sell for", %w[ stock.view ], :money, "/admin/stock", -> { StockLedger.sales_estimate.sells_for_pesewas }),
+    Tile.new("stock_profit", "Profit in your stock", %w[ stock.view costs.view ], :money, "/admin/stock", -> { StockLedger.sales_estimate.profit_pesewas })
   ].freeze
 
   PANELS = [
