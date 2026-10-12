@@ -122,6 +122,12 @@ class OrderEditor
       raise Problem, "\"#{typed}\" isn't a valid price. Use numbers like 120 or 120.50" if pesewas == Pesewas::INVALID
       raise Problem, "That price is too large" if pesewas > HasMoney::MAX_PESEWAS
 
+      # A new price is an agreed one, unless it is just the normal price
+      # again (that undoes the deal, and the bulk rule takes over once more).
+      # The same price as before changes nothing.
+      unless pesewas == item.unit_price_pesewas
+        item.agreed = pesewas != item.variant.selling_price_pesewas
+      end
       item.unit_price_pesewas = pesewas
     end
 end

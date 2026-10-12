@@ -199,4 +199,17 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     get new_order_path
     assert_nil inertia.props[:ways_to_pay]
   end
+
+  test "a price agreed on the sale screen is saved on the line" do
+    sign_in_as(users(:one))
+    post orders_path, params: { order: { buyer: "@ama_k", items: [ { variant_id: @black.id, quantity: 2, price: "100" } ] } }
+
+    order = Order.newest_first.first
+    assert_equal [ 10_000, true ], order.items.first.values_at(:unit_price_pesewas, :agreed)
+    assert_equal 20_000, order.total_pesewas
+
+    get order_path(order)
+    line = inertia.props[:order][:items].first
+    assert_equal [ true, 12_000 ], line.values_at(:agreed, :normal_price_pesewas)
+  end
 end

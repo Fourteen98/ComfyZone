@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/react'
-import { MapPin } from 'lucide-react'
+import { MapPin, Pencil } from 'lucide-react'
 import { useRef, useState } from 'react'
 import Alert from '@/components/ui/Alert'
 import { formatPhone } from '@/lib/phone'
@@ -73,6 +73,9 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   const home = locations?.home ?? ''
   const [where, setWhere] = useState<Where>(nowhere(home))
   const [basket, setBasket] = useState<Record<number, number>>({}) // variant id -> quantity
+  // Prices bargained with the buyer: variant id -> what she typed ("180").
+  const [agreed, setAgreed] = useState<Record<number, string>>({})
+  const [pricing, setPricing] = useState<number | null>(null) // the line whose price box is open
   const [sending, setSending] = useState(false)
 
   // Look up any variant (and its product) by id.
@@ -98,7 +101,13 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   lines.forEach((line) => pieces.set(line.product.id, (pieces.get(line.product.id) ?? 0) + line.quantity))
   const priced = lines.map((line) => {
     const on = bulkOn(line.product.bulk, pieces.get(line.product.id) ?? 0, bulkBuyer)
-    return { ...line, bulk: on, unit: unitPrice(line.variant.price_pesewas, line.product.bulk, on) }
+    // A bargained price beats both the normal and the bulk price.
+    const typed = agreed[line.variant.id]
+    if (typed && typed.trim() !== '' && !Number.isNaN(Number(typed))) {
+      const price = toPesewas(typed)
+      if (price !== line.variant.price_pesewas) return { ...line, bulk: false, agreed: true, unit: price }
+    }
+    return { ...line, bulk: on, agreed: false, unit: unitPrice(line.variant.price_pesewas, line.product.bulk, on) }
   })
   const total = priced.reduce((sum, line) => sum + line.quantity * line.unit, 0)
 
@@ -177,7 +186,12 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
               : said(locations, where)
                 ? where
                 : undefined,
-          items: lines.map((line) => ({ variant_id: line.variant.id, quantity: line.quantity })),
+          items: priced.map((line) => ({
+            variant_id: line.variant.id,
+            quantity: line.quantity,
+            // Only a real bargain is sent; Rails works out normal and bulk prices itself.
+            price: line.agreed ? agreed[line.variant.id] : undefined,
+          })),
           payment: payNow
             ? { amount: pay.when === 'all' ? 'all' : pay.amount, via: pay.via, reference: hasReference ? pay.reference : '' }
             : undefined,
@@ -189,6 +203,8 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           // Ready for the next buyer straight away. The channel is kept:
           // several WhatsApp orders are often entered one after another.
           setBasket({})
+          setAgreed({})
+          setPricing(null)
           setBuyer('')
           setChoice(null)
           setDelivery(noDelivery)
@@ -427,16 +443,66 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
                       <p className="truncate font-medium">{line.product.name}</p>
                       <p className="text-sm text-taupe-700 tabular-nums">
                         {line.variant.option_values.length > 0 && `${line.variant.name}, `}
-                        {line.unit < line.variant.price_pesewas ? (
+                        {line.unit !== line.variant.price_pesewas ? (
                           <>
                             <span className="line-through">{formatMoney(line.variant.price_pesewas)}</span>{' '}
-                            <span className="font-medium text-emerald-800">{formatMoney(line.unit)} bulk</span>
+                            <span className={`font-medium ${line.agreed ? 'text-wine-800' : 'text-emerald-800'}`}>
+                              {formatMoney(line.unit)} {line.agreed ? 'agreed' : 'bulk'}
+                            </span>
                           </>
                         ) : (
                           formatMoney(line.variant.price_pesewas)
                         )}
+                        {/* Bargained? Tap to type the price agreed with the buyer. */}
+                        {pricing !== line.variant.id && (
+                          <button
+                            type="button"
+                            onClick={() => setPricing(line.variant.id)}
+                            aria-label={`Change the price of ${line.product.name} ${line.variant.name}`}
+                            className="ml-1 inline-flex min-h-8 items-center gap-1 rounded px-1.5 align-middle text-wine-800 hover:bg-taupe-100 focus-visible:outline-2 focus-visible:outline-wine-700"
+                          >
+                            <Pencil className="size-3.5" aria-hidden="true" />
+                            <span className="text-xs font-medium">{line.agreed ? 'Change' : 'Price'}</span>
+                          </button>
+                        )}
                       </p>
-                      {nudge && <p className="text-sm text-emerald-800">{nudge}</p>}
+                      {pricing === line.variant.id && (
+                        <div className="mt-2 flex flex-wrap items-end gap-2">
+                          <div className="w-32">
+                            <MoneyField
+                              id={`agreed_${line.variant.id}`}
+                              label="Agreed price, each"
+                              placeholder={(line.unit / 100).toFixed(2)}
+                              autoFocus
+                              value={agreed[line.variant.id] ?? ''}
+                              onChange={(e) => setAgreed({ ...agreed, [line.variant.id]: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  setPricing(null)
+                                }
+                              }}
+                            />
+                          </div>
+                          <Button type="button" variant="secondary" onClick={() => setPricing(null)}>
+                            Done
+                          </Button>
+                          {line.agreed && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const { [line.variant.id]: _dropped, ...rest } = agreed
+                                setAgreed(rest)
+                                setPricing(null)
+                              }}
+                              className="min-h-11 px-2 text-sm font-medium text-wine-800 hover:underline"
+                            >
+                              Back to the normal price
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {nudge && !line.agreed && <p className="text-sm text-emerald-800">{nudge}</p>}
                     </div>
                     <QuantityStepper
                       label={`${line.product.name} ${line.variant.name}`}

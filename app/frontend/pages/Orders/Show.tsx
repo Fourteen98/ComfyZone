@@ -101,7 +101,14 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
 
   async function cancel() {
     const money = paid > 0 ? ` You will still need to give back the ${formatMoney(paid)} they paid.` : ''
-    if (!(await confirmAction(`Cancel ${order.customer}'s order? Everything on it goes back into stock.${money}`, { confirm: 'Cancel the order', dismiss: 'Keep the order', danger: true }))) return
+    if (
+      !(await confirmAction(`Cancel ${order.customer}'s order? Everything on it goes back into stock.${money}`, {
+        confirm: 'Cancel the order',
+        dismiss: 'Keep the order',
+        danger: true,
+      }))
+    )
+      return
     router.patch(`/admin/orders/${order.id}/cancel`) // -> OrdersController#cancel
   }
 
@@ -365,7 +372,12 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
                 orderId={order.id}
                 delivery={delivery}
                 locations={locations}
-                known={{ country: order.customer_country, region: order.customer_region, place: order.customer_place, address: order.customer_location }}
+                known={{
+                  country: order.customer_country,
+                  region: order.customer_region,
+                  place: order.customer_place,
+                  address: order.customer_location,
+                }}
                 onDone={() => setOpen(null)}
               />
             ) : delivery.method === null ? (
@@ -381,7 +393,10 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
               <p>They will collect it.</p>
             ) : (
               <div className="space-y-1">
-                <p>Being sent to them{delivery.place ? ` in ${delivery.place}, ${delivery.region ?? delivery.country}` : ''}, {delivery.fee_pesewas > 0 ? `${formatMoney(delivery.fee_pesewas)} delivery` : 'free delivery'}.</p>
+                <p>
+                  Being sent to them{delivery.place ? ` in ${delivery.place}, ${delivery.region ?? delivery.country}` : ''},{' '}
+                  {delivery.fee_pesewas > 0 ? `${formatMoney(delivery.fee_pesewas)} delivery` : 'free delivery'}.
+                </p>
                 {/* whitespace-pre-line keeps the line breaks she typed. */}
                 {delivery.address ? (
                   <p className="whitespace-pre-line text-taupe-800">{delivery.address}</p>
@@ -406,6 +421,11 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
                       {item.quantity > 1 && <span className="font-semibold tabular-nums">{item.quantity} × </span>}
                       {item.name}
                       {item.bulk && <span className="block text-sm text-emerald-800">Bulk price</span>}
+                      {item.agreed && (
+                        <span className="block text-sm text-wine-800">
+                          Agreed price{item.normal_price_pesewas ? `, normally ${formatMoney(item.normal_price_pesewas)} each` : ''}
+                        </span>
+                      )}
                       {item.returned > 0 && (
                         <span className="block text-sm text-taupe-600">
                           {item.returned === item.quantity ? 'Returned' : `${item.returned} returned`}

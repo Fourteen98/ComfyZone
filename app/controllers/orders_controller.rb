@@ -269,6 +269,7 @@ class OrdersController < InertiaController
     end
 
     def line_params
-      params.fetch(:order, {}).permit(items: %i[ variant_id quantity ]).fetch(:items, [])
+      # price: optional, a price agreed with the buyer for that line.
+      params.fetch(:order, {}).permit(items: %i[ variant_id quantity price ]).fetch(:items, [])
     end
 end
