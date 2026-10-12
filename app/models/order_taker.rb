@@ -44,7 +44,7 @@ class OrderTaker
         BulkPricing.apply!(@order, shop: shop)
         @order.recalculate!
         saved = true
-      rescue StockLedger::NotEnough => problem
+      rescue StockLedger::NotEnough, BadPrice => problem
         errors.add(:items, problem.message)
         raise ActiveRecord::Rollback
       rescue ActiveRecord::RecordInvalid => problem
@@ -57,6 +57,9 @@ class OrderTaker
     announce if saved
     saved
   end
+
+  # A price typed for a line that can't be read ("1o0").
+  class BadPrice < StandardError; end
 
   private
     # Tell the others a sale came in. Not during a live: claims arrive every
@@ -99,6 +102,15 @@ class OrderTaker
       order
     end
 
+    # Prices agreed with the buyer, typed for some lines: { 12 => "180" }.
+    # Lines without one sell at the normal (or bulk) price.
+    def agreed_prices
+      Array(lines).each_with_object({}) do |line, prices|
+        line = line.to_h.symbolize_keys
+        prices[line[:variant_id].to_i] = line[:price].to_s.strip if line[:price].present?
+      end
+    end
+
     def add(variant_id, quantity)
       variant = Variant.active.find_by(id: variant_id)
       # The shop sells only what is listed. Checked here, at the moment of
@@ -118,9 +130,24 @@ class OrderTaker
         item.unit_price_pesewas = variant.selling_price_pesewas
         item.unit_cost_pesewas = variant.average_cost_pesewas
       end
+      agree_price(item, variant, agreed_prices[variant.id])
       item.save!
       # If they were on the waiting list for this, they have it now.
       StockRequest.fulfil(customer: customer, variant: variant)
+    end
+
+    # A bargained price: "6 at GH₵ 180", though bulk only starts at 10. Marked
+    # `agreed`, so BulkPricing leaves it alone. Typing the normal price is no
+    # bargain, so it simply sells at that.
+    def agree_price(item, variant, typed)
+      return if typed.blank? || shop # shoppers can't set their own price
+
+      pesewas = Pesewas.parse(typed)
+      raise BadPrice, "\"#{typed}\" isn't a valid price for #{variant.full_name}. Use numbers like 180 or 180.50" if pesewas.nil? || pesewas == Pesewas::INVALID
+      raise BadPrice, "The price for #{variant.full_name} is too large" if pesewas > HasMoney::MAX_PESEWAS
+
+      item.unit_price_pesewas = pesewas
+      item.agreed = pesewas != variant.selling_price_pesewas
     end
 
     def has_a_customer

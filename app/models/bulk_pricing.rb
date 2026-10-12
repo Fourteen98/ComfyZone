@@ -42,6 +42,13 @@ module BulkPricing
     items.each do |item|
       normal = unit_price(item.variant, bulk: false)
       bulk = unit_price(item.variant, bulk: true)
+      # A price agreed with the buyer stands, whatever the count.
+      if item.agreed?
+        item.update!(bulk: false) if item.bulk
+        next
+      end
+
+      # (Prices typed by hand before `agreed` existed: neither normal nor bulk.)
       unless [ normal, bulk ].include?(item.unit_price_pesewas)
         # Typed by hand: her price stands, and it isn't "the bulk price".
         item.update!(bulk: false) if item.bulk

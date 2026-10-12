@@ -56,7 +56,9 @@ module SaleCapture
         channel: order.sales_channel&.name, # "WhatsApp"; nil if not recorded
         items: order.items.sort_by(&:id).map { |item|
           { id: item.id, name: item.variant.full_name, quantity: item.quantity, returned: item.returned_quantity,
-            total_pesewas: item.total_pesewas, bulk: item.bulk }
+            total_pesewas: item.total_pesewas, bulk: item.bulk,
+            # A price agreed with the buyer, and what it would normally be.
+            agreed: item.agreed, normal_price_pesewas: item.agreed ? item.variant.selling_price_pesewas : nil }
         }
       }
     end
