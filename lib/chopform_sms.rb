@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'json'
-require 'net/http'
-require 'securerandom'
-require 'uri'
+require "json"
+require "net/http"
+require "securerandom"
+require "uri"
 
 # Thin client for the ChopForm SMS gateway (chopform.com's Platform API).
 #
@@ -66,7 +66,7 @@ module ChopformSms
     # @return [Hash] parsed JSON response from the gateway
     # @raise [Error] subclasses on 4xx/5xx responses
     def send!(to:, message:, client_reference: nil)
-      post('/api/v1/sms/send',
+      post("/api/v1/sms/send",
            to: to,
            message: message,
            client_reference: client_reference)
@@ -74,12 +74,12 @@ module ChopformSms
 
     # @return [Hash] { "balance" => Float, "currency" => "GHS", ... }
     def balance
-      get('/api/v1/sms/balance')
+      get("/api/v1/sms/balance")
     end
 
     # @return [Array<Hash>] the N most recent messages
     def recent(limit: 20)
-      get('/api/v1/sms/messages', limit: limit)['data']
+      get("/api/v1/sms/messages", limit: limit)["data"]
     end
 
     private
@@ -87,9 +87,9 @@ module ChopformSms
     def post(path, payload)
       uri = URI.join(base_url, path)
       req = Net::HTTP::Post.new(uri)
-      req['Authorization'] = "Bearer #{api_key}"
-      req['Accept'] = 'application/json'
-      req['Content-Type'] = 'application/json'
+      req["Authorization"] = "Bearer #{api_key}"
+      req["Accept"] = "application/json"
+      req["Content-Type"] = "application/json"
       req.body = payload.compact.to_json
       perform(uri, req)
     end
@@ -98,38 +98,38 @@ module ChopformSms
       uri = URI.join(base_url, path)
       uri.query = URI.encode_www_form(query) unless query.empty?
       req = Net::HTTP::Get.new(uri)
-      req['Authorization'] = "Bearer #{api_key}"
-      req['Accept'] = 'application/json'
+      req["Authorization"] = "Bearer #{api_key}"
+      req["Accept"] = "application/json"
       perform(uri, req)
     end
 
     def perform(uri, req)
       http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = (uri.scheme == 'https')
+      http.use_ssl = (uri.scheme == "https")
       http.open_timeout = TIMEOUT_SECONDS
       http.read_timeout = TIMEOUT_SECONDS
 
       res = http.request(req)
       body = begin
-        res.body && res.body.strip.empty? ? {} : JSON.parse(res.body || '{}')
+        res.body && res.body.strip.empty? ? {} : JSON.parse(res.body || "{}")
       rescue JSON::ParserError
-        { 'raw' => res.body }
+        { "raw" => res.body }
       end
 
       case res.code.to_i
       when 200, 201 then body
-      when 401 then raise UnauthorizedError.new('ChopForm API rejected the key',
+      when 401 then raise UnauthorizedError.new("ChopForm API rejected the key",
                                                 status: 401, body: body)
       when 402 then raise InsufficientFundsError.new(
-        body['reason'] || 'ChopForm SMS wallet is empty — top up and retry.',
+        body["reason"] || "ChopForm SMS wallet is empty — top up and retry.",
         status: 402, body: body
       )
-      when 403 then raise Error.new(body['reason'] || 'Forbidden', status: 403, body: body)
+      when 403 then raise Error.new(body["reason"] || "Forbidden", status: 403, body: body)
       when 422 then raise Error.new(
         "Invalid payload: #{body['errors'] || body['message']}",
         status: 422, body: body
       )
-      when 429 then raise RateLimitedError.new('ChopForm API rate-limited this key',
+      when 429 then raise RateLimitedError.new("ChopForm API rate-limited this key",
                                                status: 429, body: body)
       when 500..599 then raise ServerError.new(
         "ChopForm gateway error (#{res.code})",
@@ -141,16 +141,16 @@ module ChopformSms
     end
 
     def api_key
-      key = resolve_credential(:api_key) || ENV['CHOPFORM_SMS_API_KEY']
-      raise Error, 'ChopForm SMS API key not configured' if key.nil? || key.empty?
+      key = resolve_credential(:api_key) || ENV["CHOPFORM_SMS_API_KEY"]
+      raise Error, "ChopForm SMS API key not configured" if key.nil? || key.empty?
 
       key
     end
 
     def base_url
       resolve_credential(:base_url) ||
-        ENV['CHOPFORM_SMS_BASE_URL'] ||
-        'https://app.chopform.com'
+        ENV["CHOPFORM_SMS_BASE_URL"] ||
+        "https://app.chopform.com"
     end
 
     # Only use Rails credentials if the Rails constant is loaded. Keeps
