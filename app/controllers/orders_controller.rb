@@ -41,7 +41,13 @@ class OrdersController < InertiaController
         customer_region: @order.customer.region,
         customer_place: @order.customer.delivery_area&.name,
         live: @order.live_session && { id: @order.live_session.id, title: @order.live_session.title },
-        recorded_by: @order.user&.name || "The shopper, on the website",
+        recorded_by: @order.user&.name || (@order.whatsapp_conversation_id ? "The customer, on WhatsApp" : "The shopper, on the website"),
+        # Reserved on WhatsApp: the hold, and whether they say they paid.
+        whatsapp: @order.whatsapp_conversation_id && {
+          chat_id: @order.whatsapp_conversation_id,
+          hold_until: @order.claimed? && @order.paid_pesewas.zero? ? @order.hold_until&.strftime("%-l:%M %P") : nil,
+          payment_claimed: @order.payment_claimed_at && @order.claimed? ? (@order.payment_claim.presence || "no transaction ID given") : nil
+        },
         note: @order.note,
         profit_pesewas: can?("costs.view") ? @order.profit_pesewas : nil,
         delivery: {

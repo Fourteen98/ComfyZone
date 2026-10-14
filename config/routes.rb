@@ -1,4 +1,8 @@
 Rails.application.routes.draw do
+  # WhatsApp (Meta) posts messages here. Outside /admin: no login, signed instead.
+  get "webhooks/whatsapp", to: "webhooks/whatsapp#verify"
+  post "webhooks/whatsapp", to: "webhooks/whatsapp#receive"
+
   # Vite's dev server runs on "localhost". If you open 127.0.0.1 instead,
   # bounce to localhost so Rails and Vite agree on the host. This must stay
   # first: routes are matched top to bottom, and the first match wins.
@@ -122,6 +126,14 @@ Rails.application.routes.draw do
     resources :waiting, controller: "waiting_list", as: :waiting_list, only: %i[ index create destroy ] do
       patch :told, on: :member
     end
+    # The WhatsApp inbox (Whatsapp::Bot answers; staff can take over).
+    resources :whatsapp_conversations, path: "whatsapp", only: %i[ index show ] do
+      member do
+        post :reply
+        patch :take_over
+        patch :hand_back
+      end
+    end
     resources :customers, except: :destroy do
       post :merge, on: :member # /customers/:id/merge  fold a duplicate into this one
     end
@@ -146,6 +158,11 @@ Rails.application.routes.draw do
       end
       resources :payment_methods, path: "payments", except: :show do
         patch :move, on: :member
+      end
+      # The WhatsApp shop: on/off, hold time, MoMo details, and "Try it".
+      resource :whatsapp, only: %i[ show update ], controller: "whatsapp" do
+        post :try
+        delete :try, action: :reset_try
       end
     end
 

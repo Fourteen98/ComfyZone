@@ -43,6 +43,7 @@ type Props = {
     customer_place: string | null
     live: { id: number; title: string } | null
     recorded_by: string
+    whatsapp: { chat_id: number; hold_until: string | null; payment_claimed: string | null } | null
     note: string | null
     profit_pesewas: number | null // null = may not see costs
     delivery: Delivery
@@ -171,6 +172,26 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
           }
         />
         {order.note && <p className="mt-3 max-w-3xl border-l-2 border-taupe-300 pl-3 whitespace-pre-line text-taupe-800">{order.note}</p>}
+        {/* Reserved on WhatsApp: check the payment they say they made, or see the clock. */}
+        {order.whatsapp && (order.whatsapp.payment_claimed || order.whatsapp.hold_until) && (
+          <p
+            className={`mt-3 max-w-3xl rounded-lg px-4 py-3 ${
+              order.whatsapp.payment_claimed ? 'border border-amber-300 bg-amber-50 text-amber-950' : 'bg-taupe-100 text-taupe-800'
+            }`}
+          >
+            {order.whatsapp.payment_claimed ? (
+              <>
+                <strong>They say they paid on WhatsApp</strong> (ref: {order.whatsapp.payment_claimed}). Check your MoMo, then record the
+                payment below.
+              </>
+            ) : (
+              <>Reserved on WhatsApp: released at {order.whatsapp.hold_until} if not paid.</>
+            )}{' '}
+            <Link href={`/admin/whatsapp/${order.whatsapp.chat_id}`} className="font-medium underline underline-offset-4">
+              Open the chat
+            </Link>
+          </p>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">

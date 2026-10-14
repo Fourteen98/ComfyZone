@@ -12,6 +12,7 @@ const tabs = [
   { label: 'Sales channels', href: '/admin/settings/channels', permission: 'settings.manage' },
   { label: 'Locations', href: '/admin/settings/areas', permission: 'settings.manage' },
   { label: 'Payment methods', href: '/admin/settings/payments', permission: 'settings.manage' },
+  { label: 'WhatsApp', href: '/admin/settings/whatsapp', permission: 'settings.manage' },
   { label: 'Team', href: '/admin/settings/users', permission: 'users.manage' },
   { label: 'Roles', href: '/admin/settings/roles', permission: 'roles.manage' },
 ]
@@ -37,9 +38,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                 href={tab.href}
                 aria-current={active ? 'page' : undefined}
                 className={`-mb-px flex min-h-11 shrink-0 items-center border-b-2 px-4 font-medium ${
-                  active
-                    ? 'border-wine-800 text-wine-800'
-                    : 'border-transparent text-taupe-700 hover:border-taupe-300 hover:text-wine-800'
+                  active ? 'border-wine-800 text-wine-800' : 'border-transparent text-taupe-700 hover:border-taupe-300 hover:text-wine-800'
                 }`}
               >
                 {tab.label}

@@ -19,6 +19,14 @@ class SalesChannel < ApplicationRecord
 
   # The channel web orders are filed under. Found by its key, never by its
   # name, so renaming it in Settings is safe; made again if it was deleted.
+  # Where WhatsApp orders are filed. Adopts a channel she already called
+  # "WhatsApp", or makes one.
+  def self.whatsapp
+    find_by(system_key: "whatsapp") ||
+      where("lower(name) = 'whatsapp'").first&.tap { |channel| channel.update!(system_key: "whatsapp") } ||
+      create!(name: "WhatsApp", kind: "direct", system_key: "whatsapp", position: maximum(:position).to_i + 1)
+  end
+
   def self.web
     find_by(system_key: "web") || create!(name: exists?([ "lower(name) = 'website'" ]) ? "Online shop" : "Website", kind: "direct",
       system_key: "web", position: maximum(:position).to_i + 1)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_14_090001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_14_190001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -192,14 +192,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_14_090001) do
     t.bigint "sales_channel_id"
     t.bigint "delivery_area_id"
     t.string "public_token"
+    t.bigint "whatsapp_conversation_id"
+    t.datetime "hold_until"
+    t.datetime "payment_claimed_at"
+    t.string "payment_claim"
     t.index ["created_at"], name: "index_orders_on_created_at"
     t.index ["customer_id"], name: "index_orders_on_customer_id"
     t.index ["delivery_area_id"], name: "index_orders_on_delivery_area_id"
+    t.index ["hold_until"], name: "index_orders_on_hold_until", where: "(hold_until IS NOT NULL)"
     t.index ["live_session_id"], name: "index_orders_on_live_session_id"
     t.index ["public_token"], name: "index_orders_on_public_token", unique: true
     t.index ["sales_channel_id"], name: "index_orders_on_sales_channel_id"
     t.index ["status"], name: "index_orders_on_status"
     t.index ["user_id"], name: "index_orders_on_user_id"
+    t.index ["whatsapp_conversation_id"], name: "index_orders_on_whatsapp_conversation_id"
     t.check_constraint "delivery_fee_pesewas >= 0", name: "orders_delivery_fee_not_negative"
     t.check_constraint "delivery_method::text = ANY (ARRAY['pickup'::character varying::text, 'delivery'::character varying::text])", name: "orders_delivery_method_known"
     t.check_constraint "paid_pesewas >= 0", name: "orders_paid_not_negative"
@@ -466,6 +472,52 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_14_090001) do
     t.index ["sku"], name: "index_variants_on_sku", unique: true
   end
 
+  create_table "whatsapp_conversations", force: :cascade do |t|
+    t.string "phone", null: false
+    t.bigint "customer_id"
+    t.string "profile_name"
+    t.string "state", default: "menu", null: false
+    t.jsonb "context", default: {}, null: false
+    t.datetime "handed_off_at"
+    t.datetime "last_inbound_at"
+    t.datetime "last_message_at"
+    t.integer "unread", default: 0, null: false
+    t.boolean "sandbox", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["customer_id"], name: "index_whatsapp_conversations_on_customer_id"
+    t.index ["last_message_at"], name: "index_whatsapp_conversations_on_last_message_at"
+    t.index ["phone"], name: "index_whatsapp_conversations_on_phone", unique: true
+  end
+
+  create_table "whatsapp_messages", force: :cascade do |t|
+    t.bigint "whatsapp_conversation_id", null: false
+    t.string "direction", null: false
+    t.string "wa_id"
+    t.string "kind", null: false
+    t.text "body"
+    t.jsonb "payload", default: {}, null: false
+    t.string "status", null: false
+    t.string "error"
+    t.bigint "user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_whatsapp_messages_on_user_id"
+    t.index ["wa_id"], name: "index_whatsapp_messages_on_wa_id", unique: true, where: "(wa_id IS NOT NULL)"
+    t.index ["whatsapp_conversation_id"], name: "index_whatsapp_messages_on_whatsapp_conversation_id"
+  end
+
+  create_table "whatsapp_settings", force: :cascade do |t|
+    t.boolean "enabled", default: false, null: false
+    t.integer "hold_minutes", default: 10, null: false
+    t.string "momo_number"
+    t.string "momo_name"
+    t.string "momo_network"
+    t.string "welcome"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "customers", "delivery_areas", on_delete: :nullify
@@ -483,6 +535,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_14_090001) do
   add_foreign_key "orders", "live_sessions", on_delete: :nullify
   add_foreign_key "orders", "sales_channels", on_delete: :nullify
   add_foreign_key "orders", "users"
+  add_foreign_key "orders", "whatsapp_conversations"
   add_foreign_key "passkeys", "users"
   add_foreign_key "payments", "orders"
   add_foreign_key "payments", "users"
@@ -505,4 +558,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_14_090001) do
   add_foreign_key "suppliers", "delivery_areas", on_delete: :nullify
   add_foreign_key "users", "roles"
   add_foreign_key "variants", "products"
+  add_foreign_key "whatsapp_conversations", "customers"
+  add_foreign_key "whatsapp_messages", "users"
+  add_foreign_key "whatsapp_messages", "whatsapp_conversations", on_delete: :cascade
 end

@@ -26,6 +26,8 @@ class OrderTaker
   attr_accessor :note
   # true for the public shop: only products she has listed there can be bought.
   attr_accessor :shop
+  # Where an order with no staff member came from, for the push: "WhatsApp".
+  attr_accessor :via
   attr_reader :order
 
   validate :has_a_customer
@@ -70,7 +72,7 @@ class OrderTaker
 
       # No user = the shopper placed it themselves on the website.
       Push.notify("orders",
-        title: user ? "New sale" : "New order from the shop",
+        title: user ? "New sale" : (via ? "New #{via} order" : "New order from the shop"),
         body: "#{@order.customer.display_name}, GH₵ #{Pesewas.to_input(@order.total_pesewas)}." + (user ? " Recorded by #{user.name}." : ""),
         path: "/admin/orders/#{@order.id}",
         except: user)
