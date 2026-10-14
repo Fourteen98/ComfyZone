@@ -39,11 +39,17 @@ class Variant < ApplicationRecord
     option_values.empty? ? product.name : "#{product.name}, #{name}"
   end
 
+  # How many of this can be SOLD right now. Normally its own count; for a
+  # product counted as one total, the product's total (any size can go).
+  def available
+    product.stock_pooled? ? product.pooled_total : stock_on_hand
+  end
+
   # :out, :low or :ok, judged against the product's warning level.
   def stock_level
-    if stock_on_hand <= 0
+    if available <= 0
       :out
-    elsif stock_on_hand <= product.low_stock_at
+    elsif available <= product.low_stock_at
       :low
     else
       :ok

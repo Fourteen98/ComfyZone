@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_11_230001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_14_090001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -141,6 +141,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_11_230001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index "lower((name)::text)", name: "index_option_presets_on_lower_name", unique: true
+  end
+
+  create_table "order_drafts", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "label", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["updated_at"], name: "index_order_drafts_on_updated_at"
+    t.index ["user_id"], name: "index_order_drafts_on_user_id"
   end
 
   create_table "order_items", force: :cascade do |t|
@@ -278,6 +288,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_11_230001) do
     t.integer "bulk_price_pesewas"
     t.integer "bulk_min_quantity"
     t.boolean "bulk_on_shop", default: false, null: false
+    t.boolean "stock_pooled", default: false, null: false
     t.index "lower((name)::text)", name: "index_products_on_lower_name", unique: true
     t.index ["category_id"], name: "index_products_on_category_id"
     t.index ["listed"], name: "index_products_on_listed", where: "listed"
@@ -464,6 +475,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_11_230001) do
   add_foreign_key "expenses", "users"
   add_foreign_key "live_sessions", "sales_channels", on_delete: :nullify
   add_foreign_key "live_sessions", "users"
+  add_foreign_key "order_drafts", "users"
   add_foreign_key "order_items", "orders", on_delete: :cascade
   add_foreign_key "order_items", "variants"
   add_foreign_key "orders", "customers"

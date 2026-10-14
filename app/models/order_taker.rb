@@ -121,14 +121,15 @@ class OrderTaker
 
       # Take the stock FIRST. This locks the variant and refuses if there
       # isn't enough, which is what stops two people selling the last one.
-      StockLedger.record!(variant: variant, quantity: -quantity, reason: "sale", source: @order, user: user, guard_stock: true)
+      # (sell! also handles a product counted as one total: see StockLedger.)
+      cost = StockLedger.sell!(variant: variant, quantity: quantity, source: @order, user: user)
 
       item = @order.items.find_or_initialize_by(variant: variant)
       item.quantity = item.quantity.to_i + quantity
       if item.new_record?
         # Snapshots, taken now and never changed (see the order_items migration).
         item.unit_price_pesewas = variant.selling_price_pesewas
-        item.unit_cost_pesewas = variant.average_cost_pesewas
+        item.unit_cost_pesewas = cost
       end
       agree_price(item, variant, agreed_prices[variant.id])
       item.save!

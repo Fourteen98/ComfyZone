@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/react'
-import { MapPin, Pencil } from 'lucide-react'
+import { FilePen, MapPin, Pencil } from 'lucide-react'
 import { useRef, useState } from 'react'
 import Alert from '@/components/ui/Alert'
 import { formatPhone } from '@/lib/phone'
@@ -36,6 +36,20 @@ type Props = {
   locations?: Locations
   /** Outside a live, for people who may take payments: "Did they pay?" */
   waysToPay?: { value: string; label: string; reference?: boolean }[] | null
+  /** A sale saved halfway, to finish (Record a sale only). */
+  draft?: { id: number; label: string; payload: Partial<DraftState> } | null
+}
+
+// Everything on the screen that a draft keeps. Stock is NOT held: it is
+// checked again when the sale is finally recorded.
+export type DraftState = {
+  channelId: string
+  choice: { buyer: BuyerChoice; label: string } | null
+  delivery: DeliveryChoice
+  where: Where
+  basket: Record<number, number>
+  agreed: Record<number, string>
+  pay: PayNow
 }
 
 // Money taken with the sale. 'all' is worked out by Rails once the order is
@@ -55,8 +69,9 @@ const notPaid: PayNow = { when: '', amount: '', via: '', reference: '' }
 //
 // Stock shown here was correct when the page loaded. Rails checks it again
 // at the moment of the claim, and refuses if something has just sold out.
-export default function SaleCapture({ products, buyers, liveId, liveChannel, channels = [], locations, waysToPay }: Props) {
-  const [pay, setPay] = useState<PayNow>(notPaid)
+export default function SaleCapture({ products, buyers, liveId, liveChannel, channels = [], locations, waysToPay, draft }: Props) {
+  const saved = draft?.payload ?? {}
+  const [pay, setPay] = useState<PayNow>(saved.pay ?? notPaid)
   const errors = usePage().props.errors as Record<string, string[] | undefined>
   const [waitHint, setWaitHint] = useState<string | null>(null)
   const buyerInput = useRef<HTMLInputElement>(null)
@@ -65,16 +80,26 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   // During a live: the typed username.
   const [buyer, setBuyer] = useState('')
   // Recording a sale: the channel, and who BuyerPicker says is chosen.
-  const [channelId, setChannelId] = useState('')
-  const [choice, setChoice] = useState<{ buyer: BuyerChoice; label: string } | null>(null)
+  const [channelId, setChannelId] = useState(saved.channelId ?? '')
+  const [choice, setChoice] = useState<{ buyer: BuyerChoice; label: string } | null>(saved.choice ?? null)
   const [sales, setSales] = useState(0) // counts sales made, to reset BuyerPicker
-  const [delivery, setDelivery] = useState<DeliveryChoice>(noDelivery)
+  const [delivery, setDelivery] = useState<DeliveryChoice>(saved.delivery ?? noDelivery)
   // Where the buyer is: country, region, place. Starts at "Ghana, not known".
   const home = locations?.home ?? ''
-  const [where, setWhere] = useState<Where>(nowhere(home))
-  const [basket, setBasket] = useState<Record<number, number>>({}) // variant id -> quantity
+  const [where, setWhere] = useState<Where>(saved.where ?? nowhere(home))
+  // variant id -> quantity. A draft's quantities are trimmed to what is in
+  // stock NOW (something may have sold since), and gone items dropped.
+  const [basket, setBasket] = useState<Record<number, number>>(() => {
+    const stock = new Map(products.flatMap((product) => product.variants.map((variant) => [variant.id, variant.stock] as const)))
+    return Object.fromEntries(
+      Object.entries(saved.basket ?? {})
+        .map(([id, quantity]) => [id, Math.min(Number(quantity), stock.get(Number(id)) ?? 0)] as const)
+        .filter(([, quantity]) => quantity > 0),
+    )
+  })
+  const trimmed = Object.entries(saved.basket ?? {}).some(([id, quantity]) => (basket[Number(id)] ?? 0) < Number(quantity))
   // Prices bargained with the buyer: variant id -> what she typed ("180").
-  const [agreed, setAgreed] = useState<Record<number, string>>({})
+  const [agreed, setAgreed] = useState<Record<number, string>>(saved.agreed ?? {})
   const [pricing, setPricing] = useState<number | null>(null) // the line whose price box is open
   const [sending, setSending] = useState(false)
 
@@ -111,8 +136,15 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   })
   const total = priced.reduce((sum, line) => sum + line.quantity * line.unit, 0)
 
-  const setQuantity = (variant: SellableVariant, quantity: number) =>
-    setBasket({ ...basket, [variant.id]: Math.max(0, Math.min(quantity, variant.stock)) })
+  // At most what is in stock. For a product counted as one total, the
+  // other sizes already picked share that total.
+  const setQuantity = (variant: SellableVariant, quantity: number) => {
+    const product = variants.get(variant.id)?.product
+    const others = product?.pooled
+      ? product.variants.reduce((sum, each) => sum + (each.id === variant.id ? 0 : (basket[each.id] ?? 0)), 0)
+      : 0
+    setBasket({ ...basket, [variant.id]: Math.max(0, Math.min(quantity, variant.stock - others)) })
+  }
   const addOne = (variant: SellableVariant) => setQuantity(variant, (basket[variant.id] ?? 0) + 1)
 
   // ----- the buyer box -----
@@ -164,6 +196,17 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
     )
   }
 
+  // Save everything as it is, to finish later. Nothing leaves the shelf.
+  function saveDraft() {
+    const state: DraftState = { channelId, choice, delivery, where, basket, agreed, pay }
+    const label = `${choice?.label || 'No buyer yet'}: ${units === 1 ? '1 item' : `${units} items`}, ${formatMoney(total + deliveryFee)}`
+    const data = { draft: { label, payload: state } }
+    if (draft) router.patch(`/admin/orders/drafts/${draft.id}`, data)
+    else router.post('/admin/orders/drafts', data) // -> OrderDraftsController
+  }
+  // Worth saving: a buyer chosen or something picked.
+  const draftable = !inLive && !sending && (choice !== null || units > 0)
+
   function claim() {
     setSending(true)
     router.post(
@@ -173,6 +216,8 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           // A live sends the typed username; a recorded sale sends an object.
           buyer: inLive ? buyer : choice?.buyer,
           live_session_id: liveId,
+          // Finishing a draft: Rails deletes it once the sale is saved.
+          draft_id: draft?.id,
           sales_channel_id: inLive ? undefined : channelId || undefined,
           // Pick-up or delivery, if she chose. During a live it is sorted out afterwards.
           delivery: inLive || delivery.delivery_method === '' ? undefined : delivery,
@@ -334,6 +379,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
             <BuyerPicker
               key={sales}
               buyers={buyers}
+              initial={sales === 0 ? (saved.choice?.buyer ?? null) : null}
               usernameFirst={channel?.kind === 'social'}
               onChange={(buyer, label, known) => {
                 setChoice(buyer ? { buyer, label } : null)
@@ -428,9 +474,21 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           button floats just above the bottom bar (see the end of this file). */}
       <aside className={`lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 ${lines.length === 0 ? 'hidden lg:block' : ''}`}>
         <div className="rounded-lg border border-taupe-200 bg-white">
-          <h2 className="border-b border-taupe-200 px-5 py-3.5 font-display text-2xl font-semibold text-wine-800">
-            {inLive ? 'This claim' : 'This sale'}
-          </h2>
+          <div className="flex items-center justify-between gap-3 border-b border-taupe-200 px-5 py-3">
+            <h2 className="font-display text-2xl font-semibold text-wine-800">{inLive ? 'This claim' : 'This sale'}</h2>
+            {/* Interrupted? Keep it for later. (Not during a live: claims there are quick.) */}
+            {!inLive && (
+              <Button type="button" variant="secondary" disabled={!draftable} onClick={saveDraft}>
+                <FilePen className="size-4" aria-hidden="true" />
+                {draft ? 'Save draft' : 'Save as draft'}
+              </Button>
+            )}
+          </div>
+          {trimmed && (
+            <p className="border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-sm text-amber-950">
+              Some things sold since this draft was saved, so their quantities were lowered to what is left.
+            </p>
+          )}
           {lines.length === 0 ? (
             <p className="px-5 py-5 text-taupe-700">Nothing picked yet. Tap a product to add it.</p>
           ) : (

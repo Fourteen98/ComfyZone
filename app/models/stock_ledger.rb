@@ -37,8 +37,15 @@ class StockLedger
       before = variant.stock_on_hand
       variant.stock_on_hand += quantity
       variant.save!
-      warn_if_running_low(variant, before)
-      announce_back_in_stock(variant, before)
+      if variant.product.stock_pooled?
+        # Counted as one total: warn and announce for the product as a whole.
+        after_total = pool_total(variant.product)
+        warn_pool_low(variant.product, after_total - quantity, after_total)
+        announce_pool_back(variant.product, after_total - quantity, after_total)
+      else
+        warn_if_running_low(variant, before)
+        announce_back_in_stock(variant, before)
+      end
 
       StockMovement.create!(
         variant: variant,
@@ -51,6 +58,80 @@ class StockLedger
         note: note
       )
     end
+  end
+
+  # Selling `quantity` of a variant. Usually just a guarded movement out of
+  # that variant. For a product counted as one total (stock_pooled), the
+  # size and colour sold may show 0 while the total says there are some:
+  # the pieces are then taken from the variants that do have stock, most
+  # first, each movement noting what was really sold. Nothing goes below
+  # zero, and the total is always right.
+  #
+  # Returns the average cost of what was taken (for the sale's snapshot).
+  def self.sell!(variant:, quantity:, source: nil, user: nil, note: nil)
+    product = variant.product
+    unless product.stock_pooled?
+      record!(variant: variant, quantity: -quantity, reason: "sale", source: source, user: user, note: note, guard_stock: true)
+      return variant.average_cost_pesewas
+    end
+
+    # Lock the PRODUCT: two sales from one total must take turns, or both
+    # could read "1 left" from different variants.
+    product.with_lock do
+      pool = product.variants.reload.to_a
+      total = pool.sum { |each_variant| [ each_variant.stock_on_hand, 0 ].max }
+      if total < quantity
+        raise NotEnough, total.zero? ? "#{product.name} has just sold out" : "Only #{total} left of #{product.name}"
+      end
+
+      # The variant sold first, then the fullest ones.
+      order = [ pool.find { |each_variant| each_variant.id == variant.id } || variant ] +
+              pool.reject { |each_variant| each_variant.id == variant.id }.sort_by { |each_variant| -each_variant.stock_on_hand }
+      remaining = quantity
+      cost = 0
+      order.each do |from|
+        take = [ remaining, from.stock_on_hand ].min
+        next unless take.positive?
+
+        said = from.id == variant.id ? note : [ note, "Sold as #{variant.name} (stock counted as one total)" ].compact.join(". ")
+        record!(variant: from, quantity: -take, reason: "sale", source: source, user: user, note: said, guard_stock: true)
+        cost += take * from.average_cost_pesewas
+        remaining -= take
+        break if remaining.zero?
+      end
+      (cost.to_r / quantity).round
+    end
+  end
+
+  # How many of a pooled product there are: all its sizes and colours.
+  def self.pool_total(product)
+    Variant.where(product_id: product.id, active: true).sum(:stock_on_hand)
+  end
+
+  def self.warn_pool_low(product, before, after)
+    return unless after < before && product.active?
+
+    sold_out = before.positive? && after <= 0
+    gone_low = !sold_out && before > product.low_stock_at && after <= product.low_stock_at
+    return unless sold_out || gone_low
+
+    Push.notify("low_stock",
+      title: sold_out ? "Sold out" : "Running low",
+      body: sold_out ? "#{product.name} has sold out." : "#{product.name}: #{after} left.",
+      path: "/admin/stock?q=#{ERB::Util.url_encode(product.name)}")
+  end
+
+  # Back from nothing: everyone waiting for ANY size of it can be told.
+  def self.announce_pool_back(product, before, after)
+    return unless before <= 0 && after.positive?
+
+    waiting = StockRequest.open.joins(:variant).where(variants: { product_id: product.id }).count
+    return if waiting.zero?
+
+    Push.notify("back_in_stock",
+      title: "Back in stock",
+      body: "#{product.name}: #{waiting} #{waiting == 1 ? 'person' : 'people'} asked for it.",
+      path: "/admin/waiting")
   end
 
   # Sold out, and now there is some again: if anyone was waiting for it,
@@ -113,10 +194,17 @@ class StockLedger
   # Only what she is selling now (active variants of active products).
   # The comparison with the product's own warning level happens in SQL, so
   # the database returns just the matching rows however many variants exist.
+  #
+  # A product counted as one total appears ONCE (as its first variant), and
+  # only when its total is low: its sizes' own numbers mean nothing.
+  POOL_SUM_SQL = "(SELECT COALESCE(SUM(v2.stock_on_hand), 0) FROM variants v2 WHERE v2.product_id = products.id AND v2.active)".freeze
+  POOL_FIRST_SQL = "(SELECT v3.id FROM variants v3 WHERE v3.product_id = products.id AND v3.active ORDER BY v3.position, v3.id LIMIT 1)".freeze
+
   def self.needing_attention
     Variant.active.joins(:product).merge(Product.active)
-      .where("variants.stock_on_hand <= products.low_stock_at")
-      .order("variants.stock_on_hand ASC, lower(products.name), variants.position")
+      .where("(NOT products.stock_pooled AND variants.stock_on_hand <= products.low_stock_at) OR " \
+             "(products.stock_pooled AND variants.id = #{POOL_FIRST_SQL} AND #{POOL_SUM_SQL} <= products.low_stock_at)")
+      .order(Arel.sql("CASE WHEN products.stock_pooled THEN #{POOL_SUM_SQL} ELSE variants.stock_on_hand END ASC, lower(products.name), variants.position"))
   end
 
   # What everything on the shelf cost her. The same items the Stock page

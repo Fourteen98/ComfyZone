@@ -67,7 +67,7 @@ class Cart
       @items.map { |id, quantity|
         variant = variants[id]
         bulk = BulkPricing.applies?(variant.product, pieces: pieces[variant.product_id], shop: true)
-        Line.new(variant: variant, quantity: quantity.to_i, available: [ variant.stock_on_hand, 0 ].max, bulk: bulk)
+        Line.new(variant: variant, quantity: quantity.to_i, available: [ variant.available, 0 ].max, bulk: bulk)
       }
     end
   end

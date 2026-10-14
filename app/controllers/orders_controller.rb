@@ -5,26 +5,27 @@ class OrdersController < InertiaController
   require_permission "orders.create", only: %i[ new create edit update ]
   before_action :set_order, only: %i[ show edit update cancel ]
 
-  # Tabs that are not a single status.
-  VIEWS = {
-    "owing"   => -> { Order.owing.where(status: %w[ packed delivered ]) }, # gone out, not fully paid
-    "refunds" => -> { Order.refund_due }
-  }.freeze
-
-  # GET /orders?status=claimed
+  # GET /orders?status=claimed&q=ama&when=week&pay=owing&page=2
+  # Search, filters and pages: see OrderSearch.
   def index
-    status = (Order.statuses.keys + VIEWS.keys).include?(params[:status]) ? params[:status] : nil
-    orders =
-      if VIEWS.key?(status) then VIEWS[status].call
-      elsif status then Order.where(status: status)
-      else Order.counted
-      end
+    search = OrderSearch.new(params.permit(:status, :q, :when, :pay, :from, :delivery, :channel_id, :page))
 
     render inertia: "Orders/Index", props: {
-      orders: orders.newest_first.includes(:customer, :live_session, :sales_channel, items: { variant: :product }).limit(200)
-                    .map { |order| order_summary(order).merge(live: order.live_session&.title) },
-      filters: { status: status.to_s },
-      counts: Order.group(:status).count.merge(VIEWS.transform_values { |view| view.call.count }),
+      orders: search.orders.map { |order| order_summary(order).merge(live: order.live_session&.title) },
+      filters: search.to_props,
+      filtering: search.filtering?,
+      counts: search.counts,
+      page: { number: search.page, pages: search.pages, total: search.total, per: OrderSearch::PER_PAGE },
+      # The choices for the filter row.
+      options: {
+        when: OrderSearch::WHEN.map { |key, label| { value: key, label: label } },
+        pay: OrderSearch::PAY.map { |key, label| { value: key, label: label } },
+        from: OrderSearch::FROM.map { |key, label| { value: key, label: label } },
+        delivery: OrderSearch::DELIVERY.map { |key, label| { value: key, label: label } },
+        channels: SalesChannel.order(:name).map { |channel| { value: channel.id.to_s, label: channel.name } }
+      },
+      any_orders: Order.exists?,
+      drafts: can?("orders.create") ? OrderDraft.count : 0,
       can_create: can?("orders.create")
     }
   end
@@ -101,7 +102,12 @@ class OrdersController < InertiaController
     render inertia: "Orders/New", props: {
       products: sellable_products, buyers: known_buyers, channels: sales_channels, locations: location_options,
       # "Did they pay?" on the form: only for people who may take payments.
-      ways_to_pay: can?("orders.fulfil") ? PaymentMethod.options : nil
+      ways_to_pay: can?("orders.fulfil") ? PaymentMethod.options : nil,
+      # Sales saved halfway, newest first, and the one being resumed (?draft=5).
+      drafts: OrderDraft.newest_first.includes(:user).limit(20).map { |draft|
+        { id: draft.id, label: draft.label, by: draft.user.name, at: draft.updated_at.strftime("%-d %b, %-l:%M %P") }
+      },
+      draft: (found = OrderDraft.find_by(id: params[:draft])) && { id: found.id, label: found.label, payload: found.payload }
     }
   end
 
@@ -132,6 +138,8 @@ class OrdersController < InertiaController
       order = taker.order
       notice = "#{order.customer.display_name}: #{order.units} #{'item'.pluralize(order.units)} claimed."
       problem = take_payment_now(order) unless live
+      # Recorded from a draft: the draft has done its job.
+      OrderDraft.where(id: params.dig(:order, :draft_id)).destroy_all if params.dig(:order, :draft_id).present?
       if problem
         redirect_to order_path(order), alert: "The sale is recorded, but not the payment: #{problem} Record it below."
       else

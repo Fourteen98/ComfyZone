@@ -146,6 +146,8 @@ class ProductsController < InertiaController
         shop_path: shop_product_path(product.shop_param),
         category: product.category&.name,
         price_pesewas: product.price_pesewas,
+        # Counted as one total: that total (nil otherwise, or if she may not see stock).
+        pooled_stock: product.stock_pooled? && can?("stock.view") ? product.pooled_total : nil,
         bulk: product.bulk? ? { price_pesewas: product.bulk_price_pesewas, from: product.bulk_min_quantity, on_shop: product.bulk_on_shop } : nil,
         options: product.options.map { |option| { name: option.name, values: option.values } },
         # Who she buys it from. nil (not sent) for people who can't see purchases.
@@ -163,8 +165,9 @@ class ProductsController < InertiaController
             sku: variant.sku,
             option_values: variant.option_values,
             price: variant.price, # "" when it follows the product price
-            stock: can?("stock.view") ? variant.stock_on_hand : nil,
-            level: can?("stock.view") ? variant.stock_level : nil,
+            # Counted as one total: no number per size (see pooled_stock).
+            stock: can?("stock.view") && !product.stock_pooled? ? variant.stock_on_hand : nil,
+            level: can?("stock.view") && !product.stock_pooled? ? variant.stock_level : nil,
             average_cost_pesewas: can?("costs.view") ? variant.average_cost_pesewas : nil,
             selling_price_pesewas: variant.selling_price_pesewas
           }

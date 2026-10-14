@@ -110,7 +110,11 @@ class OrderEditor
     # Negative takes from the shelf (and is refused if there isn't enough);
     # positive puts back.
     def move_stock(variant, quantity, reason)
-      StockLedger.record!(variant: variant, quantity: quantity, reason: reason, source: order, user: user, guard_stock: quantity.negative?)
+      # Going out as a sale: through sell!, which also handles a product
+      # counted as one total.
+      return StockLedger.sell!(variant: variant, quantity: -quantity, source: order, user: user) if quantity.negative?
+
+      StockLedger.record!(variant: variant, quantity: quantity, reason: reason, source: order, user: user)
     end
 
     # The price she actually charged for this line, if she typed one: a

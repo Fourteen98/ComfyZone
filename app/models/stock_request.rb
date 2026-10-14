@@ -24,8 +24,10 @@ class StockRequest < ApplicationRecord
   scope :open, -> { where(closed_at: nil) }
   scope :newest_first, -> { order(created_at: :desc) }
   # Open requests for things that are on the shelf again: time to tell them.
-  scope :back_in_stock, -> { open.joins(:variant).where("variants.stock_on_hand > 0") }
-  scope :still_waiting, -> { open.joins(:variant).where("variants.stock_on_hand <= 0") }
+  # For a product counted as one total, "in stock" means its TOTAL is above 0.
+  AVAILABLE_SQL = "CASE WHEN products.stock_pooled THEN #{StockLedger::POOL_SUM_SQL} ELSE variants.stock_on_hand END".freeze
+  scope :back_in_stock, -> { open.joins(variant: :product).where("#{AVAILABLE_SQL} > 0") }
+  scope :still_waiting, -> { open.joins(variant: :product).where("#{AVAILABLE_SQL} <= 0") }
   # Back in stock and not yet told: what the menu badge counts.
   scope :to_tell, -> { back_in_stock.where(told_at: nil) }
 

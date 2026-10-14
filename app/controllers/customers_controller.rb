@@ -159,7 +159,7 @@ class CustomersController < InertiaController
 
     def waiting_props(request)
       { id: request.id, product: request.variant.product.name, variant: request.variant.name, quantity: request.quantity,
-        since: request.created_at.strftime("%-d %b"), in_stock: request.variant.stock_on_hand.positive?, told: request.told_at.present? }
+        since: request.created_at.strftime("%-d %b"), in_stock: request.variant.available.positive?, told: request.told_at.present? }
     end
 
     def set_customer

@@ -37,10 +37,11 @@ class RestockAdvisor
       waiting = StockRequest.open.group(:variant_id).sum(:quantity)
       weeks = days / 7.0
 
-      StockLedger.sellable.includes(:product).map do |variant|
+      catalogue = StockLedger.sellable.includes(product: :variants).to_a
+      catalogue.map do |variant|
         units = sold.fetch(variant.id, 0)
         wanted = waiting.fetch(variant.id, 0)
-        on_hand = [ variant.stock_on_hand, 0 ].max
+        on_hand = variant.product.stock_pooled? ? pooled_share(variant, sold) : [ variant.stock_on_hand, 0 ].max
         per_week = units / weeks
         # Enough to last cover_weeks at the current pace, plus everyone waiting.
         target = (per_week * cover_weeks).ceil + wanted
@@ -77,6 +78,17 @@ class RestockAdvisor
   end
 
   private
+    # A product counted as one total has no count per size, only the total.
+    # Best guess: share it out the way the sizes sell (equally if none has
+    # sold yet), so the advice still points at the sizes that move.
+    def pooled_share(variant, sold)
+      sizes = variant.product.variants
+      total = variant.product.pooled_total
+      sold_all = sizes.sum { |size| sold.fetch(size.id, 0) }
+      share = sold_all.positive? ? sold.fetch(variant.id, 0).to_r / sold_all : 1r / sizes.size
+      (total * share).round
+    end
+
     # Units kept (sold less returned) per variant, in orders that are still
     # sales, made within the window.
     def sold_by_variant
