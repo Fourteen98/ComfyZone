@@ -136,6 +136,8 @@ Rails.application.routes.draw do
     end
     resources :customers, except: :destroy do
       post :merge, on: :member # /customers/:id/merge  fold a duplicate into this one
+      # A "delete my data" request: erase who they are, keep the anonymous sales.
+      delete :personal_data, on: :member, action: :erase
     end
 
     # Settings. `namespace` puts these under /settings/... and looks for the
@@ -187,6 +189,7 @@ Rails.application.routes.draw do
     get "order/:token", to: "orders#show", as: :order      # the shopper's own link
     post "notify", to: "waiting#create", as: :notify       # "tell me when it's back"
     get "privacy", to: "pages#privacy", as: :privacy       # the privacy policy (Meta asks for it)
+    get "data-deletion", to: "pages#data_deletion", as: :data_deletion # how to have your data deleted (Meta asks)
   end
 
   # Old back-office addresses, from before it moved under /admin: saved

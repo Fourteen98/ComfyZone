@@ -11,4 +11,10 @@ class Shop::PagesController < Shop::BaseController
       contact_email: "hello@comfyzone.shop"
     }
   end
+
+  # GET /data-deletion   how to have your data deleted (Meta asks for the
+  # address of these instructions in the app's settings)
+  def data_deletion
+    render inertia: "Shop/DataDeletion", props: { contact_email: "hello@comfyzone.shop" }
+  end
 end

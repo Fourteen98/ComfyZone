@@ -3,7 +3,7 @@ class CustomersController < InertiaController
 
   require_permission "customers.view", only: %i[ index show ]
   require_permission "customers.manage", except: %i[ index show ]
-  before_action :set_customer, only: %i[ show edit update merge ]
+  before_action :set_customer, only: %i[ show edit update merge erase ]
 
   # GET /customers?q=ama
   # GET /customers?show=quiet   good customers who haven't bought in 30 days
@@ -68,7 +68,8 @@ class CustomersController < InertiaController
         where: [ @customer.where_text, @customer.location ].compact.join(", ").presence,
         note: @customer.note,
         bulk_buyer: @customer.bulk_buyer,
-        since: @customer.created_at.strftime("%-d %b %Y")
+        since: @customer.created_at.strftime("%-d %b %Y"),
+        erased: @customer.erased?
       },
       summary: insights.summary.merge(
         first_at: insights.summary[:first_at]&.strftime("%-d %b %Y"),
@@ -137,6 +138,12 @@ class CustomersController < InertiaController
     else
       redirect_to edit_customer_path(@customer), inertia: { errors: @customer.errors }
     end
+  end
+
+  # DELETE /customers/:id/personal_data   a "delete my data" request
+  def erase
+    @customer.erase_personal_data!
+    redirect_to customer_path(@customer), notice: "Their personal data is erased. Their orders stay, without their details."
   end
 
   private

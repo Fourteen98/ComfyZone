@@ -2,7 +2,8 @@ import { Head, Link, router } from '@inertiajs/react'
 import { ArrowLeft, Clock, Hourglass, Pencil, X } from 'lucide-react'
 import AppLayout from '@/layouts/AppLayout'
 import Badge from '@/components/ui/Badge'
-import { ButtonLink } from '@/components/ui/Button'
+import Button, { ButtonLink } from '@/components/ui/Button'
+import { confirmAction } from '@/lib/confirm'
 import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
 import StatStrip from '@/components/ui/StatStrip'
@@ -25,6 +26,7 @@ type Props = {
     note: string | null
     bulk_buyer: boolean
     since: string
+    erased: boolean // their personal data was erased on request
   }
   summary: {
     orders: number
@@ -259,6 +261,30 @@ export default function CustomerShow({ customer, summary, favourites, top_produc
           )}
         </Panel>
       </div>
+      {/* A "delete my data" request (see /data-deletion). */}
+      {can_manage && !customer.erased && (
+        <section className="mt-10 rounded-lg border border-red-200 bg-white p-5">
+          <h2 className="font-medium">Asked us to delete their data?</h2>
+          <p className="mt-1 max-w-2xl text-sm text-taupe-700">
+            Erases their name, phone number, username, address, notes, waiting list and WhatsApp messages. Their orders stay as anonymous
+            sales, so your stock, money and reports still add up. This can't be undone.
+          </p>
+          <Button
+            type="button"
+            variant="danger"
+            className="mt-3"
+            onClick={async () => {
+              const sure = await confirmAction(`Erase ${customer.display_name}'s personal data? This can't be undone.`, {
+                confirm: 'Erase their data',
+                danger: true,
+              })
+              if (sure) router.delete(`/admin/customers/${customer.id}/personal_data`)
+            }}
+          >
+            Erase personal data
+          </Button>
+        </section>
+      )}
     </AppLayout>
   )
 }

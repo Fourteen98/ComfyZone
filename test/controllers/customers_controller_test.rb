@@ -55,4 +55,17 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
       post customers_path, params: { customer: { name: "Sneaky" } }
     end
   end
+
+  test "erasing personal data needs customers.manage" do
+    customer = Customer.create!(name: "Esi Owusu", phone: "0241112233")
+    roles(:assistant).update!(permissions: %w[ customers.view ])
+    sign_in_as(users(:two))
+    delete personal_data_customer_path(customer)
+    assert_equal "Esi Owusu", customer.reload.name
+
+    sign_in_as(users(:one))
+    delete personal_data_customer_path(customer)
+    assert customer.reload.erased?
+    assert_match "erased", flash[:notice]
+  end
 end

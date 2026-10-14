@@ -43,6 +43,22 @@ class Customer < ApplicationRecord
 
   # What to call them on screen: their name if known, otherwise @handle,
   # otherwise their phone number.
+  # A deletion request ("delete my data", see /data-deletion): remove
+  # everything that says who they are, and keep their orders as anonymous
+  # sales, so stock, money and reports still add up. Their WhatsApp chat
+  # (every message) and waiting-list requests go entirely.
+  def erase_personal_data!
+    transaction do
+      WhatsappConversation.where(customer_id: id).or(WhatsappConversation.where(phone: phone.presence || "none")).destroy_all
+      stock_requests.destroy_all
+      orders.update_all(delivery_address: nil, payment_claim: nil, note: nil, updated_at: Time.current)
+      update!(name: "Deleted customer", handle: nil, phone: nil, location: nil, note: nil, delivery_area: nil,
+              region: nil, country: nil, bulk_buyer: false)
+    end
+  end
+
+  def erased? = name == "Deleted customer" && phone.nil? && handle.nil?
+
   def display_name
     name || (handle && "@#{handle}") || phone_display
   end

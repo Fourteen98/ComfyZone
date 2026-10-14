@@ -110,9 +110,12 @@ export default function Privacy({ updated, contact_email }: Props) {
             delete it, and you can tell us to stop sending you messages.
           </p>
           <p>
-            <strong>To delete your data</strong>, email {email} or send us "delete my data" on WhatsApp from the number you used with us. We
-            will confirm when it's done, as soon as we can and within one month. If you have an order in progress, we will finish or cancel
-            it first.
+            <strong>To delete your data</strong>, email {email} or send us "delete my data" on WhatsApp from the number you used with us (
+            <a href="/data-deletion" className="font-medium text-wine-800 underline underline-offset-4">
+              step by step
+            </a>
+            ). We will confirm when it's done, as soon as we can and within one month. If you have an order in progress, we will finish or
+            cancel it first.
           </p>
           <p>If you are unhappy with how we handle your information, you can also contact Ghana's Data Protection Commission.</p>
         </Section>
