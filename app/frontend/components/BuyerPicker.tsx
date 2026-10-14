@@ -31,6 +31,8 @@ type Props = {
   /** Tells the parent who is chosen (null = nobody yet), what to call them,
       and the known customer behind the choice, if there is one. */
   onChange: (choice: BuyerChoice | null, label: string, known?: Buyer) => void
+  /** Start with this buyer already chosen (a draft being finished). */
+  initial?: BuyerChoice | null
 }
 
 const digits = (text: string) => text.replace(/\D/g, '')
@@ -59,10 +61,14 @@ const buyerDetails = (buyer: Buyer) =>
 //
 // The parent remounts this (with `key`) after each sale, which is how it
 // goes back to an empty search box.
-export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false, onChange }: Props) {
+export default function BuyerPicker({ buyers, usernameFirst, searchOnly = false, onChange, initial = null }: Props) {
   const [search, setSearch] = useState('')
-  const [picked, setPicked] = useState<Buyer | null>(null)
-  const [fresh, setFresh] = useState<{ name: string; phone: string; handle: string } | null>(null)
+  const [picked, setPicked] = useState<Buyer | null>(() =>
+    initial && 'id' in initial ? (buyers.find((buyer) => buyer.id === initial.id) ?? null) : null,
+  )
+  const [fresh, setFresh] = useState<{ name: string; phone: string; handle: string } | null>(() =>
+    initial && !('id' in initial) ? initial : null,
+  )
 
   const term = search.trim().toLowerCase().replace(/^@/, '')
   // Numbers are stored as +233..., so "024 22" is looked for as "24 22".

@@ -87,7 +87,9 @@ export default function OrderEdit({ order, products, buyers, channels }: Props) 
           note,
           // The whole order as it should now be. Rails works out what
           // changed and moves only the difference in stock.
-          items: order.lines_open ? lines.map((line) => ({ variant_id: line.variant_id, quantity: count(line), price: line.price })) : undefined,
+          items: order.lines_open
+            ? lines.map((line) => ({ variant_id: line.variant_id, quantity: count(line), price: line.price }))
+            : undefined,
         },
       },
       { preserveScroll: true, onFinish: () => setSaving(false) },
@@ -98,7 +100,10 @@ export default function OrderEdit({ order, products, buyers, channels }: Props) 
     <AppLayout>
       <Head title={`Edit order for ${order.customer.label}`} />
 
-      <Link href={`/admin/orders/${order.id}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline">
+      <Link
+        href={`/admin/orders/${order.id}`}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-wine-800 hover:underline"
+      >
         <ArrowLeft className="size-4" aria-hidden="true" />
         Back to the order
       </Link>
@@ -108,14 +113,16 @@ export default function OrderEdit({ order, products, buyers, channels }: Props) 
 
       <form onSubmit={save} className="mt-6 grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
-          {(errors.items || errors.base || errors.customer) && <Alert tone="error">{(errors.items ?? errors.base ?? errors.customer)![0]}</Alert>}
+          {(errors.items || errors.base || errors.customer) && (
+            <Alert tone="error">{(errors.items ?? errors.base ?? errors.customer)![0]}</Alert>
+          )}
 
           {/* ---------- What is on it ---------- */}
           <Panel title="Items">
             {!order.lines_open ? (
               <p className="text-taupe-700">
-                The items can't be changed now, because the order is {statusLabels[order.status].toLowerCase()}. To change
-                them, refund the payment first, or cancel the order and record it again.
+                The items can't be changed now, because the order is {statusLabels[order.status].toLowerCase()}. To change them, refund the
+                payment first, or cancel the order and record it again.
               </p>
             ) : (
               <>
@@ -158,8 +165,7 @@ export default function OrderEdit({ order, products, buyers, channels }: Props) 
                 )}
                 <p className="mt-4 flex items-baseline justify-between border-t border-taupe-200 pt-4 tabular-nums">
                   <span className="text-taupe-700">
-                    {units === 1 ? '1 item' : `${units} items`}. The price is for one; change it if you charged something
-                    different.
+                    {units === 1 ? '1 item' : `${units} items`}. The price is for one; change it if you charged something different.
                   </span>
                   <span className="pl-4 text-2xl font-semibold whitespace-nowrap text-wine-800">{formatMoney(total)}</span>
                 </p>
@@ -207,7 +213,14 @@ export default function OrderEdit({ order, products, buyers, channels }: Props) 
                   onChange={setChannelId}
                 />
               )}
-              <TextAreaField id="note" label="Note (optional)" rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
+              <TextAreaField
+                id="note"
+                label="Note (optional)"
+                rows={3}
+                maxLength={500}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
             </div>
           </Panel>
 

@@ -97,6 +97,9 @@ Rails.application.routes.draw do
     end
 
     # Orders. Claims from the live screen and one-off sales both POST /orders.
+    # Sales saved halfway. Before `resources :orders`, so /orders/drafts isn't
+    # read as "the order with id 'drafts'".
+    resources :order_drafts, path: "orders/drafts", only: %i[ create update destroy ]
     resources :orders, except: :destroy do
       patch :cancel, on: :member
       # `module: :orders` looks for these controllers in app/controllers/orders/.
