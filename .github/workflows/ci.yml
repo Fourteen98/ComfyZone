@@ -85,7 +85,7 @@ jobs:
       # with Vite before they start. That needs Node and the npm packages;
       # without these two steps every page test fails on a missing build.
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
