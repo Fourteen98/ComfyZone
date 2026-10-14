@@ -70,9 +70,10 @@ class DashboardController < InertiaController
         {
           id: variant.id,
           product: variant.product.name,
-          variant: variant.name,
-          option_values: variant.option_values,
-          stock: variant.stock_on_hand,
+          option_values: variant.product.stock_pooled? ? [] : variant.option_values,
+          # Counted as one total: the product's total, not this size's.
+          variant: variant.product.stock_pooled? ? "All sizes" : variant.name,
+          stock: variant.available,
           level: variant.stock_level
         }
       }

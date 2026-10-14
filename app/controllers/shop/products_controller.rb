@@ -14,7 +14,7 @@ class Shop::ProductsController < Shop::BaseController
     # Newest first: what she added last is usually what she is showing off.
     products = products.order(created_at: :desc).to_a
     # Things you can actually buy come before things that have sold out.
-    in_stock, sold_out = products.partition { |product| product.variants.any? { |variant| variant.stock_on_hand.positive? } }
+    in_stock, sold_out = products.partition { |product| product.variants.any? { |variant| variant.available.positive? } }
 
     render inertia: "Shop/Home", props: {
       products: (in_stock + sold_out).map { |product| card_props(product) },
@@ -51,8 +51,8 @@ class Shop::ProductsController < Shop::BaseController
             availability: availability(variant),
             # How many the stepper lets them pick. Capped, so it doesn't
             # reveal the real count when there are plenty.
-            max: variant.stock_on_hand.clamp(0, Cart::MAX_EACH),
-            few_left: variant.stock_on_hand.between?(1, FEW) ? variant.stock_on_hand : nil
+            max: variant.available.clamp(0, Cart::MAX_EACH),
+            few_left: variant.available.between?(1, FEW) ? variant.available : nil
           }
         }
       },
@@ -72,13 +72,13 @@ class Shop::ProductsController < Shop::BaseController
         cover_url: photo && rails_representation_path(photo.image.variant(:card)),
         price_from_pesewas: low,
         varies: low != high,
-        sold_out: product.variants.none? { |variant| variant.stock_on_hand.positive? },
+        sold_out: product.variants.none? { |variant| variant.available.positive? },
         # Colour swatches under the card, if the product has a colour option.
         swatches: product.variants.flat_map { |v| v.option_values.filter_map { |value| value["swatch"].presence } }.uniq.first(6)
       }
     end
 
     def availability(variant)
-      variant.stock_on_hand.positive? ? "in_stock" : "sold_out"
+      variant.available.positive? ? "in_stock" : "sold_out"
     end
 end

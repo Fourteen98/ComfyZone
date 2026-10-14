@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_14_080001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_14_090001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -288,6 +288,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_14_080001) do
     t.integer "bulk_price_pesewas"
     t.integer "bulk_min_quantity"
     t.boolean "bulk_on_shop", default: false, null: false
+    t.boolean "stock_pooled", default: false, null: false
     t.index "lower((name)::text)", name: "index_products_on_lower_name", unique: true
     t.index ["category_id"], name: "index_products_on_category_id"
     t.index ["listed"], name: "index_products_on_listed", where: "listed"

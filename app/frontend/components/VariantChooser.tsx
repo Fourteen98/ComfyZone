@@ -68,6 +68,9 @@ export default function VariantChooser({ product, left, basket, onAdd, onWaitlis
 
   return (
     <div className="space-y-3 bg-taupe-50 px-3 py-3">
+      {product.pooled && inStock.length > 0 && (
+        <p className="text-sm text-taupe-700">{left(inStock[0])} left in all sizes and colours together. Pick what they want.</p>
+      )}
       {pointed.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {pointed
@@ -122,7 +125,10 @@ export default function VariantChooser({ product, left, basket, onAdd, onWaitlis
                     >
                       {value.swatch && <Swatch colour={value.swatch} />}
                       {value.label}
-                      <span className={`text-sm font-normal tabular-nums ${on ? 'text-white/80' : 'text-taupe-600'}`}>{count}</span>
+                      {/* Counted as one total: a count per colour or size would be made up. */}
+                      {!product.pooled && (
+                        <span className={`text-sm font-normal tabular-nums ${on ? 'text-white/80' : 'text-taupe-600'}`}>{count}</span>
+                      )}
                       {picked > 0 && <span className="text-sm font-semibold text-wine-800">· {picked} in</span>}
                     </button>
                   )

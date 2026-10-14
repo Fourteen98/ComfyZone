@@ -41,6 +41,12 @@ class Product < ApplicationRecord
   # What the public can see: she ticked "Show on the shop" and it isn't archived.
   scope :on_shop, -> { active.where(listed: true) }
 
+  # The total of a product counted as one number (stock_pooled): all its
+  # sizes and colours. Uses the variants already loaded, if they are.
+  def pooled_total
+    variants.sum { |variant| [ variant.stock_on_hand, 0 ].max }
+  end
+
   # Has a bulk price set up.
   def bulk?
     bulk_price_pesewas.present? && bulk_min_quantity.present?

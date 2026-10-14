@@ -136,8 +136,15 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
   })
   const total = priced.reduce((sum, line) => sum + line.quantity * line.unit, 0)
 
-  const setQuantity = (variant: SellableVariant, quantity: number) =>
-    setBasket({ ...basket, [variant.id]: Math.max(0, Math.min(quantity, variant.stock)) })
+  // At most what is in stock. For a product counted as one total, the
+  // other sizes already picked share that total.
+  const setQuantity = (variant: SellableVariant, quantity: number) => {
+    const product = variants.get(variant.id)?.product
+    const others = product?.pooled
+      ? product.variants.reduce((sum, each) => sum + (each.id === variant.id ? 0 : (basket[each.id] ?? 0)), 0)
+      : 0
+    setBasket({ ...basket, [variant.id]: Math.max(0, Math.min(quantity, variant.stock - others)) })
+  }
   const addOne = (variant: SellableVariant) => setQuantity(variant, (basket[variant.id] ?? 0) + 1)
 
   // ----- the buyer box -----

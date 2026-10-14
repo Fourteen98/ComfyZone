@@ -14,12 +14,15 @@ module SaleCapture
           thumb_url: product.photos.first && rails_representation_path(product.photos.first.image.variant(:thumb)),
           # For the total on screen. Rails works out the real price on save (BulkPricing).
           bulk: product.bulk? ? { price_pesewas: product.bulk_price_pesewas, from: product.bulk_min_quantity } : nil,
+          # Counted as one total: each size's `stock` is the product's total,
+          # shared between them (see ProductPicker's `left`).
+          pooled: product.stock_pooled,
           variants: product.variants.map { |variant|
             {
               id: variant.id,
               name: variant.name,
               option_values: variant.option_values,
-              stock: variant.stock_on_hand,
+              stock: variant.available,
               price_pesewas: variant.selling_price_pesewas
             }
           }

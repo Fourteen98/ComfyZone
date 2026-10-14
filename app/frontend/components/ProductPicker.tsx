@@ -17,6 +17,8 @@ export type SellableProduct = {
   name: string
   thumb_url: string | null
   variants: SellableVariant[]
+  /** Counted as one total: every size's `stock` is that shared total. */
+  pooled?: boolean
   /** Its bulk price, if it has one (see lib/bulk.ts). */
   bulk?: { price_pesewas: number; from: number } | null
 }
@@ -45,7 +47,15 @@ export default function ProductPicker({ label, products, basket, onAdd, onWaitli
   const [search, setSearch] = useState('')
   const [openProduct, setOpenProduct] = useState<number | null>(null)
 
-  const left = (variant: SellableVariant) => variant.stock - (basket[variant.id] ?? 0)
+  // How many more of a variant can be added. For a product counted as one
+  // total, every size draws on the same total, so ALL its sizes in the
+  // basket come off it.
+  const owner = new Map(products.flatMap((product) => product.variants.map((variant) => [variant.id, product] as const)))
+  const left = (variant: SellableVariant) => {
+    const product = owner.get(variant.id)
+    if (!product?.pooled) return variant.stock - (basket[variant.id] ?? 0)
+    return variant.stock - product.variants.reduce((sum, each) => sum + (basket[each.id] ?? 0), 0)
+  }
   const addOne = onAdd
 
   const term = search.trim().toLowerCase()
@@ -97,7 +107,9 @@ export default function ProductPicker({ label, products, basket, onAdd, onWaitli
       ) : (
         <ul className="mt-3 divide-y divide-taupe-200 overflow-hidden rounded-lg border border-taupe-200 bg-white">
           {shown.map((product) => {
-            const stock = product.variants.reduce((sum, variant) => sum + Math.max(left(variant), 0), 0)
+            const stock = product.pooled
+              ? Math.max(left(product.variants[0]), 0) // one shared total
+              : product.variants.reduce((sum, variant) => sum + Math.max(left(variant), 0), 0)
             const simple = product.variants.length === 1 && product.variants[0].option_values.length === 0
             const open = openProduct === product.id || (openProduct === null && autoOpen === product.id)
             const inBasket = product.variants.reduce((sum, variant) => sum + (basket[variant.id] ?? 0), 0)

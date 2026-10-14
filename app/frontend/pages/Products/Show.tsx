@@ -40,6 +40,7 @@ type Props = {
     category: string | null
     price_pesewas: number
     bulk: { price_pesewas: number; from: number; on_shop: boolean } | null
+    pooled_stock: number | null // counted as one total, not by size
     options: { name: string; values: OptionValue[] }[]
     suppliers: { id: number; name: string; phone: string | null }[] | null // null = may not see purchases
     photos: Photo[]
@@ -143,6 +144,14 @@ export default function ProductShow({ product }: Props) {
               <span className="text-taupe-700">Selling price </span>
               <span className="text-2xl font-semibold text-wine-800 tabular-nums">{formatMoney(product.price_pesewas)}</span>
             </p>
+            {product.pooled_stock !== null && (
+              <p>
+                <Link href="/admin/stock" data={{ q: product.name }} className="hover:underline">
+                  <span className="text-xl font-semibold text-ink tabular-nums">{product.pooled_stock}</span>
+                  <span className="text-taupe-700"> in stock, all sizes and colours counted together</span>
+                </Link>
+              </p>
+            )}
             {product.bulk && (
               <p>
                 <span className="text-taupe-700">Bulk, from {product.bulk.from} pieces </span>

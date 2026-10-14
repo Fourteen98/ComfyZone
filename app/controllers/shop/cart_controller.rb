@@ -9,7 +9,7 @@ class Shop::CartController < Shop::BaseController
   def add
     variant = Variant.active.joins(:product).merge(Product.on_shop).find_by(id: params[:variant_id])
 
-    if variant.nil? || variant.stock_on_hand <= 0
+    if variant.nil? || variant.available <= 0
       redirect_back_or_to root_path, alert: "Sorry, that one has just sold out."
     else
       cart.add(variant.id, params[:quantity].presence || 1)

@@ -211,12 +211,12 @@ class Order < ApplicationRecord
       item.update!(returned_quantity: item.returned_quantity + count)
 
       # The new one goes out. guard_stock: refuse if it has just sold out.
-      StockLedger.record!(variant: to, quantity: -count, reason: "sale", source: self, user: by, guard_stock: true,
-        note: "Swap for #{item.variant.full_name}")
+      # (StockLedger.sell! also handles a product counted as one total.)
+      cost = StockLedger.sell!(variant: to, quantity: count, source: self, user: by, note: "Swap for #{item.variant.full_name}")
       line = items.find_or_initialize_by(variant: to)
       if line.new_record?
         line.unit_price_pesewas = same_price ? item.unit_price_pesewas : to.selling_price_pesewas
-        line.unit_cost_pesewas = to.average_cost_pesewas
+        line.unit_cost_pesewas = cost
         line.quantity = 0
       end
       line.quantity += count

@@ -2,7 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react'
 import { Boxes, ChevronDown, ChevronRight, ClipboardList, Lightbulb, Search, Shirt, SlidersHorizontal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
-import { ButtonLink } from '@/components/ui/Button'
+import Button, { ButtonLink } from '@/components/ui/Button'
 import Chip from '@/components/ui/Chip'
 import EmptyState from '@/components/ui/EmptyState'
 import PageHeader from '@/components/ui/PageHeader'
@@ -11,6 +11,7 @@ import StockLevelBadge from '@/components/StockLevelBadge'
 import StockAdjustForm from '@/components/StockAdjustForm'
 import StockGrid, { constantOptions } from '@/components/StockGrid'
 import type { OptionValue } from '@/components/OptionValuesEditor'
+import { confirmAction } from '@/lib/confirm'
 import { formatMoney } from '@/lib/format'
 import { useCan } from '@/lib/permissions'
 import type { StockLevel } from '@/lib/stock'
@@ -31,6 +32,8 @@ type Group = {
   low_stock_at: number
   thumb_url: string | null
   sells_for_pesewas: number // these pieces, at their selling prices
+  pooled: boolean // counted as one total, not by size (StockPool)
+  total: number // that total
   variants: VariantRow[]
 }
 
@@ -233,9 +236,11 @@ export default function StockIndex({ groups, filters, counts, totals, estimate, 
               <div className={`${gridMode ? 'mt-2' : 'mt-5'} gap-4 lg:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid`}>
                 {groups.map((group) => {
                   const isOpen = !gridMode || open.includes(group.id)
-                  const here = group.variants.reduce((sum, variant) => sum + Math.max(variant.stock, 0), 0)
-                  const low = group.variants.filter((variant) => variant.level === 'low').length
-                  const out = group.variants.filter((variant) => variant.level === 'out').length
+                  // Counted as one total: one number, one level for the whole product.
+                  const here = group.pooled ? group.total : group.variants.reduce((sum, variant) => sum + Math.max(variant.stock, 0), 0)
+                  const level = group.variants[0]?.level
+                  const low = group.pooled ? Number(level === 'low') : group.variants.filter((variant) => variant.level === 'low').length
+                  const out = group.pooled ? Number(level === 'out') : group.variants.filter((variant) => variant.level === 'out').length
                   // "One size", "Maxi": the same for every item, so said once in the header.
                   // Only in the grid: a search's few matches would all look "the same".
                   const same = gridMode ? constantOptions(group.variants) : []
@@ -263,10 +268,19 @@ export default function StockIndex({ groups, filters, counts, totals, estimate, 
                             {group.sells_for_pesewas > 0 && `, sells for ${formatMoney(group.sells_for_pesewas)}`}
                             {same.length > 0 && <span className="text-taupe-500"> · {same.join(', ')}</span>}
                           </span>
-                          {gridMode && (low > 0 || out > 0) && (
+                          {(group.pooled || (gridMode && (low > 0 || out > 0))) && (
                             <span className="mt-1 flex flex-wrap gap-1.5 text-xs font-medium">
-                              {low > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-950">{low} low</span>}
-                              {out > 0 && <span className="rounded-full bg-taupe-100 px-2 py-0.5 text-taupe-700">{out} out</span>}
+                              {group.pooled && <span className="rounded-full bg-wine-50 px-2 py-0.5 text-wine-800">One total</span>}
+                              {low > 0 && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-950">
+                                  {group.pooled ? 'Low' : `${low} low`}
+                                </span>
+                              )}
+                              {out > 0 && (
+                                <span className="rounded-full bg-taupe-100 px-2 py-0.5 text-taupe-700">
+                                  {group.pooled ? 'Out' : `${out} out`}
+                                </span>
+                              )}
                             </span>
                           )}
                         </span>
@@ -278,19 +292,26 @@ export default function StockIndex({ groups, filters, counts, totals, estimate, 
                         )}
                       </button>
 
-                      {isOpen && gridMode && (
+                      {/* Counted as one total: one number, in every view. */}
+                      {group.pooled && isOpen && <PooledBody group={group} canAdjust={can('stock.adjust')} />}
+
+                      {!group.pooled && isOpen && gridMode && (
                         <div className="border-t border-taupe-200">
                           <StockGrid variants={group.variants} />
-                          <p className="flex flex-wrap items-center justify-between gap-2 border-t border-taupe-100 px-4 py-2 text-sm text-taupe-600">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-taupe-100 px-4 py-2 text-sm text-taupe-600">
                             <span>Tap a number to see its history or correct it.</span>
                             <Link href={`/admin/products/${group.id}`} className="font-medium text-wine-800 hover:underline">
                               Product page
                             </Link>
-                          </p>
+                            {/* Sizes miscounted, but the total is right? Count it as one. */}
+                            {can('stock.adjust') && group.variants.length > 1 && (
+                              <PoolForm group={group} start={here} label="Sizes don't add up? Count as one total" />
+                            )}
+                          </div>
                         </div>
                       )}
 
-                      {!gridMode && (
+                      {!group.pooled && !gridMode && (
                         <ul className="divide-y divide-taupe-200 border-t border-taupe-200">
                           {group.variants.map((variant) => (
                             <li key={variant.id} className={variant.id === openId ? 'bg-wine-50/60' : ''}>
@@ -408,5 +429,85 @@ function EstimateCard({ estimate, costsOf, uncosted }: { estimate: Estimate; cos
         </p>
       </div>
     </details>
+  )
+}
+
+// A product counted as one total: the number, what it means, and how to
+// change it. Any size or colour can be sold while the total is above 0.
+function PooledBody({ group, canAdjust }: { group: Group; canAdjust: boolean }) {
+  async function unpool() {
+    const sure = await confirmAction(
+      `Count ${group.name} by size and colour again? You will be taken to the stock take to count each size.`,
+      { confirm: 'Count by size' },
+    )
+    if (sure) router.delete(`/admin/stock/pool/${group.id}`) // -> Stock::PoolsController#destroy
+  }
+
+  return (
+    <div className="border-t border-taupe-200 px-4 py-4">
+      <p className="flex items-baseline gap-2">
+        <span className="text-3xl font-semibold text-ink tabular-nums">{group.total}</span>
+        <span className="text-taupe-700">in stock, all sizes and colours together</span>
+      </p>
+      <p className="mt-1 text-sm text-taupe-600">
+        Any size or colour can be sold while there are some. Sales still record which one was sold.
+      </p>
+      {canAdjust && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <PoolForm group={group} start={group.total} label="Change total" />
+          <button type="button" onClick={unpool} className="min-h-10 text-sm font-medium text-wine-800 hover:underline">
+            Count by size again
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// "How many are there in all?" Opens in place; saving counts the product
+// as one total from now on (StockPool.pool!).
+function PoolForm({ group, start, label }: { group: Group; start: number; label: string }) {
+  const [open, setOpen] = useState(false)
+  const [total, setTotal] = useState(String(start))
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="min-h-10 text-sm font-medium text-wine-800 hover:underline">
+        {label}
+      </button>
+    )
+  }
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        router.patch(`/admin/stock/pool/${group.id}`, { total }, { preserveScroll: true, onSuccess: () => setOpen(false) })
+      }}
+      className="flex w-full flex-wrap items-end gap-2 rounded-lg bg-taupe-100 p-3"
+    >
+      <div className="w-36">
+        <label htmlFor={`pool_${group.id}`} className="block text-sm font-medium text-taupe-800">
+          How many in all?
+        </label>
+        <input
+          id={`pool_${group.id}`}
+          inputMode="numeric"
+          autoFocus
+          value={total}
+          onChange={(e) => setTotal(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          className="mt-1.5 block min-h-11 w-full rounded-md border-taupe-300 bg-white text-base tabular-nums focus:border-wine-700 focus:ring-1 focus:ring-wine-700"
+        />
+      </div>
+      <Button type="submit" disabled={total === ''}>
+        Save
+      </Button>
+      <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+        Cancel
+      </Button>
+      <p className="w-full text-sm text-taupe-700">
+        Count every piece of {group.name}, any size or colour. From now on it is counted as one total.
+      </p>
+    </form>
   )
 }

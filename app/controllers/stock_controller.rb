@@ -7,16 +7,19 @@ class StockController < InertiaController
   # GET /stock?show=low&q=dress
   def index
     variants = Variant.active.joins(:product).merge(Product.active)
-      .includes(product: { photos: { image_attachment: :blob } })
+      .includes(product: [ :variants, { photos: { image_attachment: :blob } } ])
       .order("lower(products.name), variants.position")
     # "orange 3xl": find that size and colour, best match first (see VariantSearch).
     search = VariantSearch.new(params[:q])
     all = search.blank? ? variants.to_a : search.rank(variants.to_a)
     uncosted = can?("costs.view") ? all.select { |variant| variant.stock_on_hand.positive? && variant.average_cost_pesewas.zero? } : []
     show = %w[ low out ].include?(params[:show]) || (params[:show] == "uncosted" && uncosted.any?) ? params[:show] : "all"
+    # A product counted as one total counts ONCE in "low" and "out" (all its
+    # sizes share one level), and shows as one row there.
+    one_each = all.uniq { |variant| variant.product.stock_pooled? ? "product-#{variant.product_id}" : variant.id }
     shown = case show
-    when "low" then all.select { |variant| variant.stock_level == :low }
-    when "out" then all.select { |variant| variant.stock_level == :out }
+    when "low" then one_each.select { |variant| variant.stock_level == :low }
+    when "out" then one_each.select { |variant| variant.stock_level == :out }
     when "uncosted" then uncosted
     else all
     end
@@ -29,8 +32,8 @@ class StockController < InertiaController
       focus_id: search.blank? ? nil : shown.first&.id,
       counts: {
         all: all.size,
-        low: all.count { |variant| variant.stock_level == :low },
-        out: all.count { |variant| variant.stock_level == :out },
+        low: one_each.count { |variant| variant.stock_level == :low },
+        out: one_each.count { |variant| variant.stock_level == :out },
         # In stock with no cost recorded, so worth GH₵ 0 in the total below.
         # nil for people who may not see costs.
         uncosted: can?("costs.view") ? uncosted.size : nil
@@ -95,6 +98,9 @@ class StockController < InertiaController
       {
         id: product.id,
         name: product.name,
+        # Counted as one total: the Stock page shows that one number.
+        pooled: product.stock_pooled,
+        total: product.pooled_total,
         # What this product's stock should sell for (the pieces listed here).
         sells_for_pesewas: variants.sum { |variant| [ variant.stock_on_hand, 0 ].max * variant.selling_price_pesewas },
         low_stock_at: product.low_stock_at,

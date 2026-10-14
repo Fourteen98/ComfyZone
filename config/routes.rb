@@ -83,6 +83,9 @@ Rails.application.routes.draw do
       resource :count, only: %i[ new create ], path: "count", path_names: { new: "" }, as: :stock_count
       # "What to buy next" (RestockAdvisor).
       resource :advice, only: :show, controller: "advice", as: :stock_advice
+      # Count a product as one total, or by size again (StockPool).
+      patch "pool/:product_id", to: "pools#update", as: :stock_pool
+      delete "pool/:product_id", to: "pools#destroy"
     end
 
     resources :stock, only: %i[ index show ], controller: "stock" do
