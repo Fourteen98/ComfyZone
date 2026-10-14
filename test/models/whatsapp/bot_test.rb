@@ -152,4 +152,10 @@ class Whatsapp::BotTest < ActiveSupport::TestCase
     assert_match "This is a test", last.body
     assert_equal 3, @black.reload.stock_on_hand
   end
+
+  test "'delete my data' goes to a person, as the privacy policy promises" do
+    say("Please delete my data")
+    assert @chat.handed_off?
+    assert_match "request to delete your data", last.body
+  end
 end

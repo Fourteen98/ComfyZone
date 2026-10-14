@@ -55,6 +55,9 @@ export default function ShopLayout({ children, wide = false }: { children: React
           <p>
             <span className="font-display text-lg text-wine-800">The Comfy Zone by Fazy.</span> Comfort meets style.
           </p>
+          <Link href="/privacy" className="underline underline-offset-4 hover:text-wine-800">
+            Privacy
+          </Link>
           {props.shop?.staff && (
             <Link href="/admin" className="underline underline-offset-4 hover:text-wine-800">
               Back office

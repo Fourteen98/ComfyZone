@@ -52,6 +52,8 @@ module Whatsapp
         add_to_bag(text.to_i)
       elsif words.empty? || (words - HELLO).empty? || words == %w[ menu ]
         menu
+      elsif words.include?("delete") && words.intersect?(%w[ data information info details number ])
+        data_request
       elsif words.intersect?(%w[ human agent fazy person talk call ])
         hand_off
       elsif words.intersect?(%w[ order status ]) && words.size <= 3
@@ -391,6 +393,14 @@ module Whatsapp
         Push.notify("orders", title: "WhatsApp: #{chat.display_name} wants to talk", body: @input["text"].to_s.truncate(100).presence || "Asked for you.",
                     path: "/admin/whatsapp/#{chat.id}")
         reply("Sure! Fazy will reply to you here shortly. 🙂")
+      end
+
+      # "delete my data" (as the privacy policy says): a person handles it.
+      def data_request
+        chat.update!(handed_off_at: Time.current, state: "menu")
+        Push.notify("orders", title: "WhatsApp: data deletion request", body: "#{chat.display_name} asked us to delete their data.",
+                    path: "/admin/whatsapp/#{chat.id}")
+        reply("We've received your request to delete your data. Fazy will confirm here once it's done.")
       end
 
       def hand_off_offer

@@ -186,6 +186,7 @@ Rails.application.routes.draw do
     resource :checkout, only: %i[ show create ], controller: "checkout"
     get "order/:token", to: "orders#show", as: :order      # the shopper's own link
     post "notify", to: "waiting#create", as: :notify       # "tell me when it's back"
+    get "privacy", to: "pages#privacy", as: :privacy       # the privacy policy (Meta asks for it)
   end
 
   # Old back-office addresses, from before it moved under /admin: saved
