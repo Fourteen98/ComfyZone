@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react'
 import type { ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { Clock, X } from 'lucide-react'
 import { OrderBadges } from '@/components/OrderStatusBadge'
 import { formatMoney } from '@/lib/format'
 import type { OrderSummary } from '@/lib/orders'
@@ -20,7 +20,13 @@ type Props = {
 // far"), the orders page and the dashboard.
 export default function OrderList({ orders, removable = false, showStatus = true, action }: Props) {
   async function remove(order: OrderSummary, item: OrderSummary['items'][number]) {
-    if (!(await confirmAction(`Remove ${item.name} from ${order.customer}'s order? It goes back into stock.`, { confirm: 'Remove', danger: true }))) return
+    if (
+      !(await confirmAction(`Remove ${item.name} from ${order.customer}'s order? It goes back into stock.`, {
+        confirm: 'Remove',
+        danger: true,
+      }))
+    )
+      return
     // -> Orders::ItemsController#destroy
     router.delete(`/admin/orders/${order.id}/items/${item.id}`, { preserveScroll: true })
   }
@@ -41,6 +47,13 @@ export default function OrderList({ orders, removable = false, showStatus = true
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             {showStatus && <OrderBadges order={order} />}
+            {/* Unpaid, on the clock: when it goes back on sale. */}
+            {order.pay_by && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-800">
+                <Clock className="size-3.5" aria-hidden="true" />
+                {order.pay_by === 'now' ? 'Time up: releasing' : `Pay by ${order.pay_by}`}
+              </span>
+            )}
             <p className="text-sm text-taupe-600">
               {order.at}
               {/* The live it was claimed on, or else where the sale came from. */}

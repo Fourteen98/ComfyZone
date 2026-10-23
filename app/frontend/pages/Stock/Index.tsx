@@ -1,5 +1,17 @@
 import { Head, Link, router, usePage } from '@inertiajs/react'
-import { Boxes, ChevronDown, ChevronRight, ClipboardList, Lightbulb, Search, Shirt, SlidersHorizontal } from 'lucide-react'
+import {
+  Boxes,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  Lightbulb,
+  RotateCcw,
+  Search,
+  Shirt,
+  SlidersHorizontal,
+  Undo2,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import Button, { ButtonLink } from '@/components/ui/Button'
@@ -10,6 +22,7 @@ import StatStrip from '@/components/ui/StatStrip'
 import StockLevelBadge from '@/components/StockLevelBadge'
 import StockAdjustForm from '@/components/StockAdjustForm'
 import StockGrid, { constantOptions } from '@/components/StockGrid'
+import type { GridSelection } from '@/components/StockGrid'
 import type { OptionValue } from '@/components/OptionValuesEditor'
 import { confirmAction } from '@/lib/confirm'
 import { formatMoney } from '@/lib/format'
@@ -54,11 +67,58 @@ type Props = {
   estimate: Estimate
   /** While searching: the best match, whose quick form opens by itself. */
   focus_id: number | null
+  /** The latest reset, while it can be undone. null = none, or may not adjust stock. */
+  last_reset: { batch: string; items: number; note: string; at: string; by: string | null } | null
+  /** What to type before a full reset (StockReset::CONFIRM_WORD). */
+  confirm_word: string
 }
 
 // Props from StockController#index
-export default function StockIndex({ groups, filters, counts, totals, estimate, focus_id }: Props) {
+export default function StockIndex({ groups, filters, counts, totals, estimate, focus_id, last_reset, confirm_word }: Props) {
   const can = useCan()
+
+  // "Reset counts": tap items to choose them instead of opening them, then
+  // set them all to 0 (or another number) in one go. See StockReset.
+  const [selecting, setSelecting] = useState(false)
+  const [picked, setPicked] = useState<number[]>([])
+  const [resetTo, setResetTo] = useState('0')
+  const [fullReset, setFullReset] = useState(false)
+  const pickedSet = new Set(picked)
+  // Several ids at once (a row, a column, a whole product): all chosen
+  // already means un-choose them; otherwise choose them all.
+  const toggleIds = (ids: number[]) =>
+    setPicked((now) => (ids.every((id) => now.includes(id)) ? now.filter((id) => !ids.includes(id)) : [...new Set([...now, ...ids])]))
+  const selection: GridSelection = { picked: pickedSet, toggle: toggleIds }
+  const stopSelecting = () => {
+    setSelecting(false)
+    setPicked([])
+    setResetTo('0')
+  }
+
+  // What is chosen, in her words: a product counted as one total is one thing.
+  const chosen = groups.reduce(
+    (sum, group) => {
+      const mine = group.variants.filter((variant) => pickedSet.has(variant.id))
+      if (mine.length === 0) return sum
+      if (group.pooled) return { items: sum.items + 1, pieces: sum.pieces + Math.max(group.total, 0) }
+      return { items: sum.items + mine.length, pieces: sum.pieces + mine.reduce((total, variant) => total + Math.max(variant.stock, 0), 0) }
+    },
+    { items: 0, pieces: 0 },
+  )
+
+  async function resetChosen() {
+    const to = resetTo === '' ? '0' : resetTo
+    const what = chosen.items === 1 ? '1 item' : `${chosen.items} items`
+    const sure = await confirmAction(
+      `Set ${what} to ${to}? Each one's history keeps the old number, and you can undo this from the top of the Stock page for a day.`,
+      { confirm: `Set to ${to}`, danger: to === '0' },
+    )
+    if (!sure) return
+    // -> Stock::ResetsController#create
+    // Not preserving the scroll: the page goes back to the top, where the
+    // result and its Undo button are.
+    router.post('/admin/stock/reset', { variant_ids: picked, to }, { onSuccess: stopSelecting })
+  }
   const [query, setQuery] = useState(filters.q)
   const errors = usePage().props.errors as Record<string, string[] | undefined>
 
@@ -132,6 +192,16 @@ export default function StockIndex({ groups, filters, counts, totals, estimate, 
         description="What you have on hand right now. Tap any item to see its history or correct its count."
         actions={
           <>
+            {can('stock.adjust') && counts.all > 0 && (
+              <Button
+                type="button"
+                variant={selecting ? 'primary' : 'secondary'}
+                onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+              >
+                {selecting ? <Check className="size-5" aria-hidden="true" /> : <RotateCcw className="size-5" aria-hidden="true" />}
+                {selecting ? 'Done choosing' : 'Reset counts'}
+              </Button>
+            )}
             <ButtonLink href="/admin/stock/advice" variant="secondary">
               <Lightbulb className="size-5" aria-hidden="true" />
               What to buy next
@@ -154,6 +224,54 @@ export default function StockIndex({ groups, filters, counts, totals, estimate, 
         </div>
       ) : (
         <>
+          {/* The latest reset can be taken back for a day. */}
+          {last_reset && !selecting && (
+            <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-taupe-200 bg-white px-4 py-3">
+              <RotateCcw className="size-5 shrink-0 text-taupe-500" aria-hidden="true" />
+              <p className="min-w-0 flex-1 text-taupe-800">
+                {last_reset.note === 'Full reset' ? 'Full reset' : last_reset.note}: {last_reset.items}{' '}
+                {last_reset.items === 1 ? 'item' : 'items'}, {last_reset.at}
+                {last_reset.by && ` by ${last_reset.by}`}.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={async () => {
+                  const sure = await confirmAction(
+                    `Undo this reset? Every count it changed goes back by the same amount. Sales made since are kept.`,
+                    { confirm: 'Undo reset' },
+                  )
+                  if (sure) router.delete(`/admin/stock/reset/${last_reset.batch}`) // -> Stock::ResetsController#destroy
+                }}
+              >
+                <Undo2 className="size-5" aria-hidden="true" />
+                Undo
+              </Button>
+            </div>
+          )}
+
+          {/* Choosing what to reset: how it works, and the big red button. */}
+          {selecting && (
+            <div className="mt-6 rounded-lg border border-wine-200 bg-wine-50 px-4 py-3">
+              <p className="text-wine-800">
+                <strong>Tap the items to reset.</strong> Tap a colour or size heading to choose its whole row or column, or "Choose all" on
+                a product. Then pick the number at the bottom.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setOpen(groups.map((group) => group.id))}
+                  className="min-h-10 font-medium text-wine-800 hover:underline"
+                >
+                  Open every product
+                </button>
+                <button type="button" onClick={() => setFullReset(true)} className="min-h-10 font-medium text-red-800 hover:underline">
+                  Full reset: everything to 0…
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="mt-6">
             <StatStrip stats={stats} />
           </div>
@@ -245,69 +363,82 @@ export default function StockIndex({ groups, filters, counts, totals, estimate, 
                   // Only in the grid: a search's few matches would all look "the same".
                   const same = gridMode ? constantOptions(group.variants) : []
                   return (
-                    <section key={group.id} className="overflow-hidden rounded-lg border border-taupe-200 bg-white">
-                      {/* The whole header folds and unfolds the card. */}
-                      <button
-                        type="button"
-                        onClick={() => gridMode && toggle(group.id)}
-                        aria-expanded={gridMode ? isOpen : undefined}
-                        disabled={!gridMode}
-                        className="flex w-full items-center gap-3 px-4 py-3 text-left enabled:hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
-                      >
-                        <span className="flex aspect-[4/5] w-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-taupe-200 text-taupe-500">
-                          {group.thumb_url ? (
-                            <img src={group.thumb_url} alt="" loading="lazy" className="size-full object-cover" />
-                          ) : (
-                            <Shirt className="size-5" aria-hidden="true" />
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-display text-xl font-semibold text-wine-800 sm:text-2xl">{group.name}</span>
-                          <span className="block text-sm text-taupe-700 tabular-nums">
-                            {here} here
-                            {group.sells_for_pesewas > 0 && `, sells for ${formatMoney(group.sells_for_pesewas)}`}
-                            {same.length > 0 && <span className="text-taupe-500"> · {same.join(', ')}</span>}
+                    <section
+                      key={group.id}
+                      className={`overflow-hidden rounded-lg border bg-white ${
+                        selecting && group.variants.some((variant) => pickedSet.has(variant.id)) ? 'border-wine-700' : 'border-taupe-200'
+                      }`}
+                    >
+                      <div className="flex items-stretch">
+                        {/* The whole header folds and unfolds the card. */}
+                        <button
+                          type="button"
+                          onClick={() => gridMode && toggle(group.id)}
+                          aria-expanded={gridMode ? isOpen : undefined}
+                          disabled={!gridMode}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left enabled:hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
+                        >
+                          <span className="flex aspect-[4/5] w-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-taupe-200 text-taupe-500">
+                            {group.thumb_url ? (
+                              <img src={group.thumb_url} alt="" loading="lazy" className="size-full object-cover" />
+                            ) : (
+                              <Shirt className="size-5" aria-hidden="true" />
+                            )}
                           </span>
-                          {(group.pooled || (gridMode && (low > 0 || out > 0))) && (
-                            <span className="mt-1 flex flex-wrap gap-1.5 text-xs font-medium">
-                              {group.pooled && <span className="rounded-full bg-wine-50 px-2 py-0.5 text-wine-800">One total</span>}
-                              {low > 0 && (
-                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-950">
-                                  {group.pooled ? 'Low' : `${low} low`}
-                                </span>
-                              )}
-                              {out > 0 && (
-                                <span className="rounded-full bg-taupe-100 px-2 py-0.5 text-taupe-700">
-                                  {group.pooled ? 'Out' : `${out} out`}
-                                </span>
-                              )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-display text-xl font-semibold text-wine-800 sm:text-2xl">
+                              {group.name}
                             </span>
+                            <span className="block text-sm text-taupe-700 tabular-nums">
+                              {here} here
+                              {group.sells_for_pesewas > 0 && `, sells for ${formatMoney(group.sells_for_pesewas)}`}
+                              {same.length > 0 && <span className="text-taupe-500"> · {same.join(', ')}</span>}
+                            </span>
+                            {(group.pooled || (gridMode && (low > 0 || out > 0))) && (
+                              <span className="mt-1 flex flex-wrap gap-1.5 text-xs font-medium">
+                                {group.pooled && <span className="rounded-full bg-wine-50 px-2 py-0.5 text-wine-800">One total</span>}
+                                {low > 0 && (
+                                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-950">
+                                    {group.pooled ? 'Low' : `${low} low`}
+                                  </span>
+                                )}
+                                {out > 0 && (
+                                  <span className="rounded-full bg-taupe-100 px-2 py-0.5 text-taupe-700">
+                                    {group.pooled ? 'Out' : `${out} out`}
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                          </span>
+                          {gridMode && (
+                            <ChevronDown
+                              className={`size-5 shrink-0 text-taupe-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                              aria-hidden="true"
+                            />
                           )}
-                        </span>
-                        {gridMode && (
-                          <ChevronDown
-                            className={`size-5 shrink-0 text-taupe-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                            aria-hidden="true"
-                          />
-                        )}
-                      </button>
+                        </button>
+                        {/* Every size and colour of this product, in one tap. */}
+                        {selecting && <PickAll name={group.name} ids={group.variants.map((variant) => variant.id)} selection={selection} />}
+                      </div>
 
                       {/* Counted as one total: one number, in every view. */}
-                      {group.pooled && isOpen && <PooledBody group={group} canAdjust={can('stock.adjust')} />}
+                      {group.pooled && isOpen && <PooledBody group={group} canAdjust={can('stock.adjust') && !selecting} />}
 
                       {!group.pooled && isOpen && gridMode && (
                         <div className="border-t border-taupe-200">
-                          <StockGrid variants={group.variants} />
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-taupe-100 px-4 py-2 text-sm text-taupe-600">
-                            <span>Tap a number to see its history or correct it.</span>
-                            <Link href={`/admin/products/${group.id}`} className="font-medium text-wine-800 hover:underline">
-                              Product page
-                            </Link>
-                            {/* Sizes miscounted, but the total is right? Count it as one. */}
-                            {can('stock.adjust') && group.variants.length > 1 && (
-                              <PoolForm group={group} start={here} label="Sizes don't add up? Count as one total" />
-                            )}
-                          </div>
+                          <StockGrid variants={group.variants} selection={selecting ? selection : undefined} />
+                          {!selecting && (
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-taupe-100 px-4 py-2 text-sm text-taupe-600">
+                              <span>Tap a number to see its history or correct it.</span>
+                              <Link href={`/admin/products/${group.id}`} className="font-medium text-wine-800 hover:underline">
+                                Product page
+                              </Link>
+                              {/* Sizes miscounted, but the total is right? Count it as one. */}
+                              {can('stock.adjust') && group.variants.length > 1 && (
+                                <PoolForm group={group} start={here} label="Sizes don't add up? Count as one total" />
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -315,49 +446,73 @@ export default function StockIndex({ groups, filters, counts, totals, estimate, 
                         <ul className="divide-y divide-taupe-200 border-t border-taupe-200">
                           {group.variants.map((variant) => (
                             <li key={variant.id} className={variant.id === openId ? 'bg-wine-50/60' : ''}>
-                              <div className="flex items-stretch">
-                                <Link
-                                  href={`/admin/stock/${variant.id}`}
-                                  className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-2 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
+                              {selecting ? (
+                                // Choosing: the whole row is one big tick box.
+                                <button
+                                  type="button"
+                                  onClick={() => toggleIds([variant.id])}
+                                  aria-pressed={pickedSet.has(variant.id)}
+                                  className={`flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700 ${
+                                    pickedSet.has(variant.id) ? 'bg-wine-50' : 'hover:bg-taupe-50'
+                                  }`}
                                 >
+                                  <Tick on={pickedSet.has(variant.id)} />
                                   <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
                                     {variant.option_values.length === 0 ? (
                                       <span className="text-taupe-700">One item</span>
                                     ) : (
-                                      // Options every size shares ("One size") are said once, in the header.
-                                      variant.option_values
-                                        .filter((value) => !same.includes(value.label))
-                                        .map((value) => <Chip key={value.name} label={value.label} swatch={value.swatch} />)
+                                      variant.option_values.map((value) => (
+                                        <Chip key={value.name} label={value.label} swatch={value.swatch} />
+                                      ))
                                     )}
                                   </span>
-                                  <StockLevelBadge level={variant.level} />
-                                  {variant.value_pesewas !== null && variant.stock > 0 && (
-                                    <span className="hidden w-28 text-right text-sm text-taupe-700 tabular-nums sm:block">
-                                      {variant.no_cost ? 'No cost yet' : formatMoney(variant.value_pesewas)}
+                                  <span className="w-10 text-right text-xl font-semibold tabular-nums">{variant.stock}</span>
+                                </button>
+                              ) : (
+                                <div className="flex items-stretch">
+                                  <Link
+                                    href={`/admin/stock/${variant.id}`}
+                                    className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-2 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
+                                  >
+                                    <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+                                      {variant.option_values.length === 0 ? (
+                                        <span className="text-taupe-700">One item</span>
+                                      ) : (
+                                        // Options every size shares ("One size") are said once, in the header.
+                                        variant.option_values
+                                          .filter((value) => !same.includes(value.label))
+                                          .map((value) => <Chip key={value.name} label={value.label} swatch={value.swatch} />)
+                                      )}
                                     </span>
+                                    <StockLevelBadge level={variant.level} />
+                                    {variant.value_pesewas !== null && variant.stock > 0 && (
+                                      <span className="hidden w-28 text-right text-sm text-taupe-700 tabular-nums sm:block">
+                                        {variant.no_cost ? 'No cost yet' : formatMoney(variant.value_pesewas)}
+                                      </span>
+                                    )}
+                                    <span
+                                      className={`w-10 text-right text-xl font-semibold tabular-nums ${
+                                        variant.level === 'out' ? 'text-taupe-400' : 'text-ink'
+                                      }`}
+                                    >
+                                      {variant.stock}
+                                    </span>
+                                    <ChevronRight className="size-5 shrink-0 text-taupe-400" aria-hidden="true" />
+                                  </Link>
+                                  {searching && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenId(openId === variant.id ? null : variant.id)}
+                                      aria-expanded={openId === variant.id}
+                                      aria-label={`Adjust stock for ${group.name}, ${variant.name}`}
+                                      className="flex w-14 shrink-0 items-center justify-center border-l border-taupe-200 text-wine-800 hover:bg-taupe-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
+                                    >
+                                      <SlidersHorizontal className="size-5" aria-hidden="true" />
+                                    </button>
                                   )}
-                                  <span
-                                    className={`w-10 text-right text-xl font-semibold tabular-nums ${
-                                      variant.level === 'out' ? 'text-taupe-400' : 'text-ink'
-                                    }`}
-                                  >
-                                    {variant.stock}
-                                  </span>
-                                  <ChevronRight className="size-5 shrink-0 text-taupe-400" aria-hidden="true" />
-                                </Link>
-                                {searching && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setOpenId(openId === variant.id ? null : variant.id)}
-                                    aria-expanded={openId === variant.id}
-                                    aria-label={`Adjust stock for ${group.name}, ${variant.name}`}
-                                    className="flex w-14 shrink-0 items-center justify-center border-l border-taupe-200 text-wine-800 hover:bg-taupe-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
-                                  >
-                                    <SlidersHorizontal className="size-5" aria-hidden="true" />
-                                  </button>
-                                )}
-                              </div>
-                              {searching && openId === variant.id && (
+                                </div>
+                              )}
+                              {searching && !selecting && openId === variant.id && (
                                 <div className="border-t border-taupe-200 px-4 py-4">
                                   {/* Starts on "Found more" (adding); she can switch to counting or taking off. */}
                                   <StockAdjustForm
@@ -381,7 +536,166 @@ export default function StockIndex({ groups, filters, counts, totals, estimate, 
           )}
         </>
       )}
+
+      {/* What's chosen, and what to set it to. Sits above the phone's bottom
+          bar; on a computer, stuck to the bottom of the page. */}
+      {selecting && (
+        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t border-taupe-200 bg-white px-4 py-2.5 shadow-[0_-4px_16px_rgb(42_31_29/0.12)] lg:sticky lg:bottom-4 lg:mt-6 lg:rounded-lg lg:border lg:px-5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <p className="min-w-0 flex-1 tabular-nums">
+              {chosen.items === 0 ? (
+                <span className="text-taupe-700">Nothing chosen yet</span>
+              ) : (
+                <>
+                  <strong>{chosen.items === 1 ? '1 item' : `${chosen.items} items`}</strong>
+                  <button
+                    type="button"
+                    onClick={() => setPicked([])}
+                    className="ml-3 min-h-10 text-sm font-medium text-wine-800 hover:underline"
+                  >
+                    Clear
+                  </button>
+                  <span className="block text-sm text-taupe-700 sm:ml-2 sm:inline">
+                    {chosen.pieces} {chosen.pieces === 1 ? 'piece' : 'pieces'} now
+                  </span>
+                </>
+              )}
+            </p>
+            <div className="flex items-center gap-2">
+              <label htmlFor="reset_to" className="text-sm font-medium text-taupe-800">
+                Set to
+              </label>
+              <input
+                id="reset_to"
+                inputMode="numeric"
+                value={resetTo}
+                onChange={(e) => setResetTo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onFocus={(e) => e.target.select()}
+                className="block min-h-11 w-16 rounded-md border-taupe-300 bg-white text-center text-base tabular-nums focus:border-wine-700 focus:ring-1 focus:ring-wine-700"
+              />
+              <Button
+                type="button"
+                variant={resetTo === '0' || resetTo === '' ? 'danger' : 'primary'}
+                disabled={chosen.items === 0}
+                onClick={resetChosen}
+              >
+                {resetTo === '0' || resetTo === '' ? 'Reset to 0' : 'Set counts'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fullReset && (
+        <FullResetDialog
+          word={confirm_word}
+          units={totals.units}
+          onClose={() => setFullReset(false)}
+          onDone={() => {
+            setFullReset(false)
+            stopSelecting()
+          }}
+        />
+      )}
     </AppLayout>
+  )
+}
+
+// "Choose all" on a product's header: every size and colour it has.
+function PickAll({ name, ids, selection }: { name: string; ids: number[]; selection: GridSelection }) {
+  const all = ids.length > 0 && ids.every((id) => selection.picked.has(id))
+  return (
+    <button
+      type="button"
+      onClick={() => selection.toggle(ids)}
+      aria-pressed={all}
+      aria-label={`Choose all of ${name}`}
+      className={`flex shrink-0 items-center gap-2 border-l px-3 text-sm font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700 ${
+        all ? 'border-wine-800 bg-wine-800 text-white' : 'border-taupe-200 text-wine-800 hover:bg-taupe-100'
+      }`}
+    >
+      <Tick on={all} light={all} />
+      <span className="hidden sm:inline">Choose all</span>
+      <span className="sm:hidden">All</span>
+    </button>
+  )
+}
+
+// A tick box drawn to match the buttons it sits in (the button is the control).
+function Tick({ on, light = false }: { on: boolean; light?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex size-5 shrink-0 items-center justify-center rounded border-2 ${
+        on ? (light ? 'border-white bg-white text-wine-800' : 'border-wine-800 bg-wine-800 text-white') : 'border-taupe-400 bg-white'
+      }`}
+    >
+      {on && <Check className="size-3.5" strokeWidth={3} />}
+    </span>
+  )
+}
+
+// Everything to 0, for starting again from a fresh count. She must type the
+// word: a tap can be a slip, typing a word can't. Still undoable for a day.
+function FullResetDialog({ word, units, onClose, onDone }: { word: string; units: number; onClose: () => void; onDone: () => void }) {
+  const [typed, setTyped] = useState('')
+  const [saving, setSaving] = useState(false)
+  const ready = typed.trim().toUpperCase() === word
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40 p-4 sm:items-center" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="full_reset_title"
+        onClick={(event) => event.stopPropagation()}
+        className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+      >
+        <h2 id="full_reset_title" className="font-display text-2xl font-semibold text-wine-800">
+          Reset all stock to zero?
+        </h2>
+        <p className="mt-2 text-taupe-800">
+          Every size and colour of every product goes to 0 ({units.toLocaleString()} {units === 1 ? 'piece' : 'pieces'} on hand now). Do
+          this only to start again from a fresh count. The old numbers stay in each item's history, and you can undo it for a day.
+        </p>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!ready) return
+            setSaving(true)
+            // -> Stock::ResetsController#create
+            router.post('/admin/stock/reset', { everything: true, confirm: typed }, { onSuccess: onDone, onFinish: () => setSaving(false) })
+          }}
+        >
+          <label htmlFor="full_reset_word" className="mt-4 block text-sm font-medium text-taupe-800">
+            Type <strong>{word}</strong> to confirm
+          </label>
+          <input
+            id="full_reset_word"
+            autoFocus
+            autoComplete="off"
+            autoCapitalize="characters"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            className="mt-1.5 block min-h-11 w-full rounded-md border-taupe-300 bg-white text-base tracking-widest uppercase focus:border-wine-700 focus:ring-1 focus:ring-wine-700"
+          />
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="danger" disabled={!ready || saving}>
+              Reset everything
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
 

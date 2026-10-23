@@ -1,8 +1,11 @@
+import ReliabilityBadge from '@/components/ReliabilityBadge'
+import type { Reliability } from '@/components/ReliabilityBadge'
 import { Head, Link, router } from '@inertiajs/react'
 import { ArrowLeft, Clock, Hourglass, Pencil, X } from 'lucide-react'
 import AppLayout from '@/layouts/AppLayout'
 import Badge from '@/components/ui/Badge'
-import { ButtonLink } from '@/components/ui/Button'
+import Button, { ButtonLink } from '@/components/ui/Button'
+import { confirmAction } from '@/lib/confirm'
 import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
 import StatStrip from '@/components/ui/StatStrip'
@@ -25,6 +28,7 @@ type Props = {
     note: string | null
     bulk_buyer: boolean
     since: string
+    erased: boolean // their personal data was erased on request
   }
   summary: {
     orders: number
@@ -43,6 +47,7 @@ type Props = {
   favourites: { option: string; labels: { label: string; units: number }[] }[]
   top_products: { id: number; name: string; units: number; spent_pesewas: number }[]
   pays: { label: string; hours: number; orders: number; slow: boolean } | null
+  reliability: Reliability // paid vs released unpaid; null = too little to say
   orders: {
     id: number
     at: string
@@ -61,7 +66,18 @@ type Props = {
 const ago = (days: number) => (days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`)
 
 // Props from CustomersController#show: everything the shop knows about one buyer.
-export default function CustomerShow({ customer, summary, favourites, top_products, pays, orders, waiting, products, can_manage }: Props) {
+export default function CustomerShow({
+  customer,
+  summary,
+  favourites,
+  top_products,
+  pays,
+  reliability,
+  orders,
+  waiting,
+  products,
+  can_manage,
+}: Props) {
   const details = [customer.handle && customer.name ? `@${customer.handle}` : null, customer.where].filter(Boolean).join(' · ')
 
   return (
@@ -92,6 +108,7 @@ export default function CustomerShow({ customer, summary, favourites, top_produc
         {customer.bulk_buyer && <Badge tone="brand">Bulk buyer</Badge>}
         {summary.quiet && <Badge tone="warning">Gone quiet</Badge>}
         {pays && <Badge tone={pays.slow ? 'warning' : 'success'}>{pays.label}</Badge>}
+        <ReliabilityBadge reliability={reliability} long />
         {summary.owing_pesewas > 0 && <Badge tone="danger">Owes {formatMoney(summary.owing_pesewas)}</Badge>}
       </div>
 
@@ -259,6 +276,30 @@ export default function CustomerShow({ customer, summary, favourites, top_produc
           )}
         </Panel>
       </div>
+      {/* A "delete my data" request (see /data-deletion). */}
+      {can_manage && !customer.erased && (
+        <section className="mt-10 rounded-lg border border-red-200 bg-white p-5">
+          <h2 className="font-medium">Asked us to delete their data?</h2>
+          <p className="mt-1 max-w-2xl text-sm text-taupe-700">
+            Erases their name, phone number, username, address, notes, waiting list and WhatsApp messages. Their orders stay as anonymous
+            sales, so your stock, money and reports still add up. This can't be undone.
+          </p>
+          <Button
+            type="button"
+            variant="danger"
+            className="mt-3"
+            onClick={async () => {
+              const sure = await confirmAction(`Erase ${customer.display_name}'s personal data? This can't be undone.`, {
+                confirm: 'Erase their data',
+                danger: true,
+              })
+              if (sure) router.delete(`/admin/customers/${customer.id}/personal_data`)
+            }}
+          >
+            Erase personal data
+          </Button>
+        </section>
+      )}
     </AppLayout>
   )
 }

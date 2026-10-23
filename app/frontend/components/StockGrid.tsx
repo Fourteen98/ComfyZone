@@ -4,6 +4,11 @@ import { Swatch } from '@/components/ui/Chip'
 type Value = { name: string; label: string; swatch?: string | null }
 export type GridVariant = { id: number; name: string; option_values: Value[]; stock: number; level: 'ok' | 'low' | 'out' | string }
 
+/** Choosing items instead of opening them (the Stock page's "Reset counts").
+ *  `toggle` gets several ids for a whole row or column: all chosen already
+ *  means un-choose them, otherwise choose them all. */
+export type GridSelection = { picked: Set<number>; toggle: (ids: number[]) => void }
+
 // One product's stock as a compact grid instead of a long list.
 //
 //   Two options that vary (colour and size):    a table
@@ -18,7 +23,11 @@ export type GridVariant = { id: number; name: string; option_values: Value[]; st
 // say nothing useful in every cell, so the card shows them once instead
 // (see `constantOptions`). Every cell opens that item's page, where she can
 // see its history and correct the count.
-export default function StockGrid({ variants }: { variants: GridVariant[] }) {
+//
+// With `selection`, tapping a cell chooses it instead, and tapping a colour
+// or size heading chooses that whole row or column ("every Black", "all the
+// XLs"), which is how a reset picks many items in a couple of taps.
+export default function StockGrid({ variants, selection }: { variants: GridVariant[]; selection?: GridSelection }) {
   const varying = varyingOptions(variants)
 
   if (varying.length === 2) {
@@ -43,7 +52,17 @@ export default function StockGrid({ variants }: { variants: GridVariant[] }) {
               </th>
               {cols.map((col) => (
                 <th key={col.label} scope="col" className="min-w-9 px-0.5 py-2 text-sm font-medium text-taupe-700">
-                  {col.label}
+                  {selection ? (
+                    <HeadingPick
+                      selection={selection}
+                      ids={variants.filter((v) => labelOf(v, colsBy) === col.label).map((v) => v.id)}
+                      what={`every ${col.label}`}
+                    >
+                      {col.label}
+                    </HeadingPick>
+                  ) : (
+                    col.label
+                  )}
                 </th>
               ))}
             </tr>
@@ -53,17 +72,30 @@ export default function StockGrid({ variants }: { variants: GridVariant[] }) {
               <tr key={row.label} className="border-t border-taupe-100">
                 <th scope="row" className="sticky left-0 bg-white py-1 pr-1 pl-3 text-left font-normal">
                   {/* Long colour names are cut short on a phone; the full name is in the tooltip. */}
-                  <span className="flex max-w-24 items-center gap-1.5 text-sm sm:max-w-40" title={row.label}>
-                    {row.swatch && <Swatch colour={row.swatch} />}
-                    <span className="truncate">{row.label}</span>
-                  </span>
+                  {selection ? (
+                    <HeadingPick
+                      selection={selection}
+                      ids={variants.filter((v) => labelOf(v, rowsBy) === row.label).map((v) => v.id)}
+                      what={`every ${row.label}`}
+                    >
+                      <span className="flex max-w-24 items-center gap-1.5 text-sm sm:max-w-40" title={row.label}>
+                        {row.swatch && <Swatch colour={row.swatch} />}
+                        <span className="truncate">{row.label}</span>
+                      </span>
+                    </HeadingPick>
+                  ) : (
+                    <span className="flex max-w-24 items-center gap-1.5 text-sm sm:max-w-40" title={row.label}>
+                      {row.swatch && <Swatch colour={row.swatch} />}
+                      <span className="truncate">{row.label}</span>
+                    </span>
+                  )}
                 </th>
                 {cols.map((col) => {
                   const variant = at(row.label, col.label)
                   return (
                     <td key={col.label} className="px-px py-0.5">
                       {variant ? (
-                        <Cell variant={variant} label={`${row.label}, ${col.label}`} />
+                        <Cell variant={variant} label={`${row.label}, ${col.label}`} selection={selection} />
                       ) : (
                         <span className="text-taupe-300">·</span>
                       )}
@@ -86,7 +118,7 @@ export default function StockGrid({ variants }: { variants: GridVariant[] }) {
           const value = variant.option_values.find((entry) => entry.name === name)
           return (
             <li key={variant.id}>
-              <Tile variant={variant}>
+              <Tile variant={variant} selection={selection}>
                 {value?.swatch && <Swatch colour={value.swatch} />}
                 <span className="min-w-0 flex-1 truncate">{value?.label}</span>
               </Tile>
@@ -102,7 +134,7 @@ export default function StockGrid({ variants }: { variants: GridVariant[] }) {
     <ul className="grid gap-1.5 p-3 sm:grid-cols-2">
       {variants.map((variant) => (
         <li key={variant.id}>
-          <Tile variant={variant}>
+          <Tile variant={variant} selection={selection}>
             <span className="min-w-0 flex-1 truncate">{variant.option_values.length ? variant.name : 'One item'}</span>
           </Tile>
         </li>
@@ -111,8 +143,39 @@ export default function StockGrid({ variants }: { variants: GridVariant[] }) {
   )
 }
 
+// A row or column heading that chooses everything in it.
+function HeadingPick({
+  selection,
+  ids,
+  what,
+  children,
+}: {
+  selection: GridSelection
+  ids: number[]
+  what: string
+  children: React.ReactNode
+}) {
+  const all = ids.length > 0 && ids.every((id) => selection.picked.has(id))
+  return (
+    <button
+      type="button"
+      onClick={() => selection.toggle(ids)}
+      aria-pressed={all}
+      aria-label={`Choose ${what}`}
+      className={`min-h-10 w-full rounded-md px-1 underline decoration-dotted underline-offset-4 focus-visible:outline-2 focus-visible:outline-wine-700 ${
+        all ? 'bg-wine-800 text-white' : 'hover:bg-taupe-100'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// Chosen for a reset: a wine square with a tick-like ring, whatever the level.
+const pickedTone = 'bg-wine-800 font-semibold text-white ring-2 ring-wine-800 ring-offset-1'
+
 // One number in the table. Out = a faint dash; low = amber.
-function Cell({ variant, label }: { variant: GridVariant; label: string }) {
+function Cell({ variant, label, selection }: { variant: GridVariant; label: string; selection?: GridSelection }) {
   const tone =
     variant.level === 'out'
       ? 'text-taupe-300 hover:bg-taupe-100'
@@ -120,6 +183,23 @@ function Cell({ variant, label }: { variant: GridVariant; label: string }) {
         ? 'bg-amber-100 font-semibold text-amber-950 hover:bg-amber-200'
         : 'bg-emerald-50 font-semibold text-ink hover:bg-emerald-100'
   const words = variant.level === 'out' ? 'none left' : `${variant.stock} left${variant.level === 'low' ? ', running low' : ''}`
+
+  if (selection) {
+    const picked = selection.picked.has(variant.id)
+    return (
+      <button
+        type="button"
+        onClick={() => selection.toggle([variant.id])}
+        aria-pressed={picked}
+        aria-label={`${label}: ${words}`}
+        className={`flex min-h-10 w-full min-w-9 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-wine-700 ${
+          picked ? pickedTone : `${tone} outline-1 outline-taupe-200 outline-dashed`
+        }`}
+      >
+        {variant.stock !== 0 ? variant.stock : '–'}
+      </button>
+    )
+  }
 
   return (
     <Link
@@ -133,13 +213,31 @@ function Cell({ variant, label }: { variant: GridVariant; label: string }) {
   )
 }
 
-function Tile({ variant, children }: { variant: GridVariant; children: React.ReactNode }) {
+function Tile({ variant, children, selection }: { variant: GridVariant; children: React.ReactNode; selection?: GridSelection }) {
   const tone =
     variant.level === 'out'
       ? 'border-taupe-200 text-taupe-500'
       : variant.level === 'low'
         ? 'border-amber-300 bg-amber-50'
         : 'border-taupe-200'
+
+  if (selection) {
+    const picked = selection.picked.has(variant.id)
+    return (
+      <button
+        type="button"
+        onClick={() => selection.toggle([variant.id])}
+        aria-pressed={picked}
+        className={`flex min-h-11 w-full items-center gap-2 rounded-md border px-3 text-left text-sm focus-visible:outline-2 focus-visible:outline-wine-700 ${
+          picked ? `border-wine-800 ${pickedTone}` : `${tone} border-dashed`
+        }`}
+      >
+        {children}
+        <span className="text-base font-semibold tabular-nums">{variant.stock !== 0 ? variant.stock : '–'}</span>
+      </button>
+    )
+  }
+
   return (
     <Link
       href={`/admin/stock/${variant.id}`}

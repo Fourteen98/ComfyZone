@@ -42,6 +42,14 @@ services:
       #   docker compose run --rm web ./bin/rails push:keys
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      # WhatsApp shop (docs/whatsapp-setup.md). Optional: without them the bot
+      # only runs as "Try it" in Settings and nothing is sent.
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      # The public address, for product photo links sent on WhatsApp.
+      APP_HOST: ${APP_HOST:-comfyzone.shop}
     # Bind to localhost only (host networking would otherwise expose 3000
     # publicly). Overriding the command means the entrypoint's auto db:prepare
     # doesn't fire — run migrations once (see README).

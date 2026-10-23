@@ -43,6 +43,64 @@ class Customer < ApplicationRecord
 
   # What to call them on screen: their name if known, otherwise @handle,
   # otherwise their phone number.
+  # A deletion request ("delete my data", see /data-deletion): remove
+  # everything that says who they are, and keep their orders as anonymous
+  # sales, so stock, money and reports still add up. Their WhatsApp chat
+  # (every message) and waiting-list requests go entirely.
+  def erase_personal_data!
+    transaction do
+      WhatsappConversation.where(customer_id: id).or(WhatsappConversation.where(phone: phone.presence || "none")).destroy_all
+      stock_requests.destroy_all
+      orders.update_all(delivery_address: nil, payment_claim: nil, note: nil, updated_at: Time.current)
+      update!(name: "Deleted customer", handle: nil, phone: nil, location: nil, note: nil, delivery_area: nil,
+              region: nil, country: nil, bulk_buyer: false)
+    end
+  end
+
+  def erased? = name == "Deleted customer" && phone.nil? && handle.nil?
+
+  # Do they pay for what they claim? Counted over all their orders:
+  #   paid    orders that got money (even if returned later)
+  #   unpaid  orders released because they never paid (ClaimHold)
+  #
+  #   Customer.reliability([4, 9])   # => { 4 => Reliability, 9 => Reliability }
+  #   customer.reliability.label     # => "Didn't pay 3 of 5"
+  #
+  # One grouped query for any number of customers, for the buyer lists.
+  Reliability = Data.define(:paid, :unpaid) do
+    def claims = paid + unpaid
+
+    # "risky": most of what they claim isn't paid (2+ times, half or more).
+    # "mixed": has left something unpaid. "good": paid 3+ and never left one.
+    def tone
+      if unpaid >= 2 && unpaid * 2 >= claims then "risky"
+      elsif unpaid.positive? then "mixed"
+      elsif paid >= 3 then "good"
+      end
+    end
+
+    def label
+      case tone
+      when "risky", "mixed" then "Didn't pay #{unpaid} of #{claims} orders"
+      when "good" then "Paid all #{paid} orders"
+      end
+    end
+
+    def to_props = tone && { paid: paid, unpaid: unpaid, tone: tone, label: label }
+  end
+
+  def self.reliability(ids)
+    rows = Order.where(customer_id: ids).group(:customer_id).pluck(
+      :customer_id,
+      Arel.sql("COUNT(*) FILTER (WHERE paid_at IS NOT NULL OR paid_pesewas > 0)"),
+      Arel.sql("COUNT(*) FILTER (WHERE cancel_reason = '#{ClaimHold::REASON}')")
+    )
+    found = rows.to_h { |id, paid, unpaid| [ id, Reliability.new(paid: paid, unpaid: unpaid) ] }
+    Array(ids).to_h { |id| [ id, found[id] || Reliability.new(paid: 0, unpaid: 0) ] }
+  end
+
+  def reliability = self.class.reliability([ id ])[id]
+
   def display_name
     name || (handle && "@#{handle}") || phone_display
   end

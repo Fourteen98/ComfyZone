@@ -26,7 +26,11 @@ class OrdersController < InertiaController
       },
       any_orders: Order.exists?,
       drafts: can?("orders.create") ? OrderDraft.count : 0,
-      can_create: can?("orders.create")
+      can_create: can?("orders.create"),
+      # What "Record a sale" needs, for the drawer on this page. Optional:
+      # only sent when the drawer asks for it (a partial reload with
+      # only: ["sale"]), so the list itself stays quick to load.
+      sale: InertiaRails.optional { can?("orders.create") ? sale_props : nil }
     }
   end
 
@@ -41,7 +45,25 @@ class OrdersController < InertiaController
         customer_region: @order.customer.region,
         customer_place: @order.customer.delivery_area&.name,
         live: @order.live_session && { id: @order.live_session.id, title: @order.live_session.title },
-        recorded_by: @order.user&.name || "The shopper, on the website",
+        recorded_by: @order.user&.name || (@order.whatsapp_conversation_id ? "The customer, on WhatsApp" : "The shopper, on the website"),
+        # The pay-by deadline (ClaimHold), while it is running.
+        hold: ClaimHold.waiting?(@order) ? {
+          until: hold_words(@order.hold_until),
+          overdue: @order.hold_until <= Time.current,
+          whatsapp: @order.whatsapp_conversation_id.present?
+        } : nil,
+        # Unpaid with no deadline: she can start one.
+        can_hold: @order.claimed? && @order.paid_pesewas.zero? && @order.hold_until.nil? && @order.payment_claimed_at.nil?,
+        cancel_reason: @order.cancel_reason,
+        # A WhatsApp message she can send from her own phone: "please pay by...".
+        remind_url: ClaimHold.waiting?(@order) && !@order.whatsapp_conversation_id ? remind_url(@order) : nil,
+        reliability: @order.customer.reliability.to_props,
+        # Reserved on WhatsApp: the hold, and whether they say they paid.
+        whatsapp: @order.whatsapp_conversation_id && {
+          chat_id: @order.whatsapp_conversation_id,
+          hold_until: @order.claimed? && @order.paid_pesewas.zero? ? @order.hold_until&.strftime("%-l:%M %P") : nil,
+          payment_claimed: @order.payment_claimed_at && @order.claimed? ? (@order.payment_claim.presence || "no transaction ID given") : nil
+        },
         note: @order.note,
         profit_pesewas: can?("costs.view") ? @order.profit_pesewas : nil,
         delivery: {
@@ -99,16 +121,13 @@ class OrdersController < InertiaController
 
   # GET /orders/new   a sale made outside a live (WhatsApp, a walk-in)
   def new
-    render inertia: "Orders/New", props: {
-      products: sellable_products, buyers: known_buyers, channels: sales_channels, locations: location_options,
-      # "Did they pay?" on the form: only for people who may take payments.
-      ways_to_pay: can?("orders.fulfil") ? PaymentMethod.options : nil,
+    render inertia: "Orders/New", props: sale_props.merge(
       # Sales saved halfway, newest first, and the one being resumed (?draft=5).
       drafts: OrderDraft.newest_first.includes(:user).limit(20).map { |draft|
         { id: draft.id, label: draft.label, by: draft.user.name, at: draft.updated_at.strftime("%-d %b, %-l:%M %P") }
       },
       draft: (found = OrderDraft.find_by(id: params[:draft])) && { id: found.id, label: found.label, payload: found.payload }
-    }
+    )
   end
 
   # POST /orders
@@ -132,19 +151,23 @@ class OrdersController < InertiaController
       lines: line_params
     )
     # Back to the live's claim screen (reopened with ?add=1 if it has ended).
-    back = live ? live_path(live, add: live.running? ? nil : 1) : new_order_path
+    # Recorded from the drawer on the orders list: back to that list.
+    from_list = params.dig(:order, :return_to) == "list"
+    back = live ? live_path(live, add: live.running? ? nil : 1) : from_list ? orders_list_url : new_order_path
 
     if taker.save
       order = taker.order
       notice = "#{order.customer.display_name}: #{order.units} #{'item'.pluralize(order.units)} claimed."
       problem = take_payment_now(order) unless live
+      # Not paid: the clock starts ("pay within 24 hours"). See ClaimHold.
+      ClaimHold.start!(order.reload)
       # Recorded from a draft: the draft has done its job.
       OrderDraft.where(id: params.dig(:order, :draft_id)).destroy_all if params.dig(:order, :draft_id).present?
       if problem
         redirect_to order_path(order), alert: "The sale is recorded, but not the payment: #{problem} Record it below."
       else
         notice += " #{money_words(order)}" if order.paid_pesewas.positive?
-        redirect_to (live ? back : order_path(order)), notice: notice
+        redirect_to (live || from_list ? back : order_path(order)), notice: notice
       end
     else
       redirect_to back, inertia: { errors: taker.errors }
@@ -210,6 +233,12 @@ class OrdersController < InertiaController
     authorize!(permission_to_cancel)
     return if performed?
 
+    # "They never paid": counted against the customer (see ClaimHold).
+    if params[:reason] == ClaimHold::REASON && @order.claimed? && @order.paid_pesewas.zero?
+      ClaimHold.release!(@order, by: Current.user, note: "Not paid: released by #{Current.user.name}.")
+      return redirect_back_or_to order_path(@order), notice: "Released. Its items are back on sale, and #{@order.customer.display_name}'s record shows it wasn't paid."
+    end
+
     @order.cancel!(by: Current.user)
     notice = "Order cancelled. Its items are back in stock."
     notice += " There is money to give back." if @order.paid_pesewas.positive?
@@ -219,6 +248,21 @@ class OrdersController < InertiaController
   end
 
   private
+    # The orders list she came from, with its search and filters, or the plain list.
+    def orders_list_url
+      came_from = URI.parse(request.referer.to_s) rescue nil
+      came_from.is_a?(URI::HTTP) && came_from.path == orders_path ? came_from.request_uri : orders_path # path and query only: never another site
+    end
+
+    # Everything the Record a sale screen needs (the page, and the drawer on the list).
+    def sale_props
+      {
+        products: sellable_products, buyers: known_buyers, channels: sales_channels, locations: location_options,
+        # "Did they pay?" on the form: only for people who may take payments.
+        ways_to_pay: can?("orders.fulfil") ? PaymentMethod.options : nil
+      }
+    end
+
     def set_order
       @order = Order.includes(:customer, :sales_channel, :delivery_area, items: { variant: :product }).find(params.expect(:id))
     end
@@ -227,6 +271,23 @@ class OrdersController < InertiaController
     # taken or the parcel is packed, it needs the stronger permission.
     def permission_to_cancel
       @order.claimed? && @order.paid_pesewas.zero? ? "orders.create" : "orders.refund"
+    end
+
+    # wa.me opens WhatsApp on her phone with the message typed in, ready to
+    # send from her own number (no WhatsApp API needed). nil without a phone.
+    def remind_url(order)
+      phone = order.customer.phone or return
+      momo = WhatsappSetting.current
+      text = "Hi #{order.customer.name.presence || 'there'}, your order ##{order.id} from The Comfy Zone " \
+             "(GH₵ #{Pesewas.to_input(order.due_pesewas)}) is waiting for payment. " \
+             "Please pay by #{hold_words(order.hold_until)}, or it will be released for others." +
+             (momo.momo_number ? " #{momo.momo_line}, reference #{order.id}." : "")
+      "https://wa.me/#{phone.delete('+')}?text=#{ERB::Util.url_encode(text)}"
+    end
+
+    # "4:30 pm today", "Sat 24 Oct, 4:30 pm"
+    def hold_words(time)
+      time.to_date == Date.current ? time.strftime("%-l:%M %P today") : time.strftime("%a %-d %b, %-l:%M %P")
     end
 
     def stamp(time)

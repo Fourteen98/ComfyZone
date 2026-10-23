@@ -1,11 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react'
 import { ChevronLeft, ChevronRight, FilePen, Plus, ReceiptText, Search, SlidersHorizontal, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
-import Button, { ButtonLink } from '@/components/ui/Button'
+import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import PageHeader from '@/components/ui/PageHeader'
 import OrderList from '@/components/OrderList'
+import SaleDrawer, { loadSale } from '@/components/SaleDrawer'
+import type { SaleData } from '@/components/SaleDrawer'
 import { orderTabs } from '@/lib/orders'
 import { useCan } from '@/lib/permissions'
 import type { OrderSummary } from '@/lib/orders'
@@ -24,6 +26,8 @@ type Props = {
   any_orders: boolean
   drafts: number // sales saved halfway
   can_create: boolean
+  // Only after the drawer asks for it (an optional prop); null = may not record sales.
+  sale?: SaleData | null
 }
 
 // The filters that sit in the filter panel, in the order they are shown.
@@ -39,6 +43,16 @@ export default function OrdersIndex({ orders, filters, filtering, counts, page, 
   const can = useCan()
   const [query, setQuery] = useState(filters.q)
   const [open, setOpen] = useState(false) // the filter panel
+
+  // "Record a sale" slides over the list. Its products and buyers are
+  // fetched the first time it opens, then kept while she stays here.
+  const [recording, setRecording] = useState(false)
+  const [sale, setSale] = useState<SaleData | null>(null)
+  function startSale() {
+    setRecording(true)
+    if (!sale) loadSale(setSale)
+  }
+  const stopSale = useCallback(() => setRecording(false), [])
 
   // Go to the same page with some filters changed. Changing a filter goes
   // back to page 1; the URL keeps everything, so a filtered list can be
@@ -94,10 +108,10 @@ export default function OrdersIndex({ orders, filters, filtering, counts, page, 
         title="Orders"
         actions={
           can_create && (
-            <ButtonLink href="/admin/orders/new">
+            <Button type="button" onClick={startSale}>
               <Plus className="size-5" aria-hidden="true" />
               Record a sale
-            </ButtonLink>
+            </Button>
           )
         }
       />
@@ -283,6 +297,25 @@ export default function OrdersIndex({ orders, filters, filtering, counts, page, 
               )}
             </>
           )}
+        </>
+      )}
+
+      {can_create && (
+        <>
+          {/* Room at the end of the list, so the + never covers the last order or "Older". */}
+          <div className="h-16 lg:hidden" aria-hidden="true" />
+          {/* Phones: a round + always in reach of the thumb, above the bottom bar. */}
+          <button
+            type="button"
+            onClick={startSale}
+            aria-label="Record a sale"
+            className={`fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex size-14 items-center justify-center rounded-full bg-wine-800 text-taupe-50 shadow-lg shadow-wine-900/30 transition-transform hover:bg-wine-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-700 active:scale-95 lg:hidden ${
+              recording ? 'scale-0' : ''
+            }`}
+          >
+            <Plus className="size-7" aria-hidden="true" />
+          </button>
+          <SaleDrawer open={recording} onClose={stopSale} data={sale} drafts={drafts} />
         </>
       )}
     </AppLayout>

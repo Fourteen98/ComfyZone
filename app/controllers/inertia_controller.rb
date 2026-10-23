@@ -29,7 +29,9 @@ class InertiaController < ApplicationController
         low_stock: user&.can?("stock.view") ? StockLedger.needing_attention.count : nil,
         to_pack: user&.can?("orders.view") ? Order.paid.count : nil,
         # Back in stock and the people who asked haven't been told yet.
-        to_tell: user&.can?("customers.view") ? StockRequest.to_tell.count : nil
+        to_tell: user&.can?("customers.view") ? StockRequest.to_tell.count : nil,
+        # WhatsApp chats with messages nobody has opened yet.
+        whatsapp: user&.can?("orders.view") ? WhatsappConversation.real.where("unread > 0").count : nil
       }
     }
   end

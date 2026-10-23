@@ -37,10 +37,10 @@ class PushTest < ActiveSupport::TestCase
   end
 
   test "a new device starts with every topic its owner may hear" do
-    assert_equal %w[ low_stock orders back_in_stock ], subscribe(users(:one)).topics
+    assert_equal %w[ low_stock orders back_in_stock claims ], subscribe(users(:one)).topics
 
     roles(:assistant).update!(permissions: [ "orders.view" ])
-    assert_equal %w[ orders ], subscribe(users(:two)).topics
+    assert_equal %w[ orders claims ], subscribe(users(:two)).topics
   end
 
   test "the same phone under a new login moves over instead of doubling up" do

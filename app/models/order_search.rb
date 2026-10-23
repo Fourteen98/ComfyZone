@@ -27,7 +27,8 @@ class OrderSearch
     "unpaid" => "Nothing paid",
     "part"   => "Part paid",
     "paid"   => "Paid in full",
-    "stale"  => "Unpaid 3+ days"
+    "stale"  => "Unpaid 3+ days",
+    "deadline" => "Deadline to pay"
   }.freeze
 
   FROM = { "live" => "From a live", "direct" => "Not from a live" }.freeze
@@ -49,7 +50,8 @@ class OrderSearch
 
   # This page of the chosen tab.
   def orders
-    @orders ||= in_tab.newest_first.offset((page - 1) * PER_PAGE).limit(PER_PAGE)
+    # Deadlines: soonest first, the order to nudge them in. Otherwise newest first.
+    @orders ||= (pay == "deadline" ? in_tab.reorder(:hold_until, :id) : in_tab.newest_first).offset((page - 1) * PER_PAGE).limit(PER_PAGE)
                       .includes(:customer, :live_session, :sales_channel, items: { variant: :product })
   end
 
@@ -123,6 +125,8 @@ class OrderSearch
       when "part"   then scope.counted.where("paid_pesewas > 0").where("#{Order::BALANCE_SQL} > 0")
       when "paid"   then scope.counted.where("paid_pesewas > 0").where("#{Order::BALANCE_SQL} <= 0")
       when "stale"  then scope.claimed.where(paid_pesewas: 0).where(created_at: ...3.days.ago)
+      # Running on the clock (ClaimHold): the ones to nudge.
+      when "deadline" then scope.merge(ClaimHold.running)
       end
     end
 end

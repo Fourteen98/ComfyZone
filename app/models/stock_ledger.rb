@@ -14,7 +14,11 @@ class StockLedger
   # Raised when stock would go below zero and the caller asked us to guard it.
   class NotEnough < StandardError; end
 
-  def self.record!(variant:, quantity:, reason:, source: nil, user: nil, total_cost_pesewas: nil, note: nil, guard_stock: false)
+  # quiet: true skips the "running low" / "back in stock" notifications. A
+  # reset of 40 items to 0 is one deliberate act, not 40 sell-outs.
+  # batch: ties movements made together, so they can be undone together (StockReset).
+  def self.record!(variant:, quantity:, reason:, source: nil, user: nil, total_cost_pesewas: nil, note: nil, guard_stock: false,
+                   quiet: false, batch: nil)
     raise ArgumentError, "quantity can't be zero" if quantity.zero?
 
     # with_lock opens a transaction and locks this variant's row
@@ -37,7 +41,9 @@ class StockLedger
       before = variant.stock_on_hand
       variant.stock_on_hand += quantity
       variant.save!
-      if variant.product.stock_pooled?
+      if quiet
+        # Nothing to announce (see above).
+      elsif variant.product.stock_pooled?
         # Counted as one total: warn and announce for the product as a whole.
         after_total = pool_total(variant.product)
         warn_pool_low(variant.product, after_total - quantity, after_total)
@@ -55,7 +61,8 @@ class StockLedger
         unit_cost_pesewas: total_cost_pesewas && (total_cost_pesewas.to_r / quantity).round,
         source: source,
         user: user,
-        note: note
+        note: note,
+        batch: batch
       )
     end
   end

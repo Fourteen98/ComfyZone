@@ -1,3 +1,4 @@
+import type { Reliability } from '@/components/ReliabilityBadge'
 import { Search, UserPlus, X } from 'lucide-react'
 import { useState } from 'react'
 import Button from '@/components/ui/Button'
@@ -15,6 +16,7 @@ export type Buyer = {
   region: string | null
   place: string | null
   bulk_buyer?: boolean // always gets the bulk price
+  reliability?: Reliability // do they pay for what they claim? (Customer::Reliability)
 }
 
 // Who is buying, as sent to Rails (OrdersController#buyer):

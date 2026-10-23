@@ -253,6 +253,23 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "INV-10", purchase.reload.reference
   end
 
+  test "editing still shows lines whose product was archived since, so saving doesn't drop them" do
+    sign_in_as(users(:one))
+    purchase = purchases(:on_the_way)
+    purchase.receive!(by: users(:one))
+    product = products(:dress)
+    product.update!(status: "archived")
+
+    get edit_purchase_path(purchase)
+    listed = inertia.props[:products].find { |entry| entry[:id] == product.id }
+    on_it = purchase.items.map(&:variant_id)
+    assert listed, "the archived product is offered while editing"
+    assert (on_it - listed[:variants].map { |variant| variant[:id] }).empty?
+
+    get new_purchase_path # a NEW purchase doesn't offer archived products
+    assert_nil inertia.props[:products].find { |entry| entry[:id] == product.id }
+  end
+
   test "deletes an ordered purchase" do
     sign_in_as(users(:one))
 

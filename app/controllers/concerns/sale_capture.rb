@@ -33,11 +33,24 @@ module SaleCapture
     # Buyers she already knows, most recent first, for the suggestions under
     # the buyer box. Capped: beyond this, typing the name still works.
     def known_buyers
-      Customer.includes(:delivery_area).order(updated_at: :desc).limit(500).map { |customer|
+      customers = Customer.includes(:delivery_area).order(updated_at: :desc).limit(500).to_a
+      # Do they pay for what they claim? Shown when she picks them.
+      reliability = Customer.reliability(customers.map(&:id))
+      customers.map { |customer|
         { id: customer.id, handle: customer.handle, name: customer.name, phone: customer.phone,
           location: customer.location, country: customer.country, region: customer.region,
-          place: customer.delivery_area&.name, bulk_buyer: customer.bulk_buyer }
+          place: customer.delivery_area&.name, bulk_buyer: customer.bulk_buyer,
+          reliability: reliability[customer.id].to_props }
       }
+    end
+
+    # "4:30 pm", "tomorrow 9:00 am", "Sat 9:00 am"; "now" once it has passed.
+    def pay_by_words(time)
+      return "now" if time <= Time.current
+
+      day = time.to_date
+      clock = time.strftime("%-l:%M %P")
+      day == Date.current ? clock : day == Date.tomorrow ? "tomorrow #{clock}" : "#{time.strftime('%a')} #{clock}"
     end
 
     # Where a sale can come from, for the pills on the capture screen.
@@ -57,6 +70,8 @@ module SaleCapture
         units: order.items.sum(&:kept),
         at: order.created_at.strftime("%-d %b, %-l:%M %P"),
         channel: order.sales_channel&.name, # "WhatsApp"; nil if not recorded
+        # Unpaid and on the clock (ClaimHold): "Pay by 4:30 pm", for the lists.
+        pay_by: ClaimHold.waiting?(order) ? pay_by_words(order.hold_until) : nil,
         items: order.items.sort_by(&:id).map { |item|
           { id: item.id, name: item.variant.full_name, quantity: item.quantity, returned: item.returned_quantity,
             total_pesewas: item.total_pesewas, bulk: item.bulk,

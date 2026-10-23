@@ -95,6 +95,40 @@ class Product < ApplicationRecord
     saved
   end
 
+  # Adds one choice to one of its options, and makes the variants for it:
+  # "Colour: Green" on a dress in M, L and XL makes M / Green, L / Green and
+  # XL / Green, with no stock and the product's price. Everything else is
+  # kept as it is. Used while recording a purchase, when the colour that
+  # just arrived isn't on the product yet.
+  #
+  #   product.add_option_value("Colour", label: "Green", swatch: "#2e7d32")
+  #   # => the new variants, or false with product.errors
+  def add_option_value(option_name, label:, swatch: nil)
+    option = options.find { |candidate| candidate.name.casecmp?(option_name.to_s.squish) }
+    label = label.to_s.squish
+    if option.nil?
+      errors.add(:base, "#{name} has no \"#{option_name}\" to add to")
+    elsif label.empty?
+      errors.add(:base, "Type the new #{option.name.downcase} first")
+    elsif option.labels.any? { |existing| existing.casecmp?(label) }
+      errors.add(:base, "#{name} already comes in #{label}")
+    end
+    return false if errors.any?
+
+    before = all_variants.where(active: true).pluck(:id)
+    transaction do
+      option.values = option.values + [ { "label" => label, "swatch" => swatch.presence }.compact ]
+      unless option.save
+        errors.add(:base, option.errors.full_messages.first)
+        raise ActiveRecord::Rollback
+      end
+      VariantGenerator.new(self).sync!
+    end
+    return false if errors.any?
+
+    variants.reload.reject { |variant| before.include?(variant.id) }
+  end
+
   # The lowest and highest selling price across its variants, in pesewas.
   def price_range
     prices = variants.map(&:selling_price_pesewas)

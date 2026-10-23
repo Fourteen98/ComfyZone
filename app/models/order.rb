@@ -4,6 +4,8 @@
 # (app/models/order_taker.rb), which also takes the stock.
 class Order < ApplicationRecord
   belongs_to :customer
+  # Reserved on WhatsApp: the chat to tell about it (see Whatsapp::Bot).
+  belongs_to :whatsapp_conversation, optional: true
   belongs_to :live_session, optional: true
   belongs_to :sales_channel, optional: true # where the sale came from
   belongs_to :delivery_area, optional: true # where it was sent, if it was
@@ -111,8 +113,11 @@ class Order < ApplicationRecord
       payment.amount = amount
       # Paying more than is owed is nearly always a typing slip (500 for 50),
       # so it is refused. The limit is read here, inside the lock.
-      save_payment!(payment, limit: balance_pesewas,
-                    over_limit: "is more than the GH₵ #{Pesewas.to_input(balance_pesewas)} still owed")
+      saved = save_payment!(payment, limit: balance_pesewas,
+                            over_limit: "is more than the GH₵ #{Pesewas.to_input(balance_pesewas)} still owed")
+      # Ordered on WhatsApp: tell them it arrived (after the commit, from a job).
+      WhatsappNoticeJob.perform_later(id, "paid") if whatsapp_conversation_id
+      saved
     end
   end
 

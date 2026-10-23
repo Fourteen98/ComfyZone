@@ -1,8 +1,11 @@
 import { Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import Button from '@/components/ui/Button'
 import { Swatch } from '@/components/ui/Chip'
+import ColourField from '@/components/ui/ColourField'
+import { isColourOption, lookupHex, paletteHex } from '@/lib/colours'
+import { useNamedColour } from '@/lib/useNamedColour'
 import type { OptionValue } from '@/components/OptionValuesEditor'
 import type { DraftOption } from '@/lib/variants'
 
@@ -16,6 +19,9 @@ type Props = {
   maxOptions: number
   error?: string | string[]
 }
+
+// A colour nobody has chosen yet.
+const GREY = '#b3a396'
 
 const field =
   'block min-h-12 w-full rounded-md border-taupe-300 bg-white px-3.5 text-base focus:border-wine-700 focus:ring-1 focus:ring-wine-700'
@@ -88,6 +94,16 @@ type CardProps = {
 function OptionCard({ option, presets, onChange, onRemove }: CardProps) {
   const [draft, setDraft] = useState('')
   const title = option.name || 'New option'
+  // A colour option ("Colour", or choices that carry swatches): what she
+  // types gets a colour too, picked from the grid or matched by its name.
+  const colours = isColourOption(option.name) || option.choices.some((choice) => choice.swatch)
+  const [swatch, setSwatch] = useState<string | null>(null)
+  // The colour of a name being typed (one colour at a time), for the square.
+  const typedName = draft.includes(',') ? '' : draft
+  const named = useNamedColour(typedName)
+  // The option as it is NOW, for colours found after a moment (below).
+  const latest = useRef(option)
+  latest.current = option
 
   // Lists of the same kind first ("Size" lists for a Size option).
   const sameKind = presets.filter((preset) => preset.option_name.toLowerCase() === option.name.toLowerCase())
@@ -106,9 +122,7 @@ function OptionCard({ option, presets, onChange, onRemove }: CardProps) {
   }
 
   function toggle(label: string) {
-    const selected = option.selected.includes(label)
-      ? option.selected.filter((l) => l !== label)
-      : [...option.selected, label]
+    const selected = option.selected.includes(label) ? option.selected.filter((l) => l !== label) : [...option.selected, label]
     onChange({ ...option, selected })
   }
 
@@ -128,7 +142,7 @@ function OptionCard({ option, presets, onChange, onRemove }: CardProps) {
         toTick.push(existing)
       } else {
         byLabel.set(label.toLowerCase(), label)
-        fresh.push({ label })
+        fresh.push(colours ? { label, swatch: colourFor(label) } : { label })
         toTick.push(label)
       }
     }
@@ -140,7 +154,31 @@ function OptionCard({ option, presets, onChange, onRemove }: CardProps) {
         selected: [...new Set([...option.selected, ...toTick])],
       })
     }
+    if (colours) findColours(fresh.filter((choice) => choice.swatch === GREY).map((choice) => choice.label))
     setDraft('')
+    setSwatch(null)
+  }
+
+  // The colour chosen in the grid (for one typed colour), else the grid's
+  // colour of that name ("mustard"), else grey to change later.
+  const typedOne = !draft.includes(',')
+  function colourFor(label: string) {
+    return (typedOne && (swatch || named)) || paletteHex(label) || GREY
+  }
+
+  // Colours the grid doesn't know ("terracotta, sage") are looked up in the
+  // big list; any found replace the grey, unless she has changed it since.
+  function findColours(labels: string[]) {
+    for (const label of labels) {
+      lookupHex(label).then((hex) => {
+        if (!hex) return
+        const now = latest.current
+        const choices = now.choices.map((choice) =>
+          choice.label === label && choice.swatch === GREY ? { ...choice, swatch: hex } : choice,
+        )
+        if (choices.some((choice, index) => choice !== now.choices[index])) onChange({ ...now, choices })
+      })
+    }
   }
 
   function onDraftKey(event: KeyboardEvent<HTMLInputElement>) {
@@ -219,9 +257,7 @@ function OptionCard({ option, presets, onChange, onRemove }: CardProps) {
                   aria-pressed={on}
                   onClick={() => toggle(choice.label)}
                   className={`inline-flex min-h-11 items-center gap-2 rounded-md border px-3.5 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-700 ${
-                    on
-                      ? 'border-wine-800 bg-wine-800 text-taupe-50'
-                      : 'border-taupe-300 bg-white text-taupe-800 hover:border-wine-700'
+                    on ? 'border-wine-800 bg-wine-800 text-taupe-50' : 'border-taupe-300 bg-white text-taupe-800 hover:border-wine-700'
                   }`}
                 >
                   {choice.swatch && <Swatch colour={choice.swatch} className="size-4" />}
@@ -233,14 +269,29 @@ function OptionCard({ option, presets, onChange, onRemove }: CardProps) {
         </>
       )}
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
+        {colours && (
+          <ColourField
+            value={swatch ?? named}
+            onChange={setSwatch}
+            label={draft.trim() || 'the new colour'}
+            onPickName={(name) => draft.trim() === '' && setDraft(name)}
+            yours={option.choices}
+          />
+        )}
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onDraftKey}
           aria-label={`Add your own choice to ${title}`}
-          placeholder={option.choices.length ? 'Not in the list? Type it here' : 'Type choices: S, M, L'}
-          className={`${field} min-h-11!`}
+          placeholder={
+            colours
+              ? 'Not in the list? Pick or type a colour'
+              : option.choices.length
+                ? 'Not in the list? Type it here'
+                : 'Type choices: S, M, L'
+          }
+          className={`${field} min-h-11! w-auto! min-w-40 flex-1`}
         />
         <Button type="button" variant="secondary" className="min-h-11! px-4!" onClick={addDraft} disabled={!draft.trim()}>
           Add
