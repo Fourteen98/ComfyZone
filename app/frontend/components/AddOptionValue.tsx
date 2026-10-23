@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button'
 import { Swatch } from '@/components/ui/Chip'
 import ColourField from '@/components/ui/ColourField'
 import TextField from '@/components/ui/TextField'
+import { paletteHex } from '@/lib/colours'
 
 export type ProductOptionInfo = { name: string; colours: boolean; labels: string[] }
 export type Suggestion = { label: string; swatch?: string | null }
@@ -77,7 +78,7 @@ export default function AddOptionValue({ productId, productName, options, sugges
     setSaving(true)
     router.post(
       `/admin/products/${productId}/option_values`, // -> Products::OptionValuesController#create
-      { option: option.name, label, swatch: option.colours ? swatch : null },
+      { option: option.name, label, swatch: option.colours ? (swatch ?? paletteHex(label)) : null },
       {
         preserveState: true,
         preserveScroll: true,
@@ -135,7 +136,16 @@ export default function AddOptionValue({ productId, productName, options, sugges
             error={error}
           />
         </div>
-        {option.colours && <ColourField value={swatch} onChange={setSwatch} label={label || 'the new colour'} />}
+        {option.colours && (
+          <ColourField
+            value={swatch ?? paletteHex(label)}
+            onChange={setSwatch}
+            label={label || 'the new colour'}
+            // Tapping "Mustard" in the grid with no name typed yet names it too.
+            onPickName={(name) => label.trim() === '' && setLabel(name)}
+            yours={suggestions[option.name.toLowerCase()] ?? []}
+          />
+        )}
       </div>
 
       {ideas.length > 0 && (

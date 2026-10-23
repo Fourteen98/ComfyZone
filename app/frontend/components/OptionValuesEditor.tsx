@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import Button from '@/components/ui/Button'
 import ColourField from '@/components/ui/ColourField'
+import { paletteHex } from '@/lib/colours'
 
 export type OptionValue = { label: string; swatch?: string | null }
 
@@ -33,7 +34,9 @@ export default function OptionValuesEditor({ values, onChange, withSwatches, err
       const label = part.trim().replace(/\s+/g, ' ')
       if (!label || existing.has(label.toLowerCase())) continue
       existing.add(label.toLowerCase())
-      fresh.push(withSwatches ? { label, swatch: '#b3a396' } : { label })
+      // A colour the grid knows ("Mustard") starts as that colour; others start
+      // grey, to be chosen from the grid.
+      fresh.push(withSwatches ? { label, swatch: paletteHex(label) ?? '#b3a396' } : { label })
     }
     if (fresh.length) onChange([...values, ...fresh])
     setDraft('')
@@ -96,9 +99,7 @@ export default function OptionValuesEditor({ values, onChange, withSwatches, err
               <li key={index} className="flex flex-wrap items-center gap-1 px-2 py-1.5">
                 <span className="w-7 text-center text-sm text-taupe-500 tabular-nums">{index + 1}</span>
 
-                {withSwatches && (
-                  <ColourField label={value.label} value={value.swatch} onChange={(swatch) => update(index, { swatch })} />
-                )}
+                {withSwatches && <ColourField label={value.label} value={value.swatch} onChange={(swatch) => update(index, { swatch })} />}
 
                 <input
                   aria-label={`Choice ${index + 1}`}
@@ -129,12 +130,7 @@ export default function OptionValuesEditor({ values, onChange, withSwatches, err
                   >
                     <ArrowDown className="size-5" aria-hidden="true" />
                   </button>
-                  <button
-                    type="button"
-                    className={iconButton}
-                    onClick={() => remove(index)}
-                    aria-label={`Remove ${value.label}`}
-                  >
+                  <button type="button" className={iconButton} onClick={() => remove(index)} aria-label={`Remove ${value.label}`}>
                     <X className="size-5" aria-hidden="true" />
                   </button>
                 </span>
