@@ -41,14 +41,17 @@ function friendly(error: unknown): string {
   return 'Something went wrong. Please try again.'
 }
 
+// Where the two conversations happen. Staff (the back office) by default;
+// the shop passes its own, so a shopper's passkey is a shopper's.
+export const STAFF = { register: '/admin/account/passkeys', login: '/admin/session/passkey' }
+export const SHOP = { register: '/account/passkeys', login: '/login/passkey' }
+
 /** Register this device for the logged-in person. Resolves to an error message, or null on success. */
-export async function registerPasskey(name: string): Promise<string | null> {
+export async function registerPasskey(name: string, base: string = STAFF.register): Promise<string | null> {
   try {
-    const optionsJSON = await post<Parameters<typeof startRegistration>[0]['optionsJSON']>(
-      '/admin/account/passkeys/challenge',
-    )
+    const optionsJSON = await post<Parameters<typeof startRegistration>[0]['optionsJSON']>(`${base}/challenge`)
     const credential = await startRegistration({ optionsJSON }) // Face ID / fingerprint prompt
-    await post('/admin/account/passkeys', { credential, name })
+    await post(base, { credential, name })
     return null
   } catch (error) {
     return friendly(error)
@@ -56,13 +59,11 @@ export async function registerPasskey(name: string): Promise<string | null> {
 }
 
 /** Log in with a passkey. Resolves to where to go next, or an error message. */
-export async function loginWithPasskey(): Promise<{ redirectTo: string } | { error: string }> {
+export async function loginWithPasskey(base: string = STAFF.login): Promise<{ redirectTo: string } | { error: string }> {
   try {
-    const optionsJSON = await post<Parameters<typeof startAuthentication>[0]['optionsJSON']>(
-      '/admin/session/passkey/challenge',
-    )
+    const optionsJSON = await post<Parameters<typeof startAuthentication>[0]['optionsJSON']>(`${base}/challenge`)
     const credential = await startAuthentication({ optionsJSON }) // Face ID / fingerprint prompt
-    const result = await post<{ redirect_to: string }>('/admin/session/passkey', { credential })
+    const result = await post<{ redirect_to: string }>(base, { credential })
     return { redirectTo: result.redirect_to }
   } catch (error) {
     return { error: friendly(error) }

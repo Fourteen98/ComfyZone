@@ -145,6 +145,10 @@ Rails.application.routes.draw do
       post :merge, on: :member # /customers/:id/merge  fold a duplicate into this one
       # A "delete my data" request: erase who they are, keep the anonymous sales.
       delete :personal_data, on: :member, action: :erase
+      # Their website account: a one-time "set a new password" link, or remove it.
+      resource :shop_account, only: :destroy, module: :customers do
+        post :reset_link
+      end
     end
 
     # Settings. `namespace` puts these under /settings/... and looks for the
@@ -199,6 +203,22 @@ Rails.application.routes.draw do
     post "notify", to: "waiting#create", as: :notify       # "tell me when it's back"
     get "privacy", to: "pages#privacy", as: :privacy       # the privacy policy (Meta asks for it)
     get "data-deletion", to: "pages#data_deletion", as: :data_deletion # how to have your data deleted (Meta asks)
+
+    # Shoppers' accounts (optional: guest checkout still works). Separate
+    # from the staff login: own tables, own cookie. See ShopAuthentication.
+    get "signup", to: "accounts#new", as: :signup
+    post "signup", to: "accounts#create"
+    get "login", to: "sessions#new", as: :login
+    post "login", to: "sessions#create"
+    delete "logout", to: "sessions#destroy", as: :logout
+    post "login/passkey/challenge", to: "passkey_sessions#challenge", as: :passkey_login_challenge
+    post "login/passkey", to: "passkey_sessions#create", as: :passkey_login
+    resource :account, only: %i[ show update destroy ], controller: "accounts"
+    post "account/passkeys/challenge", to: "passkeys#challenge", as: :passkey_challenge
+    resources :passkeys, path: "account/passkeys", only: %i[ create destroy ]
+    get "forgot-password", to: "passwords#new", as: :forgot_password
+    get "reset-password/:token", to: "passwords#edit", as: :reset_password
+    patch "reset-password/:token", to: "passwords#update"
   end
 
   # Old back-office addresses, from before it moved under /admin: saved
@@ -208,7 +228,7 @@ Rails.application.routes.draw do
   get ":section(/*rest)", to: redirect { |params, request|
     query = request.query_string.presence
     [ "/admin/#{params[:section]}", params[:rest] ].compact.join("/") + (query ? "?#{query}" : "")
-  }, constraints: { section: /settings|products|orders|live|stock|purchases|suppliers|expenses|account|session|reports|dashboard|customers|passwords/ }
+  }, constraints: { section: /settings|products|orders|live|stock|purchases|suppliers|expenses|session|reports|dashboard|customers|passwords/ }
 
   # Health check for uptime monitors: returns 200 if the app boots.
   get "up" => "rails/health#show", as: :rails_health_check

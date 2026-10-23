@@ -23,5 +23,5 @@ export type SharedProps = {
     permissions: string[]
   }
   /** Only on the public shop's pages (Shop::BaseController). */
-  shop?: { cart_count: number; staff: boolean }
+  shop?: { cart_count: number; staff: boolean; shopper: string | null } // shopper: the logged-in shopper's first name
 }

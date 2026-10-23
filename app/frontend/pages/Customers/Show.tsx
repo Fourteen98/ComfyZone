@@ -1,5 +1,7 @@
 import ReliabilityBadge from '@/components/ReliabilityBadge'
 import type { Reliability } from '@/components/ReliabilityBadge'
+import ShopAccountPanel from '@/components/ShopAccountPanel'
+import type { ShopAccountInfo } from '@/components/ShopAccountPanel'
 import { Head, Link, router } from '@inertiajs/react'
 import { ArrowLeft, Clock, Hourglass, Pencil, X } from 'lucide-react'
 import AppLayout from '@/layouts/AppLayout'
@@ -48,6 +50,8 @@ type Props = {
   top_products: { id: number; name: string; units: number; spent_pesewas: number }[]
   pays: { label: string; hours: number; orders: number; slow: boolean } | null
   reliability: Reliability // paid vs released unpaid; null = too little to say
+  shop_account: ShopAccountInfo // their website login, if any
+  reset_link: string | null // a password link just made, shown once
   orders: {
     id: number
     at: string
@@ -73,6 +77,8 @@ export default function CustomerShow({
   top_products,
   pays,
   reliability,
+  shop_account,
+  reset_link,
   orders,
   waiting,
   products,
@@ -276,13 +282,21 @@ export default function CustomerShow({
           )}
         </Panel>
       </div>
+      <ShopAccountPanel
+        customerId={customer.id}
+        name={customer.display_name}
+        phone={customer.phone}
+        account={shop_account}
+        resetLink={reset_link}
+        canManage={can_manage}
+      />
       {/* A "delete my data" request (see /data-deletion). */}
       {can_manage && !customer.erased && (
         <section className="mt-10 rounded-lg border border-red-200 bg-white p-5">
           <h2 className="font-medium">Asked us to delete their data?</h2>
           <p className="mt-1 max-w-2xl text-sm text-taupe-700">
-            Erases their name, phone number, username, address, notes, waiting list and WhatsApp messages. Their orders stay as anonymous
-            sales, so your stock, money and reports still add up. This can't be undone.
+            Erases their name, phone number, username, address, notes, waiting list, WhatsApp messages and website account. Their orders
+            stay as anonymous sales, so your stock, money and reports still add up. This can't be undone.
           </p>
           <Button
             type="button"

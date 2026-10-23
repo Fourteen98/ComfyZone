@@ -8,6 +8,9 @@ class Shop::OrdersController < Shop::BaseController
     render inertia: "Shop/Order", props: {
       order: {
         number: order.id,
+        # For "Create an account": this order joins it (the link proves it's theirs).
+        token: order.public_token,
+        in_account: order.shop_account_id.present?,
         placed: order.created_at.strftime("%-d %B %Y, %-l:%M %P"),
         status: order.status,
         name: order.customer.name,

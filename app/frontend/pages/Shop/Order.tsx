@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react'
+import { Head, Link, usePage } from '@inertiajs/react'
 import { Check, Shirt } from 'lucide-react'
 import ShopLayout from '@/layouts/ShopLayout'
 import { ButtonLink } from '@/components/ui/Button'
@@ -9,6 +9,8 @@ type Status = 'claimed' | 'paid' | 'packed' | 'delivered' | 'cancelled' | 'retur
 type Props = {
   order: {
     number: number
+    token: string
+    in_account: boolean // already in someone's account
     placed: string
     status: Status
     name: string | null
@@ -32,6 +34,7 @@ const reached: Record<Status, number> = { claimed: 0, paid: 0, packed: 1, delive
 // Props from Shop::OrdersController#show. This page is the receipt AND the
 // tracker: the link works for as long as they keep it.
 export default function ShopOrder({ order }: Props) {
+  const shopper = usePage().props.shop?.shopper ?? null
   const pickup = order.delivery_method === 'pickup'
   const at = reached[order.status]
   const stopped = at === -1
@@ -53,10 +56,20 @@ export default function ShopOrder({ order }: Props) {
         </h1>
         {!stopped && at < 2 && (
           <p className="mx-auto mt-3 max-w-md text-taupe-800">
-            Your pieces are held for you. We will call or WhatsApp you shortly to confirm{pickup ? ' when to collect' : ' delivery'} and payment.
+            Your pieces are held for you. We will call or WhatsApp you shortly to confirm{pickup ? ' when to collect' : ' delivery'} and
+            payment.
           </p>
         )}
         <p className="mt-2 text-sm text-taupe-600">Placed {order.placed}. Keep this page's link to check on it.</p>
+        {/* A guest: an account keeps this order (and the next ones) in one place. */}
+        {!shopper && !order.in_account && (
+          <p className="mx-auto mt-4 max-w-md rounded-lg bg-wine-50 px-4 py-3 text-wine-900">
+            <Link href="/signup" data={{ order: order.token }} className="font-medium underline underline-offset-4">
+              Create an account
+            </Link>{' '}
+            to keep track of this order and check out faster next time.
+          </p>
+        )}
       </div>
 
       {!stopped && (
@@ -74,7 +87,9 @@ export default function ShopOrder({ order }: Props) {
                 </span>
                 <span className={`h-0.5 flex-1 ${index === 2 ? 'invisible' : index < at ? 'bg-wine-800' : 'bg-taupe-300'}`} />
               </div>
-              <span className={`mt-2 px-1 text-sm text-balance ${index <= at ? 'font-medium text-wine-800' : 'text-taupe-600'}`}>{label}</span>
+              <span className={`mt-2 px-1 text-sm text-balance ${index <= at ? 'font-medium text-wine-800' : 'text-taupe-600'}`}>
+                {label}
+              </span>
             </li>
           ))}
         </ol>

@@ -12,7 +12,15 @@ import type { ChatMessage } from '@/components/ChatThread'
 
 // Props from Settings::WhatsappController#show
 type Props = {
-  setting: { enabled: boolean; hold_minutes: number; momo_number: string; momo_name: string; momo_network: string; welcome: string }
+  setting: {
+    enabled: boolean
+    hold_minutes: number
+    momo_number: string
+    momo_name: string
+    momo_network: string
+    welcome: string
+    business_phone: string // the shop's WhatsApp number, for "Message us" links on the website
+  }
   connection: { connected: boolean; keys: Record<string, boolean>; webhook_url: string; last_inbound: string | null }
   trial: ChatMessage[] // the "Try it" chat
 }
@@ -51,6 +59,20 @@ export default function WhatsappSettings({ setting, connection, trial }: Props) 
                 checked={form.data.enabled}
                 onChange={(e) => form.setData('enabled', e.target.checked)}
               />
+              <div className="max-w-xs">
+                <TextField
+                  id="business_phone"
+                  label="Your WhatsApp number"
+                  inputMode="tel"
+                  placeholder="024 123 4567"
+                  value={form.data.business_phone}
+                  onChange={(e) => form.setData('business_phone', e.target.value)}
+                  error={errors.business_phone}
+                />
+                <p className="mt-1.5 text-sm text-taupe-700">
+                  The number customers message. The website's "Message us" links use it, e.g. when someone forgets their password.
+                </p>
+              </div>
               <div className="max-w-xs">
                 <TextField
                   id="hold_minutes"

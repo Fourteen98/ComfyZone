@@ -50,10 +50,16 @@ export default function Privacy({ updated, contact_email }: Props) {
             <li>
               <strong>Requests:</strong> items you ask us to tell you about when they are back in stock.
             </li>
+            <li>
+              <strong>Your account, if you make one:</strong> your name, phone number, email if you give it, your password (stored
+              scrambled, so nobody, including us, can read it), the delivery details you save, and the devices you are logged in on. If you
+              add Face ID or a fingerprint, your face or fingerprint never leaves your phone: we only keep a code your phone uses to prove
+              it's you.
+            </li>
           </ul>
           <p>
-            On this website, your shopping bag is kept in a small cookie on your device. We don't use advertising trackers, and we don't
-            sell your information to anyone.
+            On this website, your shopping bag is kept in a small cookie on your device, and if you log in, another cookie keeps you logged
+            in for up to a year. We don't use advertising trackers, and we don't sell your information to anyone.
           </p>
         </Section>
 
@@ -117,6 +123,7 @@ export default function Privacy({ updated, contact_email }: Props) {
             ). We will confirm when it's done, as soon as we can and within one month. If you have an order in progress, we will finish or
             cancel it first.
           </p>
+          <p>You can delete your account yourself under My account. Your orders stay with us as sales records, as explained above.</p>
           <p>If you are unhappy with how we handle your information, you can also contact Ghana's Data Protection Commission.</p>
         </Section>
 

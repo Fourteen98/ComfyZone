@@ -1,5 +1,7 @@
 class Customer < ApplicationRecord
   has_many :orders, dependent: :restrict_with_error
+  # Their website login, if they made one (same phone).
+  has_one :shop_account, dependent: :nullify
   # The waiting list: things they asked for that were sold out.
   has_many :stock_requests, dependent: :destroy
   include Located # country, region, exact place; locate(...), where_text
@@ -33,6 +35,7 @@ class Customer < ApplicationRecord
 
     transaction do
       other.orders.update_all(customer_id: id)
+      ShopAccount.where(customer_id: other.id).update_all(customer_id: id) # their website login comes along
       gained = other.slice(:handle, :name, :phone, :location, :country, :region, :delivery_area_id, :note).compact
       # Delete first: two customers can't hold the same username at once.
       other.reload.destroy!
@@ -51,6 +54,7 @@ class Customer < ApplicationRecord
     transaction do
       WhatsappConversation.where(customer_id: id).or(WhatsappConversation.where(phone: phone.presence || "none")).destroy_all
       stock_requests.destroy_all
+      ShopAccount.where(customer_id: id).destroy_all # their website login and saved details
       orders.update_all(delivery_address: nil, payment_claim: nil, note: nil, updated_at: Time.current)
       update!(name: "Deleted customer", handle: nil, phone: nil, location: nil, note: nil, delivery_area: nil,
               region: nil, country: nil, bulk_buyer: false)

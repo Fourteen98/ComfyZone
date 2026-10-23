@@ -22,7 +22,11 @@ export default function ShopHome({ products, categories, filters }: Props) {
   useEffect(() => {
     if (query === filters.q) return
     const timer = setTimeout(() => {
-      router.get('/', { q: query || undefined, category: filters.category || undefined }, { preserveState: true, replace: true, preserveScroll: true })
+      router.get(
+        '/',
+        { q: query || undefined, category: filters.category || undefined },
+        { preserveState: true, replace: true, preserveScroll: true },
+      )
     }, 300)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -40,11 +44,19 @@ export default function ShopHome({ products, categories, filters }: Props) {
       {/* The welcome band. Hidden once they are filtering, so results are at the top. */}
       {!browsing && (
         <section className="relative mt-4 overflow-hidden rounded-2xl bg-wine-800 text-white sm:mt-6">
-          <img src={logoWall} alt="" className="absolute inset-0 size-full object-cover object-[center_40%] opacity-25 mix-blend-luminosity" />
+          <img
+            src={logoWall}
+            alt=""
+            className="absolute inset-0 size-full object-cover object-[center_40%] opacity-25 mix-blend-luminosity"
+          />
           <div className="relative px-6 py-12 sm:px-12 sm:py-20">
             <p className="text-xs tracking-[0.3em] text-white/75 uppercase">The Comfy Zone by Fazy</p>
-            <h1 className="mt-3 max-w-xl font-display text-5xl leading-[0.95] font-semibold text-balance sm:text-7xl">Comfort meets style.</h1>
-            <p className="mt-4 max-w-md text-lg text-white/85">The pieces from the lives, ready to order any time. Pick yours, and we will get it to you.</p>
+            <h1 className="mt-3 max-w-xl font-display text-5xl leading-[0.95] font-semibold text-balance sm:text-7xl">
+              Comfort meets style.
+            </h1>
+            <p className="mt-4 max-w-md text-lg text-white/85">
+              The pieces from the lives, ready to order any time. Pick yours, and we will get it to you.
+            </p>
           </div>
         </section>
       )}

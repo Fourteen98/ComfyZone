@@ -1,8 +1,9 @@
 import { Link, usePage } from '@inertiajs/react'
-import { ShoppingBag } from 'lucide-react'
+import { ShoppingBag, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import logoMark from '@/assets/brand/logo-wall.jpg'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 // The frame around every public shop page: the header with the bag, a
 // place for messages, and the footer. (The back office has its own frame,
@@ -10,6 +11,7 @@ import logoMark from '@/assets/brand/logo-wall.jpg'
 export default function ShopLayout({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   const { props, flash } = usePage()
   const count = props.shop?.cart_count ?? 0
+  const shopper = props.shop?.shopper ?? null // logged in: their first name
 
   // A flash message shows as a small toast and fades by itself.
   const message = flash.alert ?? flash.notice
@@ -33,18 +35,28 @@ export default function ShopLayout({ children, wide = false }: { children: React
             </span>
           </Link>
 
-          <Link
-            href="/cart"
-            aria-label={count === 0 ? 'Your bag, empty' : `Your bag, ${count} ${count === 1 ? 'item' : 'items'}`}
-            className="relative flex size-12 items-center justify-center rounded-full text-wine-800 hover:bg-taupe-100 focus-visible:outline-2 focus-visible:outline-wine-700"
-          >
-            <ShoppingBag className="size-6" aria-hidden="true" />
-            {count > 0 && (
-              <span className="absolute top-1 right-0.5 flex min-w-5 items-center justify-center rounded-full bg-wine-800 px-1 text-xs font-semibold text-white tabular-nums">
-                {count}
-              </span>
-            )}
-          </Link>
+          <div className="flex shrink-0 items-center gap-1">
+            {/* Their account, or a way in. Optional: guests can still order. */}
+            <Link
+              href={shopper ? '/account' : '/login'}
+              className="flex min-h-12 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-wine-800 hover:bg-taupe-100 focus-visible:outline-2 focus-visible:outline-wine-700"
+            >
+              <UserRound className="size-5" aria-hidden="true" />
+              <span className="max-w-24 truncate">{shopper ?? 'Log in'}</span>
+            </Link>
+            <Link
+              href="/cart"
+              aria-label={count === 0 ? 'Your bag, empty' : `Your bag, ${count} ${count === 1 ? 'item' : 'items'}`}
+              className="relative flex size-12 items-center justify-center rounded-full text-wine-800 hover:bg-taupe-100 focus-visible:outline-2 focus-visible:outline-wine-700"
+            >
+              <ShoppingBag className="size-6" aria-hidden="true" />
+              {count > 0 && (
+                <span className="absolute top-1 right-0.5 flex min-w-5 items-center justify-center rounded-full bg-wine-800 px-1 text-xs font-semibold text-white tabular-nums">
+                  {count}
+                </span>
+              )}
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -78,6 +90,7 @@ export default function ShopLayout({ children, wide = false }: { children: React
           </p>
         )}
       </div>
+      <ConfirmDialog />
     </div>
   )
 }

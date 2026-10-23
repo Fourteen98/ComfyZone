@@ -3,6 +3,8 @@
 # Orders are not created with Order.create. They come from OrderTaker
 # (app/models/order_taker.rb), which also takes the stock.
 class Order < ApplicationRecord
+  # Placed on the website by a logged-in shopper (ShopAccount#orders).
+  belongs_to :shop_account, optional: true
   belongs_to :customer
   # Reserved on WhatsApp: the chat to tell about it (see Whatsapp::Bot).
   belongs_to :whatsapp_conversation, optional: true

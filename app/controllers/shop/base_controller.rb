@@ -8,6 +8,7 @@
 #      "only a few left", no other customers. Each controller here builds
 #      its props by hand for that reason, never by reusing a back-office one.
 class Shop::BaseController < InertiaController
+  include ShopAuthentication # shoppers' own accounts (optional)
   allow_unauthenticated_access
   # If a member of staff happens to be logged in, notice (it adds a "Back
   # office" link). resume_session returns nil for everyone else, no redirect.
@@ -15,7 +16,10 @@ class Shop::BaseController < InertiaController
 
   # Shared with every shop page, for the header.
   inertia_share do
-    { shop: { cart_count: cart.count, staff: Current.user.present? } }
+    account = Current.shop_account
+    { shop: { cart_count: cart.count, staff: Current.user.present?,
+              # The logged-in shopper's first name, for the header; nil = not logged in.
+              shopper: account && account.name.split.first } }
   end
 
   private

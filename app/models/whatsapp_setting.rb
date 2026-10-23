@@ -3,6 +3,9 @@ class WhatsappSetting < ApplicationRecord
   DEFAULT_WELCOME = "Welcome to The Comfy Zone by Fazy".freeze
 
   normalizes :momo_number, :momo_name, :momo_network, :welcome, with: ->(text) { text.to_s.squish.presence }
+  # The shop's WhatsApp number (for "Message us" links), stored as +233...
+  normalizes :business_phone, with: ->(phone) { PhoneNumber.normalize(phone) }
+  validate { errors.add(:business_phone, "doesn't look like a phone number") if business_phone && !PhoneNumber.valid?(business_phone) }
 
   validates :hold_minutes, numericality: { only_integer: true, greater_than_or_equal_to: 5, less_than_or_equal_to: 1440 }
   validates :momo_number, :momo_name, presence: { message: "is needed so the bot can tell people how to pay" }, if: :enabled?

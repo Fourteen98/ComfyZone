@@ -15,7 +15,9 @@ class Shop::CheckoutController < Shop::BaseController
     render inertia: "Shop/Checkout", props: {
       cart: cart_props,
       locations: public_locations,
-      pay_online: false # Paystack: the next step
+      pay_online: false, # Paystack: the next step
+      # Logged in: the form starts from what they saved. nil = a guest.
+      account: Current.shop_account&.checkout_defaults
     }
   end
 
@@ -25,6 +27,11 @@ class Shop::CheckoutController < Shop::BaseController
     checkout = ShopOrder.new(cart: cart, **form.to_h.symbolize_keys)
 
     if checkout.save
+      if (account = Current.shop_account)
+        # In "My orders", and the details kept for next time (unless unticked).
+        checkout.order.update!(shop_account: account)
+        account.remember!(**form.to_h.symbolize_keys.slice(:delivery_method, :address, :where)) unless params[:remember] == "0"
+      end
       # The order page is found by its secret token, not its id.
       redirect_to shop_order_path(checkout.order.public_token), notice: "Thank you. Your order is in."
     else

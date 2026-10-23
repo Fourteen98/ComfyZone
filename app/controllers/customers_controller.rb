@@ -80,6 +80,16 @@ class CustomersController < InertiaController
       pays: insights.pays,
       # Paid orders vs orders released because they never paid.
       reliability: @customer.reliability.to_props,
+      # Their website login, if they made one; and a reset link just made for it (shown once).
+      shop_account: (account = @customer.shop_account) && {
+        since: account.created_at.strftime("%-d %b %Y"),
+        last_login: account.last_login_at&.strftime("%-d %b %Y, %-l:%M %P"),
+        passkeys: account.passkeys.count,
+        orders: account.orders.count,
+        same_phone: account.phone == @customer.phone,
+        phone: account.phone_display
+      },
+      reset_link: flash[:reset_link],
       orders: orders.map { |order|
         { id: order.id, at: order.created_at.strftime("%-d %b %Y"), status: order.status, channel: order.sales_channel&.name,
           total_pesewas: order.due_pesewas, balance_pesewas: order.balance_pesewas,

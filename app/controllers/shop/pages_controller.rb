@@ -2,7 +2,7 @@
 # the WhatsApp app can go live; customers can read it from the shop footer).
 class Shop::PagesController < Shop::BaseController
   # The date the policy last changed. Update it whenever the text changes.
-  PRIVACY_UPDATED = Date.new(2026, 10, 14)
+  PRIVACY_UPDATED = Date.new(2026, 10, 23)
 
   # GET /privacy
   def privacy

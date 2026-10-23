@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_23_120001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_140001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -206,6 +206,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_120001) do
     t.string "payment_claim"
     t.string "cancel_reason"
     t.datetime "hold_reminded_at"
+    t.bigint "shop_account_id"
     t.index ["created_at"], name: "index_orders_on_created_at"
     t.index ["customer_id"], name: "index_orders_on_customer_id"
     t.index ["delivery_area_id"], name: "index_orders_on_delivery_area_id"
@@ -213,6 +214,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_120001) do
     t.index ["live_session_id"], name: "index_orders_on_live_session_id"
     t.index ["public_token"], name: "index_orders_on_public_token", unique: true
     t.index ["sales_channel_id"], name: "index_orders_on_sales_channel_id"
+    t.index ["shop_account_id"], name: "index_orders_on_shop_account_id"
     t.index ["status"], name: "index_orders_on_status"
     t.index ["user_id"], name: "index_orders_on_user_id"
     t.index ["whatsapp_conversation_id"], name: "index_orders_on_whatsapp_conversation_id"
@@ -398,6 +400,49 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_120001) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "shop_accounts", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "phone", null: false
+    t.string "email"
+    t.string "password_digest", null: false
+    t.string "webauthn_id", null: false
+    t.bigint "customer_id"
+    t.string "delivery_method"
+    t.string "address"
+    t.string "country"
+    t.string "region"
+    t.string "place"
+    t.datetime "last_login_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["customer_id"], name: "index_shop_accounts_on_customer_id"
+    t.index ["phone"], name: "index_shop_accounts_on_phone", unique: true
+    t.index ["webauthn_id"], name: "index_shop_accounts_on_webauthn_id", unique: true
+  end
+
+  create_table "shop_passkeys", force: :cascade do |t|
+    t.bigint "shop_account_id", null: false
+    t.string "name", null: false
+    t.string "external_id", null: false
+    t.text "public_key", null: false
+    t.bigint "sign_count", default: 0, null: false
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["external_id"], name: "index_shop_passkeys_on_external_id", unique: true
+    t.index ["shop_account_id"], name: "index_shop_passkeys_on_shop_account_id"
+  end
+
+  create_table "shop_sessions", force: :cascade do |t|
+    t.bigint "shop_account_id", null: false
+    t.string "ip_address"
+    t.string "user_agent"
+    t.datetime "last_seen_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["shop_account_id"], name: "index_shop_sessions_on_shop_account_id"
+  end
+
   create_table "stock_movements", force: :cascade do |t|
     t.bigint "variant_id", null: false
     t.integer "quantity", null: false
@@ -528,6 +573,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_120001) do
     t.string "welcome"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "business_phone"
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
@@ -546,6 +592,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_120001) do
   add_foreign_key "orders", "delivery_areas", on_delete: :nullify
   add_foreign_key "orders", "live_sessions", on_delete: :nullify
   add_foreign_key "orders", "sales_channels", on_delete: :nullify
+  add_foreign_key "orders", "shop_accounts", on_delete: :nullify
   add_foreign_key "orders", "users"
   add_foreign_key "orders", "whatsapp_conversations"
   add_foreign_key "passkeys", "users"
@@ -562,6 +609,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_120001) do
   add_foreign_key "purchases", "users"
   add_foreign_key "push_subscriptions", "users", on_delete: :cascade
   add_foreign_key "sessions", "users"
+  add_foreign_key "shop_accounts", "customers", on_delete: :nullify
+  add_foreign_key "shop_passkeys", "shop_accounts", on_delete: :cascade
+  add_foreign_key "shop_sessions", "shop_accounts", on_delete: :cascade
   add_foreign_key "stock_movements", "users"
   add_foreign_key "stock_movements", "variants"
   add_foreign_key "stock_requests", "customers", on_delete: :cascade

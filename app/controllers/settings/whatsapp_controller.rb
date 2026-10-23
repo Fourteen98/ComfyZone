@@ -10,7 +10,7 @@ class Settings::WhatsappController < InertiaController
   def show
     setting = WhatsappSetting.current
     render inertia: "Settings/Whatsapp", props: {
-      setting: setting.slice(:enabled, :hold_minutes, :momo_number, :momo_name, :momo_network, :welcome).transform_values { |value| value.nil? ? "" : value },
+      setting: setting.slice(:enabled, :hold_minutes, :momo_number, :momo_name, :momo_network, :welcome, :business_phone).transform_values { |value| value.nil? ? "" : value },
       connection: {
         connected: WhatsappSetting.connected?,
         # Which keys the server has (never their values).
@@ -24,7 +24,7 @@ class Settings::WhatsappController < InertiaController
 
   def update
     setting = WhatsappSetting.current
-    if setting.update(params.expect(whatsapp: %i[ enabled hold_minutes momo_number momo_name momo_network welcome ]))
+    if setting.update(params.expect(whatsapp: %i[ enabled hold_minutes momo_number momo_name momo_network welcome business_phone ]))
       redirect_to settings_whatsapp_path, notice: setting.enabled? ? "Saved. The WhatsApp shop is on." : "Saved. The WhatsApp shop is off."
     else
       redirect_to settings_whatsapp_path, inertia: { errors: setting.errors }

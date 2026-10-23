@@ -1,8 +1,10 @@
-import { Head, useForm } from '@inertiajs/react'
+import { Head, Link, useForm } from '@inertiajs/react'
 import { Bike, Store } from 'lucide-react'
 import type { FormEvent } from 'react'
 import ShopLayout from '@/layouts/ShopLayout'
 import Button from '@/components/ui/Button'
+import Checkbox from '@/components/ui/Checkbox'
+import type { Where } from '@/components/LocationFields'
 import ChoiceCards from '@/components/ui/ChoiceCards'
 import TextAreaField from '@/components/ui/TextAreaField'
 import TextField from '@/components/ui/TextField'
@@ -17,17 +19,24 @@ type Props = {
   cart: { lines: BagLineData[]; total_pesewas: number }
   locations: Locations
   pay_online: boolean
+  // Logged in: what they saved, to start the form from. null = a guest.
+  account: { name: string; phone: string; delivery_method: string; address: string; where: Partial<Where> } | null
 }
 
 // Props from Shop::CheckoutController#show
-export default function ShopCheckout({ cart, locations }: Props) {
+export default function ShopCheckout({ cart, locations, account }: Props) {
+  const saved = account?.where
   const form = useForm({
-    name: '',
-    phone: '',
-    delivery_method: '' as 'pickup' | 'delivery' | '',
-    where: nowhere(locations.home),
-    address: '',
+    name: account?.name ?? '',
+    phone: account?.phone ?? '',
+    delivery_method: (account?.delivery_method ?? '') as 'pickup' | 'delivery' | '',
+    where: saved?.country
+      ? { ...nowhere(locations.home), ...saved, region: saved.region ?? '', place: saved.place ?? '' }
+      : nowhere(locations.home),
+    address: account?.address ?? '',
     note: '',
+    // Logged in: keep these details for next time.
+    remember: true,
   })
   const errors = form.errors as Record<string, string[] | undefined>
   const sending = form.data.delivery_method === 'delivery'
@@ -39,7 +48,7 @@ export default function ShopCheckout({ cart, locations }: Props) {
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    form.transform((data) => ({ checkout: data }))
+    form.transform(({ remember, ...data }) => ({ checkout: data, remember: remember ? '1' : '0' }))
     form.post('/checkout') // -> Shop::CheckoutController#create
   }
 
@@ -51,6 +60,16 @@ export default function ShopCheckout({ cart, locations }: Props) {
       <form onSubmit={submit} className="mt-6 space-y-10">
         <section className="space-y-4">
           <h2 className="font-display text-2xl font-semibold text-wine-800">1. About you</h2>
+          {/* Guests: an account fills all this in next time. Optional. */}
+          {!account && (
+            <p className="text-taupe-700">
+              Ordered before?{' '}
+              <Link href="/login" data={{ back: '/checkout' }} className="font-medium text-wine-800 underline underline-offset-4">
+                Log in
+              </Link>{' '}
+              to fill this in, or carry on as a guest.
+            </p>
+          )}
           <TextField
             id="name"
             label="Your name"
@@ -168,6 +187,15 @@ export default function ShopCheckout({ cart, locations }: Props) {
           </dl>
 
           <div className="mt-6">
+            {account && (
+              <div className="mb-4">
+                <Checkbox
+                  label="Remember these details for next time"
+                  checked={form.data.remember}
+                  onChange={(e) => form.setData('remember', e.target.checked)}
+                />
+              </div>
+            )}
             <Button type="submit" block disabled={form.processing}>
               {form.processing ? 'Placing your order…' : 'Place order'}
             </Button>

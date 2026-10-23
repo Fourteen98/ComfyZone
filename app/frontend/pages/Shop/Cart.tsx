@@ -57,7 +57,9 @@ export default function ShopCart({ cart }: Props) {
                   </div>
                   {line.short && (
                     <p className="mt-2 text-sm font-medium text-red-800" role="alert">
-                      {line.available === 0 ? 'This has just sold out. Please remove it.' : `Only ${line.available} left. Please lower the number.`}
+                      {line.available === 0
+                        ? 'This has just sold out. Please remove it.'
+                        : `Only ${line.available} left. Please lower the number.`}
                     </p>
                   )}
                 </BagLine>
