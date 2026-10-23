@@ -25,7 +25,8 @@ module Push
   TOPICS = [
     Topic.new("low_stock", "Stock running low", "When something drops to its warning level, or sells out.", "stock.view"),
     Topic.new("orders", "New sales", "When someone else records a sale (not during a live).", "orders.view"),
-    Topic.new("back_in_stock", "Back in stock", "When something people asked for comes back.", "customers.view")
+    Topic.new("back_in_stock", "Back in stock", "When something people asked for comes back.", "customers.view"),
+    Topic.new("claims", "Unpaid claims", "When claims are about to run out of time to pay, and when they are released.", "orders.view")
   ].freeze
 
   def self.topic(key)

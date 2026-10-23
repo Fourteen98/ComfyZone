@@ -4,9 +4,7 @@ module Whatsapp
     module_function
 
     # Still waiting for money, and nothing has stopped the clock.
-    def waiting?(order)
-      order.claimed? && order.hold_until.present? && order.paid_pesewas.zero? && order.payment_claimed_at.nil?
-    end
+    def waiting?(order) = ClaimHold.waiting?(order)
 
     def remind(order)
       chat = order.whatsapp_conversation
@@ -18,15 +16,10 @@ module Whatsapp
                      [ [ "paid", "I've paid" ], [ "cancel_order", "Cancel order" ] ])
     end
 
-    # Cancel it (the stock goes back) and tell them. Locked and re-checked,
-    # so a payment recorded at the same moment wins.
+    # Cancel it (the stock goes back; ClaimHold) and tell them.
     def expire(order)
-      order.with_lock do
-        return unless waiting?(order) && order.hold_until <= Time.current
+      return unless ClaimHold.expire(order)
 
-        order.cancel!(by: nil)
-        order.update_columns(note: [ order.note, "Not paid in time: released." ].compact.join(" "))
-      end
       chat = order.whatsapp_conversation
       return unless chat
 

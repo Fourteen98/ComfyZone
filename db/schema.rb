@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_120001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -51,6 +51,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
     t.datetime "updated_at", null: false
     t.index "lower((name)::text)", name: "index_categories_on_lower_name", unique: true
     t.index ["slug"], name: "index_categories_on_slug", unique: true
+  end
+
+  create_table "claim_settings", force: :cascade do |t|
+    t.integer "live_pay_hours", default: 24
+    t.integer "sale_pay_hours"
+    t.integer "remind_hours", default: 3, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "customers", force: :cascade do |t|
@@ -196,6 +204,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
     t.datetime "hold_until"
     t.datetime "payment_claimed_at"
     t.string "payment_claim"
+    t.string "cancel_reason"
+    t.datetime "hold_reminded_at"
     t.index ["created_at"], name: "index_orders_on_created_at"
     t.index ["customer_id"], name: "index_orders_on_customer_id"
     t.index ["delivery_area_id"], name: "index_orders_on_delivery_area_id"

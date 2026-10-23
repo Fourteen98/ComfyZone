@@ -46,6 +46,18 @@ class OrdersController < InertiaController
         customer_place: @order.customer.delivery_area&.name,
         live: @order.live_session && { id: @order.live_session.id, title: @order.live_session.title },
         recorded_by: @order.user&.name || (@order.whatsapp_conversation_id ? "The customer, on WhatsApp" : "The shopper, on the website"),
+        # The pay-by deadline (ClaimHold), while it is running.
+        hold: ClaimHold.waiting?(@order) ? {
+          until: hold_words(@order.hold_until),
+          overdue: @order.hold_until <= Time.current,
+          whatsapp: @order.whatsapp_conversation_id.present?
+        } : nil,
+        # Unpaid with no deadline: she can start one.
+        can_hold: @order.claimed? && @order.paid_pesewas.zero? && @order.hold_until.nil? && @order.payment_claimed_at.nil?,
+        cancel_reason: @order.cancel_reason,
+        # A WhatsApp message she can send from her own phone: "please pay by...".
+        remind_url: ClaimHold.waiting?(@order) && !@order.whatsapp_conversation_id ? remind_url(@order) : nil,
+        reliability: @order.customer.reliability.to_props,
         # Reserved on WhatsApp: the hold, and whether they say they paid.
         whatsapp: @order.whatsapp_conversation_id && {
           chat_id: @order.whatsapp_conversation_id,
@@ -147,6 +159,8 @@ class OrdersController < InertiaController
       order = taker.order
       notice = "#{order.customer.display_name}: #{order.units} #{'item'.pluralize(order.units)} claimed."
       problem = take_payment_now(order) unless live
+      # Not paid: the clock starts ("pay within 24 hours"). See ClaimHold.
+      ClaimHold.start!(order.reload)
       # Recorded from a draft: the draft has done its job.
       OrderDraft.where(id: params.dig(:order, :draft_id)).destroy_all if params.dig(:order, :draft_id).present?
       if problem
@@ -219,6 +233,12 @@ class OrdersController < InertiaController
     authorize!(permission_to_cancel)
     return if performed?
 
+    # "They never paid": counted against the customer (see ClaimHold).
+    if params[:reason] == ClaimHold::REASON && @order.claimed? && @order.paid_pesewas.zero?
+      ClaimHold.release!(@order, by: Current.user, note: "Not paid: released by #{Current.user.name}.")
+      return redirect_back_or_to order_path(@order), notice: "Released. Its items are back on sale, and #{@order.customer.display_name}'s record shows it wasn't paid."
+    end
+
     @order.cancel!(by: Current.user)
     notice = "Order cancelled. Its items are back in stock."
     notice += " There is money to give back." if @order.paid_pesewas.positive?
@@ -251,6 +271,23 @@ class OrdersController < InertiaController
     # taken or the parcel is packed, it needs the stronger permission.
     def permission_to_cancel
       @order.claimed? && @order.paid_pesewas.zero? ? "orders.create" : "orders.refund"
+    end
+
+    # wa.me opens WhatsApp on her phone with the message typed in, ready to
+    # send from her own number (no WhatsApp API needed). nil without a phone.
+    def remind_url(order)
+      phone = order.customer.phone or return
+      momo = WhatsappSetting.current
+      text = "Hi #{order.customer.name.presence || 'there'}, your order ##{order.id} from The Comfy Zone " \
+             "(GH₵ #{Pesewas.to_input(order.due_pesewas)}) is waiting for payment. " \
+             "Please pay by #{hold_words(order.hold_until)}, or it will be released for others." +
+             (momo.momo_number ? " #{momo.momo_line}, reference #{order.id}." : "")
+      "https://wa.me/#{phone.delete('+')}?text=#{ERB::Util.url_encode(text)}"
+    end
+
+    # "4:30 pm today", "Sat 24 Oct, 4:30 pm"
+    def hold_words(time)
+      time.to_date == Date.current ? time.strftime("%-l:%M %P today") : time.strftime("%a %-d %b, %-l:%M %P")
     end
 
     def stamp(time)

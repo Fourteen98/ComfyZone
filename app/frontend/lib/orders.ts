@@ -39,6 +39,7 @@ export type OrderSummary = {
   units: number
   at: string
   channel: string | null // where the sale came from, e.g. "WhatsApp"
+  pay_by?: string | null // unpaid with a deadline (ClaimHold): "4:30 pm", "tomorrow 9:00 am", "now"
   // quantity = what was sold; returned = how many of those came back.
   items: {
     id: number

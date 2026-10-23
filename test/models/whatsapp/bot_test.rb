@@ -101,7 +101,7 @@ class Whatsapp::BotTest < ActiveSupport::TestCase
       assert_match "minutes left to pay for order ##{order.id}", last.body
     end
     travel 11.minutes do
-      WhatsappHoldSweepJob.perform_now
+      ClaimHoldSweepJob.perform_now
       assert order.reload.cancelled?
       assert_equal 3, @black.reload.stock_on_hand # back on sale
       assert_match "wasn't paid in time", last.body
@@ -113,7 +113,7 @@ class Whatsapp::BotTest < ActiveSupport::TestCase
     say("id" => "paid")
 
     travel 30.minutes do
-      WhatsappHoldSweepJob.perform_now
+      ClaimHoldSweepJob.perform_now
       assert order.reload.claimed? # not released: she checks the payment
     end
 

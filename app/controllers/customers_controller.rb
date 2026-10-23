@@ -78,6 +78,8 @@ class CustomersController < InertiaController
       favourites: insights.favourites.map { |option, labels| { option: option, labels: labels.map { |label, units| { label: label, units: units } } } },
       top_products: insights.top_products,
       pays: insights.pays,
+      # Paid orders vs orders released because they never paid.
+      reliability: @customer.reliability.to_props,
       orders: orders.map { |order|
         { id: order.id, at: order.created_at.strftime("%-d %b %Y"), status: order.status, channel: order.sales_channel&.name,
           total_pesewas: order.due_pesewas, balance_pesewas: order.balance_pesewas,

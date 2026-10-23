@@ -5,7 +5,7 @@
 #
 # Nothing happens if things moved on: paid, the customer said they paid
 # (payment_claimed_at: she confirms by hand), cancelled, or the hold was
-# cleared by staff. Scheduled when the order is reserved; WhatsappHoldSweepJob
+# cleared by staff. Scheduled when the order is reserved; ClaimHoldSweepJob
 # catches any whose job was lost (a restart at the wrong moment).
 class WhatsappHoldJob < ApplicationJob
   queue_as :default

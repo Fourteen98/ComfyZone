@@ -12,6 +12,7 @@ const tabs = [
   { label: 'Sales channels', href: '/admin/settings/channels', permission: 'settings.manage' },
   { label: 'Locations', href: '/admin/settings/areas', permission: 'settings.manage' },
   { label: 'Payment methods', href: '/admin/settings/payments', permission: 'settings.manage' },
+  { label: 'Unpaid claims', href: '/admin/settings/claims', permission: 'settings.manage' },
   { label: 'WhatsApp', href: '/admin/settings/whatsapp', permission: 'settings.manage' },
   { label: 'Team', href: '/admin/settings/users', permission: 'users.manage' },
   { label: 'Roles', href: '/admin/settings/roles', permission: 'roles.manage' },

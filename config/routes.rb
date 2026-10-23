@@ -121,6 +121,8 @@ Rails.application.routes.draw do
         resources :refunds, only: :create           # POST  /orders/:order_id/refunds
         # Singular `resource`: one per order, so no id in the URL.
         resource :stage, only: :update              # PATCH /orders/:order_id/stage
+        # The pay-by deadline: more time (PATCH { hours }), or none (DELETE). See ClaimHold.
+        resource :hold, only: %i[ update destroy ]
         resource :delivery, only: :update           # PATCH /orders/:order_id/delivery
         resource :return, only: :create             # POST  /orders/:order_id/return
         resource :swap, only: :create               # POST  /orders/:order_id/swap   another size instead
@@ -166,6 +168,8 @@ Rails.application.routes.draw do
       resources :payment_methods, path: "payments", except: :show do
         patch :move, on: :member
       end
+      # How long unpaid claims keep their items (ClaimSetting).
+      resource :claims, only: %i[ show update ], controller: "claims"
       # The WhatsApp shop: on/off, hold time, MoMo details, and "Try it".
       resource :whatsapp, only: %i[ show update ], controller: "whatsapp" do
         post :try

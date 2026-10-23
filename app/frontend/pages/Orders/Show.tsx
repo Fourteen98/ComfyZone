@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react'
-import { ArrowLeft, Pencil, X } from 'lucide-react'
+import { ArrowLeft, Clock, MessageCircle, Pencil, X } from 'lucide-react'
 import { useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
 import Button, { ButtonLink } from '@/components/ui/Button'
@@ -20,6 +20,8 @@ import PhoneLinks from '@/components/PhoneLinks'
 import SwapForm from '@/components/SwapForm'
 import type { SwapLine } from '@/components/SwapForm'
 import type { SellableProduct } from '@/components/ProductPicker'
+import ReliabilityBadge from '@/components/ReliabilityBadge'
+import type { Reliability } from '@/components/ReliabilityBadge'
 
 type Payment = {
   id: number
@@ -44,6 +46,12 @@ type Props = {
     live: { id: number; title: string } | null
     recorded_by: string
     whatsapp: { chat_id: number; hold_until: string | null; payment_claimed: string | null } | null
+    // The pay-by deadline while it runs (ClaimHold); null = none or stopped.
+    hold: { until: string; overdue: boolean; whatsapp: boolean } | null
+    can_hold: boolean // unpaid with no deadline: one can be started
+    cancel_reason: string | null // "unpaid" = released because they never paid
+    remind_url: string | null // WhatsApp from her phone, message ready
+    reliability: Reliability
     note: string | null
     profit_pesewas: number | null // null = may not see costs
     delivery: Delivery
@@ -113,6 +121,19 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
     router.patch(`/admin/orders/${order.id}/cancel`) // -> OrdersController#cancel
   }
 
+  // The pay-by deadline: more time, or none. -> Orders::HoldsController
+  const giveTime = (hours: number) => router.patch(`/admin/orders/${order.id}/hold`, { hours }, { preserveScroll: true })
+  const noDeadline = () => router.delete(`/admin/orders/${order.id}/hold`, { preserveScroll: true })
+
+  // They never paid: cancel it, and their record shows it (Customer reliability).
+  async function release() {
+    const sure = await confirmAction(
+      `Release ${order.customer}'s order? They never paid. Everything on it goes back on sale, and their record will show an unpaid order.`,
+      { confirm: 'Release it', dismiss: 'Keep it', danger: true },
+    )
+    if (sure) router.patch(`/admin/orders/${order.id}/cancel`, { reason: 'unpaid' }) // -> OrdersController#cancel
+  }
+
   async function remove(item: OrderSummary['items'][number]) {
     if (!(await confirmAction(`Remove ${item.name}? It goes back into stock.`, { confirm: 'Remove', danger: true }))) return
     router.delete(`/admin/orders/${order.id}/items/${item.id}`, {
@@ -171,6 +192,64 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
             )
           }
         />
+        {order.reliability && (
+          <p className="mt-2">
+            <ReliabilityBadge reliability={order.reliability} long />
+          </p>
+        )}
+        {/* The pay-by deadline (live claims and recorded sales; WhatsApp has its own note below). */}
+        {order.hold && !order.hold.whatsapp && (
+          <div
+            className={`mt-3 max-w-3xl rounded-lg border px-4 py-3 ${
+              order.hold.overdue ? 'border-red-300 bg-red-50 text-red-950' : 'border-amber-300 bg-amber-50 text-amber-950'
+            }`}
+          >
+            <p className="flex items-start gap-2">
+              <Clock className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+              <span>
+                {order.hold.overdue ? (
+                  <>
+                    <strong>Time is up.</strong> It goes back on sale within a minute.
+                  </>
+                ) : (
+                  <>
+                    <strong>Pay by {order.hold.until}</strong>, or everything on it goes back on sale.
+                  </>
+                )}
+              </span>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {order.remind_url && (
+                <a
+                  href={order.remind_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-wine-800 px-3 text-sm font-medium text-taupe-50 hover:bg-wine-700"
+                >
+                  <MessageCircle className="size-4" aria-hidden="true" />
+                  Remind on WhatsApp
+                </a>
+              )}
+              <Button type="button" variant="secondary" onClick={() => giveTime(24)}>
+                One more day
+              </Button>
+              <Button type="button" variant="secondary" onClick={noDeadline}>
+                No deadline
+              </Button>
+            </div>
+          </div>
+        )}
+        {order.can_hold && (
+          <p className="mt-3 flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-1 text-sm text-taupe-700">
+            Not paid, and no deadline: it keeps its items until you decide.
+            <button type="button" onClick={() => giveTime(24)} className="min-h-10 font-medium text-wine-800 hover:underline">
+              Give them 24 hours
+            </button>
+          </p>
+        )}
+        {status === 'cancelled' && order.cancel_reason === 'unpaid' && (
+          <p className="mt-3 max-w-3xl text-taupe-800">Released because it was never paid.</p>
+        )}
         {order.note && <p className="mt-3 max-w-3xl border-l-2 border-taupe-300 pl-3 whitespace-pre-line text-taupe-800">{order.note}</p>}
         {/* Reserved on WhatsApp: check the payment they say they made, or see the clock. */}
         {order.whatsapp && (order.whatsapp.payment_claimed || order.whatsapp.hold_until) && (
@@ -309,6 +388,12 @@ export default function OrderShow({ order, locations, ways_to_pay, payment_names
                     products={swap.products}
                     onClose={() => setOpen(null)}
                   />
+                )}
+                {/* Never paid: release it, and it counts against them. */}
+                {can.cancel && status === 'claimed' && paid === 0 && (
+                  <Button type="button" variant="danger" block onClick={release}>
+                    They didn't pay: release it
+                  </Button>
                 )}
                 {can.cancel && (
                   <Button type="button" variant="danger" block onClick={cancel}>

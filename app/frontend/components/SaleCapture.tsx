@@ -16,6 +16,7 @@ import LocationFields, { findPlace, nowhere, said } from '@/components/LocationF
 import type { Locations, Where } from '@/components/LocationFields'
 import QuantityStepper from '@/components/ui/QuantityStepper'
 import AgreeTotal from '@/components/AgreeTotal'
+import ReliabilityBadge from '@/components/ReliabilityBadge'
 import MoneyField from '@/components/ui/MoneyField'
 import TextField from '@/components/ui/TextField'
 import { formatMoney, toMoneyInput, toPesewas } from '@/lib/format'
@@ -329,9 +330,17 @@ export default function SaleCapture({
               />
             </div>
             {known ? (
-              <p className="mt-1.5 text-sm text-emerald-800">
-                {known.name ? `${known.name}, bought` : 'Bought'} from you before{known.phone ? `. ${formatPhone(known.phone)}` : ''}.
-              </p>
+              <>
+                <p className="mt-1.5 text-sm text-emerald-800">
+                  {known.name ? `${known.name}, bought` : 'Bought'} from you before{known.phone ? `. ${formatPhone(known.phone)}` : ''}.
+                </p>
+                {/* Do they pay for what they claim? */}
+                {known.reliability && (
+                  <p className="mt-1">
+                    <ReliabilityBadge reliability={known.reliability} long />
+                  </p>
+                )}
+              </>
             ) : (
               typed &&
               suggestions.length === 0 && <p className="mt-1.5 text-sm text-taupe-700">New buyer. They will be saved with this claim.</p>
@@ -413,6 +422,12 @@ export default function SaleCapture({
                 }
               }}
             />
+            {/* Do they pay for what they claim? */}
+            {buyerRecord?.reliability && (
+              <p className="-mt-2">
+                <ReliabilityBadge reliability={buyerRecord.reliability} long />
+              </p>
+            )}
             {locations && (
               <fieldset>
                 <legend className="mb-1.5 text-sm font-medium text-taupe-800">Where are they? (optional)</legend>
