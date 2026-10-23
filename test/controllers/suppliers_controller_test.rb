@@ -37,6 +37,25 @@ class SuppliersControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ "Old tote bag", nil, true ], bag.values_at(:name, :last_cost_pesewas, :archived)
   end
 
+  test "from the drawer on the list: its data only when asked, then back to the list" do
+    sign_in_as(users(:one))
+    get suppliers_path
+    assert_not inertia.props.key?(:supplier_form)
+
+    get suppliers_path, headers: { "X-Inertia" => "true", "X-Inertia-Partial-Component" => "Suppliers/Index",
+      "X-Inertia-Partial-Data" => "supplier_form", "X-Inertia-Version" => InertiaRails.configuration.version.to_s }
+    assert response.parsed_body.dig("props", "supplier_form", "locations").present?
+
+    post suppliers_path(return_to: "list"), params: { supplier: { name: "", phone: "" } }
+    assert_redirected_to suppliers_path
+
+    assert_difference "Supplier.count", 1 do
+      post suppliers_path(return_to: "list"), params: { supplier: { name: "Kaneshie Wholesale", phone: "0244556677" } }
+    end
+    assert_redirected_to suppliers_path
+    assert_equal "Added Kaneshie Wholesale.", flash[:notice]
+  end
+
   test "adds a supplier with the products they sell" do
     sign_in_as(users(:one))
 

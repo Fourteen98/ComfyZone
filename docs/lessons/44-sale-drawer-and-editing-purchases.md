@@ -67,3 +67,25 @@ handle. Pointer events cover mouse, pen and touch with one set of code.
 **`inert`.** While closed, the drawer is only moved off screen, not removed.
 `inert` makes everything in it unfocusable and invisible to screen readers,
 so Tab doesn't wander into a hidden form.
+
+## Later: one drawer for three lists
+
+"Record a purchase" (Purchases) and "Add a supplier" (Suppliers) now slide
+over their lists too, the same way as "Record a sale".
+
+- `components/ui/Drawer.tsx` is the panel on its own (slide, drag handle,
+  Escape, `inert`), plus `DrawerFab` (the round + on phones), `DrawerLoading`
+  and `loadDrawerData(key, …)` (the partial reload of an optional prop).
+  `SaleDrawer` became a thin wrapper around it.
+- The forms moved out of their pages into components (`PurchaseForm`,
+  `SupplierForm`). The full pages (`/purchases/new`, `/suppliers/new`, and
+  editing) render the same component inside the app frame; the drawer renders
+  it with `inDrawer` and `onCancel`. One form, two places: a fix in one is a
+  fix in both.
+- `?return_to=list` on the POST: the controllers send her back to the list
+  (with its filter), and on a mistake back to the list with the errors, where
+  the drawer, kept by `preserveState: 'errors'`, shows them.
+- "Add a colour" inside the purchase drawer asks for the drawer's data again
+  (`onProductsStale`). The "Just added" highlighting now compares the product
+  list before and after it changes (a `useEffect` on `products`), which works
+  the same on the page and in the drawer.

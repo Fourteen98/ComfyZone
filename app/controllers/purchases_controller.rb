@@ -13,7 +13,11 @@ class PurchasesController < InertiaController
     render inertia: "Purchases/Index", props: {
       purchases: purchases.limit(200).map { |purchase| list_props(purchase) },
       filters: { status: params[:status] == "ordered" ? "ordered" : "all" },
-      counts: { all: Purchase.count, ordered: Purchase.ordered.count }
+      counts: { all: Purchase.count, ordered: Purchase.ordered.count },
+      can_record: can?("purchases.manage"),
+      # Everything "Record a purchase" needs, for the drawer on this page.
+      # Optional: only sent when the drawer asks (a partial reload).
+      purchase_form: InertiaRails.optional { can?("purchases.manage") ? form_page_props(nil) : nil }
     }
   end
 
@@ -35,7 +39,8 @@ class PurchasesController < InertiaController
     if save(purchase)
       finish(purchase, created: true)
     else
-      redirect_to new_purchase_path, inertia: { errors: form_errors(purchase) }
+      # From the drawer on the list: back there, where the drawer still has the form.
+      redirect_to from_list? ? purchases_list_url : new_purchase_path, inertia: { errors: form_errors(purchase) }
     end
   end
 
@@ -142,14 +147,24 @@ class PurchasesController < InertiaController
     end
 
     # The form has two buttons. "Save and add to stock" sends receive=true.
+    # From the drawer: back to the list (the drawer closes, the purchase is on top).
     def finish(purchase, created:)
+      to = from_list? ? purchases_list_url : purchase_path(purchase)
       if ActiveModel::Type::Boolean.new.cast(params[:receive])
         purchase.receive!(by: Current.user)
-        redirect_to purchase_path(purchase), notice: "Saved, and added #{units(purchase)} to stock."
+        redirect_to to, notice: "Saved, and added #{units(purchase)} to stock."
       else
-        redirect_to purchase_path(purchase),
-          notice: created ? "Saved. Mark it as arrived when the goods come in." : "Saved your changes."
+        redirect_to to, notice: created ? "Saved. Mark it as arrived when the goods come in." : "Saved your changes."
       end
+    end
+
+    # Recorded in the drawer on the purchases list (?return_to=list).
+    def from_list? = params[:return_to] == "list"
+
+    # The list she came from, with its filter; only ever a path on this site.
+    def purchases_list_url
+      came_from = URI.parse(request.referer.to_s) rescue nil
+      came_from.is_a?(URI::HTTP) && came_from.path == purchases_path ? came_from.request_uri : purchases_path
     end
 
     def units(purchase)

@@ -96,6 +96,26 @@ class PurchasesControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, variants(:dress_m_black).reload.stock_on_hand
   end
 
+  test "from the drawer on the list: its data only when asked, then back to the list" do
+    sign_in_as(users(:one))
+    get purchases_path
+    assert_not inertia.props.key?(:purchase_form)
+
+    get purchases_path, headers: { "X-Inertia" => "true", "X-Inertia-Partial-Component" => "Purchases/Index",
+      "X-Inertia-Partial-Data" => "purchase_form", "X-Inertia-Version" => InertiaRails.configuration.version.to_s }
+    assert response.parsed_body.dig("props", "purchase_form", "products").any?
+
+    list = purchases_url(status: "ordered")
+    post purchases_path(return_to: "list"), params: params(supplier_id: ""), headers: { "HTTP_REFERER" => list }
+    assert_redirected_to "/admin/purchases?status=ordered" # a mistake: the drawer is still there
+
+    assert_difference "Purchase.count", 1 do
+      post purchases_path(return_to: "list"), params: params.merge(receive: true), headers: { "HTTP_REFERER" => list }
+    end
+    assert_redirected_to "/admin/purchases?status=ordered"
+    assert_match "added 6 items to stock", flash[:notice]
+  end
+
   test "save and add to stock does both" do
     sign_in_as(users(:one))
 

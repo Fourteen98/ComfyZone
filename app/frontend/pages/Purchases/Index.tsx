@@ -2,7 +2,11 @@ import { Head, Link } from '@inertiajs/react'
 import { Pencil, Plus, Truck } from 'lucide-react'
 import AppLayout from '@/layouts/AppLayout'
 import StatusBadge from '@/components/PurchaseStatusBadge'
-import { ButtonLink } from '@/components/ui/Button'
+import Button from '@/components/ui/Button'
+import Drawer, { DrawerFab, DrawerLoading, loadDrawerData } from '@/components/ui/Drawer'
+import PurchaseForm from '@/components/PurchaseForm'
+import type { PurchaseFormProps } from '@/components/PurchaseForm'
+import { useCallback, useState } from 'react'
 import EmptyState from '@/components/ui/EmptyState'
 import PageHeader from '@/components/ui/PageHeader'
 import { formatMoney } from '@/lib/format'
@@ -22,10 +26,24 @@ type Props = {
   purchases: PurchaseRow[]
   filters: { status: 'all' | 'ordered' }
   counts: { all: number; ordered: number }
+  can_record: boolean
+  // Only once the drawer asks for it (optional prop): what the purchase form needs.
+  purchase_form?: PurchaseFormProps | null
 }
 
 // Props from PurchasesController#index
-export default function PurchasesIndex({ purchases, filters, counts }: Props) {
+export default function PurchasesIndex({ purchases, filters, counts, can_record }: Props) {
+  // "Record a purchase" slides over the list. Its data is fetched the first
+  // time it opens, and again after a colour is added to a product.
+  const [recording, setRecording] = useState(false)
+  const [formData, setFormData] = useState<PurchaseFormProps | null>(null)
+  const reload = () => loadDrawerData<PurchaseFormProps>('purchase_form', setFormData)
+  function start() {
+    setRecording(true)
+    if (!formData) reload()
+  }
+  const stop = useCallback(() => setRecording(false), [])
+
   const can = useCan()
   const tabs = [
     { key: 'all', label: 'All', count: counts.all, href: '/admin/purchases' },
@@ -41,10 +59,10 @@ export default function PurchasesIndex({ purchases, filters, counts }: Props) {
         description="Every restock. Stock goes up when a purchase arrives."
         actions={
           can('purchases.manage') && (
-            <ButtonLink href="/admin/purchases/new">
+            <Button type="button" onClick={start}>
               <Plus className="size-5" aria-hidden="true" />
               Record a purchase
-            </ButtonLink>
+            </Button>
           )
         }
       />
@@ -116,6 +134,15 @@ export default function PurchasesIndex({ purchases, filters, counts }: Props) {
               ))}
             </ul>
           )}
+        </>
+      )}
+
+      {can_record && (
+        <>
+          <DrawerFab label="Record a purchase" onClick={start} hidden={recording} />
+          <Drawer open={recording} onClose={stop} title="Record a purchase">
+            {formData ? <PurchaseForm {...formData} inDrawer onCancel={stop} onProductsStale={reload} /> : <DrawerLoading />}
+          </Drawer>
         </>
       )}
     </AppLayout>

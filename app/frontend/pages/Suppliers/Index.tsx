@@ -1,8 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react'
 import { Plus, Search, Store } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import AppLayout from '@/layouts/AppLayout'
-import { ButtonLink } from '@/components/ui/Button'
+import Button from '@/components/ui/Button'
+import Drawer, { DrawerFab, DrawerLoading, loadDrawerData } from '@/components/ui/Drawer'
+import SupplierForm from '@/components/SupplierForm'
+import type { SupplierFormProps } from '@/components/SupplierForm'
 import EmptyState from '@/components/ui/EmptyState'
 import PageHeader from '@/components/ui/PageHeader'
 import { formatMoney } from '@/lib/format'
@@ -19,7 +22,13 @@ type SupplierRow = {
   spent_pesewas: number
 }
 
-type Props = { suppliers: SupplierRow[]; filters: { q: string }; total: number }
+type Props = {
+  suppliers: SupplierRow[]
+  filters: { q: string }
+  total: number
+  // Only once the drawer asks for it (optional prop): what the supplier form needs.
+  supplier_form?: SupplierFormProps | null
+}
 
 const SHOWN = 4
 
@@ -38,6 +47,15 @@ export default function SuppliersIndex({ suppliers, filters, total }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
+  // "Add a supplier" slides over the list; its data is fetched the first time.
+  const [adding, setAdding] = useState(false)
+  const [formData, setFormData] = useState<SupplierFormProps | null>(null)
+  function start() {
+    setAdding(true)
+    if (!formData) loadDrawerData<SupplierFormProps>('supplier_form', setFormData)
+  }
+  const stop = useCallback(() => setAdding(false), [])
+
   return (
     <AppLayout>
       <Head title="Suppliers" />
@@ -47,10 +65,10 @@ export default function SuppliersIndex({ suppliers, filters, total }: Props) {
         description="Who you buy from, what each of them sells, and how to reach them."
         actions={
           manage && (
-            <ButtonLink href="/admin/suppliers/new">
+            <Button type="button" onClick={start}>
               <Plus className="size-5" aria-hidden="true" />
               Add a supplier
-            </ButtonLink>
+            </Button>
           )
         }
       />
@@ -117,6 +135,14 @@ export default function SuppliersIndex({ suppliers, filters, total }: Props) {
               ))}
             </ul>
           )}
+        </>
+      )}
+      {manage && (
+        <>
+          <DrawerFab label="Add a supplier" onClick={start} hidden={adding} />
+          <Drawer open={adding} onClose={stop} title="Add a supplier">
+            {formData ? <SupplierForm {...formData} inDrawer onCancel={stop} /> : <DrawerLoading />}
+          </Drawer>
         </>
       )}
     </AppLayout>

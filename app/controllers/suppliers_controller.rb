@@ -46,7 +46,10 @@ class SuppliersController < InertiaController
         }
       },
       filters: { q: params[:q].to_s },
-      total: Supplier.count
+      total: Supplier.count,
+      # What "Add a supplier" needs, for the drawer on this page. Optional:
+      # only sent when the drawer asks (a partial reload).
+      supplier_form: InertiaRails.optional { can?("purchases.manage") ? { supplier: nil, products: pickable_products, locations: location_options } : nil }
     }
   end
 
@@ -108,10 +111,13 @@ class SuppliersController < InertiaController
     supplier = Supplier.new(supplier_params)
     place(supplier)
 
+    # From the drawer on the list (?return_to=list): back there, the new
+    # supplier in it, or the drawer still open with the problem.
+    from_list = params[:return_to] == "list"
     if supplier.save_with_products(product_ids)
-      redirect_to supplier_path(supplier), notice: "Added #{supplier.name}."
+      redirect_to from_list ? suppliers_path : supplier_path(supplier), notice: "Added #{supplier.name}."
     else
-      redirect_to new_supplier_path, inertia: { errors: supplier.errors }
+      redirect_to from_list ? suppliers_path : new_supplier_path, inertia: { errors: supplier.errors }
     end
   end
 

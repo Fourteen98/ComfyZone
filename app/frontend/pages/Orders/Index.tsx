@@ -7,6 +7,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import PageHeader from '@/components/ui/PageHeader'
 import OrderList from '@/components/OrderList'
 import SaleDrawer, { loadSale } from '@/components/SaleDrawer'
+import { DrawerFab } from '@/components/ui/Drawer'
 import type { SaleData } from '@/components/SaleDrawer'
 import { orderTabs } from '@/lib/orders'
 import { useCan } from '@/lib/permissions'
@@ -302,19 +303,7 @@ export default function OrdersIndex({ orders, filters, filtering, counts, page, 
 
       {can_create && (
         <>
-          {/* Room at the end of the list, so the + never covers the last order or "Older". */}
-          <div className="h-16 lg:hidden" aria-hidden="true" />
-          {/* Phones: a round + always in reach of the thumb, above the bottom bar. */}
-          <button
-            type="button"
-            onClick={startSale}
-            aria-label="Record a sale"
-            className={`fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex size-14 items-center justify-center rounded-full bg-wine-800 text-taupe-50 shadow-lg shadow-wine-900/30 transition-transform hover:bg-wine-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine-700 active:scale-95 lg:hidden ${
-              recording ? 'scale-0' : ''
-            }`}
-          >
-            <Plus className="size-7" aria-hidden="true" />
-          </button>
+          <DrawerFab label="Record a sale" onClick={startSale} hidden={recording} />
           <SaleDrawer open={recording} onClose={stopSale} data={sale} drafts={drafts} />
         </>
       )}
