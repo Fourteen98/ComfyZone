@@ -15,9 +15,10 @@ import type { DeliveryChoice } from '@/components/DeliveryFields'
 import LocationFields, { findPlace, nowhere, said } from '@/components/LocationFields'
 import type { Locations, Where } from '@/components/LocationFields'
 import QuantityStepper from '@/components/ui/QuantityStepper'
+import AgreeTotal from '@/components/AgreeTotal'
 import MoneyField from '@/components/ui/MoneyField'
 import TextField from '@/components/ui/TextField'
-import { formatMoney, toPesewas } from '@/lib/format'
+import { formatMoney, toMoneyInput, toPesewas } from '@/lib/format'
 import type { SalesChannel } from '@/lib/orders'
 
 export type { SellableProduct, SellableVariant }
@@ -139,13 +140,15 @@ export default function SaleCapture({
   lines.forEach((line) => pieces.set(line.product.id, (pieces.get(line.product.id) ?? 0) + line.quantity))
   const priced = lines.map((line) => {
     const on = bulkOn(line.product.bulk, pieces.get(line.product.id) ?? 0, bulkBuyer)
+    // What it would be without a bargain (normal or bulk).
+    const usual = unitPrice(line.variant.price_pesewas, line.product.bulk, on)
     // A bargained price beats both the normal and the bulk price.
     const typed = agreed[line.variant.id]
     if (typed && typed.trim() !== '' && !Number.isNaN(Number(typed))) {
       const price = toPesewas(typed)
-      if (price !== line.variant.price_pesewas) return { ...line, bulk: false, agreed: true, unit: price }
+      if (price !== line.variant.price_pesewas) return { ...line, bulk: false, agreed: true, unit: price, usual }
     }
-    return { ...line, bulk: on, agreed: false, unit: unitPrice(line.variant.price_pesewas, line.product.bulk, on) }
+    return { ...line, bulk: on, agreed: false, unit: usual, usual }
   })
   const total = priced.reduce((sum, line) => sum + line.quantity * line.unit, 0)
 
@@ -589,6 +592,21 @@ export default function SaleCapture({
                 )
               })}
             </ul>
+          )}
+
+          {/* One price for the whole sale: "all of it for GH₵ 300". */}
+          {lines.length > 0 && (
+            <AgreeTotal
+              lines={priced.map((line) => ({ id: line.variant.id, quantity: line.quantity, unit: line.usual }))}
+              total={total}
+              agreed={priced.some((line) => line.agreed)}
+              deliveryExtra={deliveryFee > 0}
+              onAgree={(units) => {
+                setAgreed(Object.fromEntries(Object.entries(units).map(([id, pesewas]) => [id, toMoneyInput(pesewas)])))
+                setPricing(null)
+              }}
+              onUndo={() => setAgreed({})}
+            />
           )}
 
           <div className="hidden border-t border-taupe-200 p-5 lg:block">
