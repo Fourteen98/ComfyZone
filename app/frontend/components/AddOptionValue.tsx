@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button'
 import { Swatch } from '@/components/ui/Chip'
 import ColourField from '@/components/ui/ColourField'
 import TextField from '@/components/ui/TextField'
-import { paletteHex } from '@/lib/colours'
+import { useNamedColour } from '@/lib/useNamedColour'
 
 export type ProductOptionInfo = { name: string; colours: boolean; labels: string[] }
 export type Suggestion = { label: string; swatch?: string | null }
@@ -39,6 +39,8 @@ export default function AddOptionValue({ productId, productName, options, sugges
   const [label, setLabel] = useState('')
   const [swatch, setSwatch] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // A colour name she typed ("sage") gets its colour, unless she picks one.
+  const named = useNamedColour(label)
 
   if (ordered.length === 0) return null
 
@@ -78,7 +80,7 @@ export default function AddOptionValue({ productId, productName, options, sugges
     setSaving(true)
     router.post(
       `/admin/products/${productId}/option_values`, // -> Products::OptionValuesController#create
-      { option: option.name, label, swatch: option.colours ? (swatch ?? paletteHex(label)) : null },
+      { option: option.name, label, swatch: option.colours ? (swatch ?? named) : null },
       {
         preserveState: true,
         preserveScroll: true,
@@ -138,7 +140,7 @@ export default function AddOptionValue({ productId, productName, options, sugges
         </div>
         {option.colours && (
           <ColourField
-            value={swatch ?? paletteHex(label)}
+            value={swatch ?? named}
             onChange={setSwatch}
             label={label || 'the new colour'}
             // Tapping "Mustard" in the grid with no name typed yet names it too.

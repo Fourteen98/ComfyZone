@@ -1,10 +1,11 @@
 import { Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import Button from '@/components/ui/Button'
 import { Swatch } from '@/components/ui/Chip'
 import ColourField from '@/components/ui/ColourField'
-import { isColourOption, paletteHex } from '@/lib/colours'
+import { isColourOption, lookupHex, paletteHex } from '@/lib/colours'
+import { useNamedColour } from '@/lib/useNamedColour'
 import type { OptionValue } from '@/components/OptionValuesEditor'
 import type { DraftOption } from '@/lib/variants'
 
@@ -18,6 +19,9 @@ type Props = {
   maxOptions: number
   error?: string | string[]
 }
+
+// A colour nobody has chosen yet.
+const GREY = '#b3a396'
 
 const field =
   'block min-h-12 w-full rounded-md border-taupe-300 bg-white px-3.5 text-base focus:border-wine-700 focus:ring-1 focus:ring-wine-700'
@@ -94,6 +98,12 @@ function OptionCard({ option, presets, onChange, onRemove }: CardProps) {
   // types gets a colour too, picked from the grid or matched by its name.
   const colours = isColourOption(option.name) || option.choices.some((choice) => choice.swatch)
   const [swatch, setSwatch] = useState<string | null>(null)
+  // The colour of a name being typed (one colour at a time), for the square.
+  const typedName = draft.includes(',') ? '' : draft
+  const named = useNamedColour(typedName)
+  // The option as it is NOW, for colours found after a moment (below).
+  const latest = useRef(option)
+  latest.current = option
 
   // Lists of the same kind first ("Size" lists for a Size option).
   const sameKind = presets.filter((preset) => preset.option_name.toLowerCase() === option.name.toLowerCase())
@@ -144,6 +154,7 @@ function OptionCard({ option, presets, onChange, onRemove }: CardProps) {
         selected: [...new Set([...option.selected, ...toTick])],
       })
     }
+    if (colours) findColours(fresh.filter((choice) => choice.swatch === GREY).map((choice) => choice.label))
     setDraft('')
     setSwatch(null)
   }
@@ -152,7 +163,22 @@ function OptionCard({ option, presets, onChange, onRemove }: CardProps) {
   // colour of that name ("mustard"), else grey to change later.
   const typedOne = !draft.includes(',')
   function colourFor(label: string) {
-    return (typedOne && swatch) || paletteHex(label) || '#b3a396'
+    return (typedOne && (swatch || named)) || paletteHex(label) || GREY
+  }
+
+  // Colours the grid doesn't know ("terracotta, sage") are looked up in the
+  // big list; any found replace the grey, unless she has changed it since.
+  function findColours(labels: string[]) {
+    for (const label of labels) {
+      lookupHex(label).then((hex) => {
+        if (!hex) return
+        const now = latest.current
+        const choices = now.choices.map((choice) =>
+          choice.label === label && choice.swatch === GREY ? { ...choice, swatch: hex } : choice,
+        )
+        if (choices.some((choice, index) => choice !== now.choices[index])) onChange({ ...now, choices })
+      })
+    }
   }
 
   function onDraftKey(event: KeyboardEvent<HTMLInputElement>) {
@@ -246,7 +272,7 @@ function OptionCard({ option, presets, onChange, onRemove }: CardProps) {
       <div className="mt-4 flex flex-wrap gap-2">
         {colours && (
           <ColourField
-            value={swatch ?? (typedOne ? paletteHex(draft) : null)}
+            value={swatch ?? named}
             onChange={setSwatch}
             label={draft.trim() || 'the new colour'}
             onPickName={(name) => draft.trim() === '' && setDraft(name)}

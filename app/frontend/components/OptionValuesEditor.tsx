@@ -1,9 +1,9 @@
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import Button from '@/components/ui/Button'
 import ColourField from '@/components/ui/ColourField'
-import { paletteHex } from '@/lib/colours'
+import { lookupHex, paletteHex } from '@/lib/colours'
 
 export type OptionValue = { label: string; swatch?: string | null }
 
@@ -24,6 +24,9 @@ const iconButton =
 // same editor can be reused on the product form later.
 export default function OptionValuesEditor({ values, onChange, withSwatches, error }: Props) {
   const [draft, setDraft] = useState('')
+  // The list as it is NOW, for colours found after a moment (addDraft).
+  const latest = useRef(values)
+  latest.current = values
   const message = Array.isArray(error) ? error[0] : error
 
   // "S, M, L" -> three choices. Skips blanks and anything already in the list.
@@ -40,6 +43,19 @@ export default function OptionValuesEditor({ values, onChange, withSwatches, err
     }
     if (fresh.length) onChange([...values, ...fresh])
     setDraft('')
+
+    // Names the grid doesn't know ("terracotta") are looked up in the big
+    // list; a colour found replaces the grey, unless it was changed since.
+    if (withSwatches) {
+      for (const value of fresh.filter((each) => each.swatch === '#b3a396')) {
+        lookupHex(value.label).then((hex) => {
+          if (!hex) return
+          const now = latest.current
+          const next = now.map((each) => (each.label === value.label && each.swatch === '#b3a396' ? { ...each, swatch: hex } : each))
+          if (next.some((each, index) => each !== now[index])) onChange(next)
+        })
+      }
+    }
   }
 
   function onDraftKey(event: KeyboardEvent<HTMLInputElement>) {
