@@ -94,7 +94,7 @@ export default function PurchaseShow({ purchase }: Props) {
               {/* Received purchases can be corrected too; stock follows the change. */}
               <ButtonLink href={`/admin/purchases/${purchase.id}/edit`} variant="secondary">
                 <Pencil className="size-5" aria-hidden="true" />
-                {ordered ? 'Edit' : 'Correct this purchase'}
+                Edit purchase
               </ButtonLink>
               {/* Goods already in stock need the "Delete purchases" permission. */}
               {deletable && (
@@ -162,12 +162,11 @@ export default function PurchaseShow({ purchase }: Props) {
                           : formatMoney(item.unit_cost_pesewas)}
                       </p>
                       <p className="w-32 text-right font-medium">{formatMoney(item.line_total_pesewas)}</p>
-                      {item.landed_unit_cost_pesewas !== null &&
-                        item.landed_unit_cost_pesewas !== item.unit_cost_pesewas && (
-                          <p className="w-full text-right text-sm text-taupe-700">
-                            Really cost {formatMoney(item.landed_unit_cost_pesewas)} each with {pickup ? 'the trip' : 'delivery'} and fees
-                          </p>
-                        )}
+                      {item.landed_unit_cost_pesewas !== null && item.landed_unit_cost_pesewas !== item.unit_cost_pesewas && (
+                        <p className="w-full text-right text-sm text-taupe-700">
+                          Really cost {formatMoney(item.landed_unit_cost_pesewas)} each with {pickup ? 'the trip' : 'delivery'} and fees
+                        </p>
+                      )}
                     </li>
                   ))}
                 </ul>

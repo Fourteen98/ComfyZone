@@ -246,7 +246,7 @@ export default function PurchaseForm({
   return (
     <AppLayout>
       <Head title={editing ? 'Edit purchase' : 'Record a purchase'} />
-      <PageHeader title={purchase?.received ? 'Correct this purchase' : editing ? 'Edit purchase' : 'Record a purchase'} />
+      <PageHeader title={editing ? 'Edit purchase' : 'Record a purchase'} />
       {purchase?.received && (
         <div className="mt-4 max-w-3xl rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-amber-950">
           These goods are already in your stock. Change anything that was wrong or left out, and stock is corrected to match: items you add

@@ -26,7 +26,11 @@ class OrdersController < InertiaController
       },
       any_orders: Order.exists?,
       drafts: can?("orders.create") ? OrderDraft.count : 0,
-      can_create: can?("orders.create")
+      can_create: can?("orders.create"),
+      # What "Record a sale" needs, for the drawer on this page. Optional:
+      # only sent when the drawer asks for it (a partial reload with
+      # only: ["sale"]), so the list itself stays quick to load.
+      sale: InertiaRails.optional { can?("orders.create") ? sale_props : nil }
     }
   end
 
@@ -105,16 +109,13 @@ class OrdersController < InertiaController
 
   # GET /orders/new   a sale made outside a live (WhatsApp, a walk-in)
   def new
-    render inertia: "Orders/New", props: {
-      products: sellable_products, buyers: known_buyers, channels: sales_channels, locations: location_options,
-      # "Did they pay?" on the form: only for people who may take payments.
-      ways_to_pay: can?("orders.fulfil") ? PaymentMethod.options : nil,
+    render inertia: "Orders/New", props: sale_props.merge(
       # Sales saved halfway, newest first, and the one being resumed (?draft=5).
       drafts: OrderDraft.newest_first.includes(:user).limit(20).map { |draft|
         { id: draft.id, label: draft.label, by: draft.user.name, at: draft.updated_at.strftime("%-d %b, %-l:%M %P") }
       },
       draft: (found = OrderDraft.find_by(id: params[:draft])) && { id: found.id, label: found.label, payload: found.payload }
-    }
+    )
   end
 
   # POST /orders
@@ -138,7 +139,9 @@ class OrdersController < InertiaController
       lines: line_params
     )
     # Back to the live's claim screen (reopened with ?add=1 if it has ended).
-    back = live ? live_path(live, add: live.running? ? nil : 1) : new_order_path
+    # Recorded from the drawer on the orders list: back to that list.
+    from_list = params.dig(:order, :return_to) == "list"
+    back = live ? live_path(live, add: live.running? ? nil : 1) : from_list ? orders_list_url : new_order_path
 
     if taker.save
       order = taker.order
@@ -150,7 +153,7 @@ class OrdersController < InertiaController
         redirect_to order_path(order), alert: "The sale is recorded, but not the payment: #{problem} Record it below."
       else
         notice += " #{money_words(order)}" if order.paid_pesewas.positive?
-        redirect_to (live ? back : order_path(order)), notice: notice
+        redirect_to (live || from_list ? back : order_path(order)), notice: notice
       end
     else
       redirect_to back, inertia: { errors: taker.errors }
@@ -225,6 +228,21 @@ class OrdersController < InertiaController
   end
 
   private
+    # The orders list she came from, with its search and filters, or the plain list.
+    def orders_list_url
+      came_from = URI.parse(request.referer.to_s) rescue nil
+      came_from.is_a?(URI::HTTP) && came_from.path == orders_path ? came_from.request_uri : orders_path # path and query only: never another site
+    end
+
+    # Everything the Record a sale screen needs (the page, and the drawer on the list).
+    def sale_props
+      {
+        products: sellable_products, buyers: known_buyers, channels: sales_channels, locations: location_options,
+        # "Did they pay?" on the form: only for people who may take payments.
+        ways_to_pay: can?("orders.fulfil") ? PaymentMethod.options : nil
+      }
+    end
+
     def set_order
       @order = Order.includes(:customer, :sales_channel, :delivery_area, items: { variant: :product }).find(params.expect(:id))
     end

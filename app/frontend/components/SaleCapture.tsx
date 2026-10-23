@@ -38,6 +38,9 @@ type Props = {
   waysToPay?: { value: string; label: string; reference?: boolean }[] | null
   /** A sale saved halfway, to finish (Record a sale only). */
   draft?: { id: number; label: string; payload: Partial<DraftState> } | null
+  /** Shown in the drawer on the orders list: Rails goes back to that list
+   *  after the sale, and the total bar sticks to the drawer's bottom. */
+  inDrawer?: boolean
 }
 
 // Everything on the screen that a draft keeps. Stock is NOT held: it is
@@ -69,7 +72,17 @@ const notPaid: PayNow = { when: '', amount: '', via: '', reference: '' }
 //
 // Stock shown here was correct when the page loaded. Rails checks it again
 // at the moment of the claim, and refuses if something has just sold out.
-export default function SaleCapture({ products, buyers, liveId, liveChannel, channels = [], locations, waysToPay, draft }: Props) {
+export default function SaleCapture({
+  products,
+  buyers,
+  liveId,
+  liveChannel,
+  channels = [],
+  locations,
+  waysToPay,
+  draft,
+  inDrawer = false,
+}: Props) {
   const saved = draft?.payload ?? {}
   const [pay, setPay] = useState<PayNow>(saved.pay ?? notPaid)
   const errors = usePage().props.errors as Record<string, string[] | undefined>
@@ -218,6 +231,8 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
           live_session_id: liveId,
           // Finishing a draft: Rails deletes it once the sale is saved.
           draft_id: draft?.id,
+          // From the drawer: back to the list, which closes it (OrdersController#create).
+          return_to: inDrawer ? 'list' : undefined,
           sales_channel_id: inLive ? undefined : channelId || undefined,
           // Pick-up or delivery, if she chose. During a live it is sorted out afterwards.
           delivery: inLive || delivery.delivery_method === '' ? undefined : delivery,
@@ -244,6 +259,8 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
       },
       {
         preserveScroll: true,
+        // In the drawer, a mistake must keep the drawer and everything in it.
+        ...(inDrawer ? { preserveState: 'errors' as const } : {}),
         onSuccess: () => {
           // Ready for the next buyer straight away. The channel is kept:
           // several WhatsApp orders are often entered one after another.
@@ -279,7 +296,7 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
     //   Desktop: buyer and products down the left; this claim pinned on the right.
     // The elements are written in phone order; the lg: classes move the
     // claim panel into the second column without changing the HTML.
-    <div className="grid items-start gap-x-6 gap-y-5 pb-24 lg:grid-cols-[minmax(0,1fr)_22rem] lg:pb-0">
+    <div className={`grid items-start gap-x-6 gap-y-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:pb-0 ${inDrawer ? '' : 'pb-24'}`}>
       {/* ---------- 1. Who ---------- */}
       <section className="space-y-4 lg:col-start-1">
         {waitHint && <Alert tone="error">{waitHint}</Alert>}
@@ -603,7 +620,14 @@ export default function SaleCapture({ products, buyers, liveId, liveChannel, cha
       {/* The floating claim bar, phones only. bottom-14 sits it on top of the
           app's bottom navigation; env(safe-area-inset-bottom) clears the
           home indicator on iPhones. */}
-      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t border-taupe-200 bg-white px-4 py-2.5 shadow-[0_-4px_16px_rgb(42_31_29/0.12)] lg:hidden">
+      <div
+        className={`z-20 border-t border-taupe-200 bg-white px-4 py-2.5 shadow-[0_-4px_16px_rgb(42_31_29/0.12)] lg:hidden ${
+          inDrawer
+            ? // In the drawer: stuck to the drawer's own bottom (it scrolls inside).
+              'sticky bottom-0 -mx-4 pb-[calc(0.625rem+env(safe-area-inset-bottom))]'
+            : 'fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))]'
+        }`}
+      >
         <div className="flex items-center gap-3">
           <p className="min-w-0 flex-1 tabular-nums">
             <span className="block text-sm text-taupe-700">{units === 1 ? '1 item' : `${units} items`}</span>

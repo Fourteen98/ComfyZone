@@ -35,6 +35,37 @@ class OrdersControllerTest < ActionDispatch::IntegrationTest
     assert_includes inertia.props[:errors][:items].first, "Only 5 left"
   end
 
+  test "from the drawer on the orders list: back to that list (with its filters), mistakes too" do
+    sign_in_as(users(:one))
+    list = orders_url(status: "claimed", q: "ama")
+    drawer = ->(quantity) { claim_params(quantity: quantity).deep_merge(order: { return_to: "list" }) }
+
+    post orders_path, params: drawer.(6), headers: { "HTTP_REFERER" => list }
+    assert_redirected_to "/admin/orders?q=ama&status=claimed"
+
+    assert_difference "Order.count", 1 do
+      post orders_path, params: drawer.(1), headers: { "HTTP_REFERER" => list }
+    end
+    assert_redirected_to "/admin/orders?q=ama&status=claimed"
+    assert_match "1 item claimed", flash[:notice]
+
+    # Somewhere else as the referer: just the plain list, never another site.
+    post orders_path, params: drawer.(1), headers: { "HTTP_REFERER" => "https://evil.example/admin/orders" }
+    assert_redirected_to orders_path
+  end
+
+  test "the drawer's products and buyers are only sent when it asks" do
+    sign_in_as(users(:one))
+    get orders_path
+    assert_not inertia.props.key?(:sale)
+
+    get orders_path, headers: { "X-Inertia" => "true", "X-Inertia-Partial-Component" => "Orders/Index",
+      "X-Inertia-Partial-Data" => "sale", "X-Inertia-Version" => InertiaRails.configuration.version.to_s }
+    sale = response.parsed_body.dig("props", "sale")
+    assert_includes sale["products"].map { |product| product["id"] }, @black.product_id
+    assert sale.key?("buyers") && sale.key?("channels")
+  end
+
   test "a missed order can be added to a live that has ended, dated when the live was" do
     sign_in_as(users(:one))
     live = travel_to(2.days.ago) { LiveSession.create!(user: users(:one)).tap(&:finish!) }

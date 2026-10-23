@@ -237,7 +237,7 @@ class PurchasesController < InertiaController
         },
         # Set when arriving from a supplier's page ("Record a purchase from them").
         preselected_supplier_id: Supplier.find_by(id: params[:supplier_id])&.id,
-        products: pickable_products,
+        products: pickable_products(purchase),
         option_suggestions: option_suggestions,
         locations: location_options # for a new supplier's country, region and place
       }
@@ -245,10 +245,17 @@ class PurchasesController < InertiaController
 
     # Everything she could be restocking, for the product picker.
     # Loaded up front so searching and adding is instant with no round trips.
-    def pickable_products
+    #
+    # When editing, also whatever is already ON the purchase, even if that
+    # product was archived or that size retired since: otherwise its lines
+    # would be missing from the form, and saving would take them out of stock.
+    def pickable_products(purchase = nil)
       last_costs = last_unit_costs
+      on_it = purchase ? purchase.items.includes(:variant).map(&:variant) : []
+      kept_by_product = on_it.group_by(&:product_id)
 
-      Product.active.ordered.includes(:variants, :options, photos: { image_attachment: :blob }).map { |product|
+      Product.where(status: "active").or(Product.where(id: kept_by_product.keys)).ordered
+        .includes(:variants, :options, photos: { image_attachment: :blob }).map { |product|
         {
           id: product.id,
           name: product.name,
@@ -257,7 +264,7 @@ class PurchasesController < InertiaController
           # Its options ("Colour", "Size"), so a missing colour can be added
           # from the purchase form. `colours`: its values carry swatches.
           options: product.options.map { |option| { name: option.name, colours: option.swatches?, labels: option.labels } },
-          variants: product.variants.map { |variant|
+          variants: (product.variants.to_a | kept_by_product.fetch(product.id, [])).map { |variant|
             { id: variant.id, name: variant.name, option_values: variant.option_values, stock: variant.stock_on_hand }
           }
         }

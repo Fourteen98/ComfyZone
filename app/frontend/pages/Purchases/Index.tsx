@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react'
-import { Plus, Truck } from 'lucide-react'
+import { Pencil, Plus, Truck } from 'lucide-react'
 import AppLayout from '@/layouts/AppLayout'
 import StatusBadge from '@/components/PurchaseStatusBadge'
 import { ButtonLink } from '@/components/ui/Button'
@@ -52,8 +52,7 @@ export default function PurchasesIndex({ purchases, filters, counts }: Props) {
       {counts.all === 0 ? (
         <div className="mt-6 rounded-lg border border-taupe-200 bg-white">
           <EmptyState icon={Truck} title="No purchases yet">
-            Record what you buy to stock up. The app adds it to your stock and works out what each item really cost
-            you.
+            Record what you buy to stock up. The app adds it to your stock and works out what each item really cost you.
           </EmptyState>
         </div>
       ) : (
@@ -84,21 +83,35 @@ export default function PurchasesIndex({ purchases, filters, counts }: Props) {
           ) : (
             <ul className="mt-5 divide-y divide-taupe-200 rounded-lg border border-taupe-200 bg-white">
               {purchases.map((purchase) => (
-                <li key={purchase.id}>
+                <li key={purchase.id} className="flex items-stretch">
+                  {/* Name and date on the left, money and status stacked on the
+                      right, so nothing gets squeezed on a phone. */}
                   <Link
                     href={`/admin/purchases/${purchase.id}`}
-                    className="flex flex-wrap items-center gap-x-6 gap-y-1 px-5 py-4 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
+                    className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3 hover:bg-taupe-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700 sm:px-5"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{purchase.supplier ?? 'No supplier'}</p>
                       <p className="text-sm text-taupe-700">
-                        {purchase.purchased_on}, {purchase.units} {purchase.units === 1 ? 'item' : 'items'}
-                        {purchase.reference && `, ref ${purchase.reference}`}
+                        {purchase.purchased_on} · {purchase.units} {purchase.units === 1 ? 'item' : 'items'}
+                        {purchase.reference && ` · ref ${purchase.reference}`}
                       </p>
                     </div>
-                    <StatusBadge status={purchase.status} />
-                    <p className="w-32 text-right font-semibold tabular-nums">{formatMoney(purchase.total_pesewas)}</p>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <p className="font-semibold tabular-nums">{formatMoney(purchase.total_pesewas)}</p>
+                      <StatusBadge status={purchase.status} />
+                    </div>
                   </Link>
+                  {/* Mistakes happen: straight to the form, one tap. */}
+                  {can('purchases.manage') && (
+                    <Link
+                      href={`/admin/purchases/${purchase.id}/edit`}
+                      aria-label={`Edit purchase from ${purchase.supplier ?? 'no supplier'}, ${purchase.purchased_on}`}
+                      className="flex w-14 shrink-0 items-center justify-center border-l border-taupe-200 text-wine-800 hover:bg-taupe-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-wine-700"
+                    >
+                      <Pencil className="size-5" aria-hidden="true" />
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
