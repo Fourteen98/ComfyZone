@@ -64,6 +64,8 @@ Rails.application.routes.draw do
       end
       # PATCH /products/:product_id/variant_prices -> Products::VariantPricesController#update
       resource :variant_prices, only: :update, module: :products
+      # POST /products/:product_id/option_values  add a colour or size it was missing
+      resources :option_values, only: :create, module: :products
       # POST   /products/:product_id/photos        upload one or more
       # DELETE /products/:product_id/photos/:id    remove one
       # PATCH  /products/:product_id/photos/order  reorder (first = cover)
@@ -90,6 +92,9 @@ Rails.application.routes.draw do
       # Count a product as one total, or by size again (StockPool).
       patch "pool/:product_id", to: "pools#update", as: :stock_pool
       delete "pool/:product_id", to: "pools#destroy"
+      # Set many counts at once, or everything to 0, and undo it (StockReset).
+      post "reset", to: "resets#create", as: :stock_reset
+      delete "reset/:batch", to: "resets#destroy", as: :stock_reset_undo
     end
 
     resources :stock, only: %i[ index show ], controller: "stock" do

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_14_190001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_090001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -399,6 +399,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_14_190001) do
     t.bigint "user_id"
     t.string "note"
     t.datetime "created_at", null: false
+    t.string "batch"
+    t.index ["batch"], name: "index_stock_movements_on_batch"
     t.index ["source_type", "source_id"], name: "index_stock_movements_on_source"
     t.index ["user_id"], name: "index_stock_movements_on_user_id"
     t.index ["variant_id", "created_at"], name: "index_stock_movements_on_variant_id_and_created_at"

@@ -14,6 +14,9 @@ import SelectField from '@/components/ui/SelectField'
 import TextAreaField from '@/components/ui/TextAreaField'
 import TextField from '@/components/ui/TextField'
 import type { OptionValue } from '@/components/OptionValuesEditor'
+import AddOptionValue from '@/components/AddOptionValue'
+import type { ProductOptionInfo, Suggestion } from '@/components/AddOptionValue'
+import { useCan } from '@/lib/permissions'
 import LocationFields, { nowhere } from '@/components/LocationFields'
 import type { Locations } from '@/components/LocationFields'
 import { formatForeign, formatMoney, toPesewas } from '@/lib/format'
@@ -27,6 +30,7 @@ type PickableProduct = {
   name: string
   thumb_url: string | null
   last_cost: string // what one cost last time, "" if never bought
+  options: ProductOptionInfo[] // "Colour", "Size": for adding a missing one
   variants: PickableVariant[]
 }
 
@@ -55,6 +59,8 @@ type Props = {
   // Set when she came from a supplier's page.
   preselected_supplier_id: number | null
   products: PickableProduct[]
+  // Known colours and sizes, to suggest when adding one a product lacks.
+  option_suggestions: Record<string, Suggestion[]>
 }
 
 const HOME_CURRENCY = 'GHS' // Currency::HOME in Ruby
@@ -63,8 +69,20 @@ const HOME_CURRENCY = 'GHS' // Currency::HOME in Ruby
 // and how many of each variant.
 type Block = { productId: number; cost: string; quantities: Record<number, string> }
 
-export default function PurchaseForm({ purchase, today, suppliers, preselected_supplier_id, products, locations, currencies }: Props) {
+export default function PurchaseForm({
+  purchase,
+  today,
+  suppliers,
+  preselected_supplier_id,
+  products,
+  option_suggestions,
+  locations,
+  currencies,
+}: Props) {
   const editing = purchase !== null
+  const can = useCan()
+  // Variants just made by "Add a colour", highlighted until the page is left.
+  const [fresh, setFresh] = useState<number[]>([])
   const byId = new Map(products.map((product) => [product.id, product]))
 
   const form = useForm({
@@ -396,7 +414,10 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                         <p className="mt-4 text-sm font-medium text-taupe-800">How many of each</p>
                         <ul className="mt-1.5 grid gap-x-6 gap-y-2 sm:grid-cols-2">
                           {product.variants.map((variant) => (
-                            <li key={variant.id} className="flex items-center justify-between gap-3">
+                            <li
+                              key={variant.id}
+                              className={`flex items-center justify-between gap-3 ${fresh.includes(variant.id) ? '-mx-2 rounded-md bg-emerald-50 px-2 py-1' : ''}`}
+                            >
                               <div className="min-w-0">
                                 <p className="flex flex-wrap gap-1.5">
                                   {variant.option_values.length === 0 ? (
@@ -407,7 +428,13 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                                     ))
                                   )}
                                 </p>
-                                <p className="mt-0.5 text-sm text-taupe-600 tabular-nums">{variant.stock} in stock now</p>
+                                <p className="mt-0.5 text-sm text-taupe-600 tabular-nums">
+                                  {fresh.includes(variant.id) ? (
+                                    <span className="font-medium text-emerald-800">Just added</span>
+                                  ) : (
+                                    `${variant.stock} in stock now`
+                                  )}
+                                </p>
                               </div>
                               <QuantityStepper
                                 label={`${product.name} ${variant.name}`}
@@ -417,6 +444,26 @@ export default function PurchaseForm({ purchase, today, suppliers, preselected_s
                             </li>
                           ))}
                         </ul>
+
+                        {/* The colour that arrived isn't on the product yet? Add it here. */}
+                        {can('products.manage') && (
+                          <div className="mt-2">
+                            <AddOptionValue
+                              productId={product.id}
+                              productName={product.name}
+                              options={product.options}
+                              suggestions={option_suggestions}
+                              onAdded={(page) => {
+                                const updated = (page.props.products as PickableProduct[]).find((entry) => entry.id === product.id)
+                                const before = new Set(product.variants.map((variant) => variant.id))
+                                const added = (updated?.variants ?? [])
+                                  .filter((variant) => !before.has(variant.id))
+                                  .map((variant) => variant.id)
+                                setFresh([...fresh, ...added])
+                              }}
+                            />
+                          </div>
+                        )}
 
                         <p className="mt-4 border-t border-taupe-200 pt-3 text-sm text-taupe-700 tabular-nums">
                           {unitsOf(block)} {unitsOf(block) === 1 ? 'item' : 'items'},{' '}

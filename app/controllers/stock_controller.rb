@@ -43,7 +43,11 @@ class StockController < InertiaController
         # nil for people who may not see costs; the number never leaves the server.
         value_pesewas: can?("costs.view") ? all.sum(&:stock_value_pesewas) : nil
       },
-      estimate: estimate_props(StockLedger.sales_estimate)
+      estimate: estimate_props(StockLedger.sales_estimate),
+      # The latest reset, while it can still be undone (StockReset).
+      last_reset: can?("stock.adjust") ? last_reset_props : nil,
+      # A full reset's confirmation word, so the page and the server agree.
+      confirm_word: StockReset::CONFIRM_WORD
     }
   end
 
@@ -81,6 +85,11 @@ class StockController < InertiaController
   end
 
   private
+    def last_reset_props
+      reset = StockReset.latest_undoable or return
+      reset.merge(at: reset[:at].strftime(reset[:at].today? ? "%H:%M" : "%-d %b, %H:%M"))
+    end
+
     # If it all sells. Profit only for people who may see costs.
     def estimate_props(estimate)
       costs = can?("costs.view")
